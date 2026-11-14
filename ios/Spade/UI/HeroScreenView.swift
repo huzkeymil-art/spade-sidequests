@@ -115,6 +115,9 @@ struct HeroScreenView: View {
         .sheet(item: $picking) { slot in
             SlotPickerSheet(slot: slot)
         }
+        .onAppear {
+            if DemoMode.requested == "picker" { picking = .hand }
+        }
         .alert("Rename your hero", isPresented: $renaming) {
             TextField("Name", text: $draft)
             Button("Save") {

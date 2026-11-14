@@ -226,7 +226,9 @@ enum DemoMode {
         case "launch", "title":
             return GameStore(preview: newSave(seed: 7, now: Date()))
         default:
-            let store = GameStore(preview: midGame())
+            var save = midGame()
+            if name == "smooth" { save.settings.retro = false }
+            let store = GameStore(preview: save)
             if name == "dig" { store.show(.item(serial: -1, itemId: "moonsteel_cap", fresh: true, echoXp: 0)) }
             if name == "level" { store.show(.level(serial: -2, level: 8, rank: nil)) }
             return store
@@ -258,6 +260,13 @@ enum DemoMode {
         }
         save.settings.guideSeen = true
         save.settings.sound = false
-        return syncPeriods(save, now: now, clock: clock)
+        save = syncPeriods(save, now: now, clock: clock)
+        // Two of today's three quests are already sealed, so the lantern is burning well.
+        for quest in save.boards.daily.quests.prefix(2) {
+            for _ in 0..<max(1, quest.target) {
+                save = markQuest(save, .daily, key: quest.key, now: now, clock: clock).save
+            }
+        }
+        return save
     }
 }

@@ -87,6 +87,12 @@ final class StageController: NSObject, ObservableObject {
 
         hero.root.simdOrientation = rotation(y: heroYaw)
         reducedMotion = UIAccessibility.isReduceMotionEnabled
+
+        // Start from the phone's own screen, so the first frame is already laid out.
+        let scale = UIScreen.main.scale
+        pixelSize = max(2, (scale * 1.4).rounded()) / scale
+        screen = UIScreen.main.bounds.size
+        place()
     }
 
     // MARK: - Hooking up to the screen
@@ -117,6 +123,7 @@ final class StageController: NSObject, ObservableObject {
         link.add(to: .main, forMode: .common)
         self.link = link
         applyResolution()
+        place()
     }
 
     /// Call when the screen size is known or changes.
@@ -136,19 +143,22 @@ final class StageController: NSObject, ObservableObject {
     private func applyResolution() {
         guard let view = sceneView else { return }
         let scale = view.window?.screen.scale ?? UIScreen.main.scale
+        let pixel: CGFloat
         if retro {
             // Each scene pixel covers a block of screen pixels, about 1.4 points wide.
             let block = max(2, (scale * 1.4).rounded())
             view.contentScaleFactor = scale / block
             view.layer.magnificationFilter = .nearest
-            pixelSize = block / scale
+            pixel = block / scale
             Materials.ditherLevels = 22
         } else {
             view.contentScaleFactor = min(scale, 2)
             view.layer.magnificationFilter = .linear
-            pixelSize = 1.4
+            pixel = 1.4
             Materials.ditherLevels = 64
         }
+        // Only announce a real change: the screens redraw their dot patterns when this moves.
+        if pixel != pixelSize { pixelSize = pixel }
     }
 
     // MARK: - Controls

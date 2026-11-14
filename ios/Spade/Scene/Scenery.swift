@@ -147,7 +147,8 @@ final class Scenery {
         moonHalo.geometry?.firstMaterial?.readsFromDepthBuffer = false
         root.addChildNode(moonHalo)
         let disc = SCNPlane(width: 2, height: 2)
-        let moonMaterial = Materials.decal(UIImage())
+        // A blank picture for now. `setMoon` paints the real one as soon as the date is known.
+        let moonMaterial = Materials.decal(Textures.image(fromRGBA: [0, 0, 0, 0], width: 1, height: 1, scale: 1))
         moonMaterial.diffuse.magnificationFilter = .linear
         moonMaterial.diffuse.minificationFilter = .linear
         moonMaterial.readsFromDepthBuffer = false

@@ -212,8 +212,8 @@ struct SettingsSheet: View {
 
     private func footnote(_ text: String) -> some View {
         Text(text)
-            .font(Typeface.text(15))
-            .foregroundStyle(Ink.faint)
+            .font(Typeface.italic(15))
+            .foregroundStyle(Ink.dim)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 9)
     }

@@ -448,16 +448,18 @@ struct PortraitIcon: View {
 }
 
 /// A square slot that holds an item icon, or stands empty.
+/// It is always as wide as the space it is given, whatever is inside.
 struct SlotFrame<Content: View>: View {
     var edge: Color = Ink.moss
     var fill: Color = Ink.loam
     @ViewBuilder var content: Content
 
     var body: some View {
-        ZStack { content }
-            .frame(maxWidth: .infinity)
+        Notched(notch: 7)
+            .fill(fill)
+            .overlay(Notched(notch: 7).strokeBorder(edge, lineWidth: 1))
             .aspectRatio(1, contentMode: .fit)
-            .plate(fill: fill, edge: edge, notch: 7)
+            .overlay { content }
     }
 }
 

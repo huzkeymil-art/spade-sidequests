@@ -210,7 +210,7 @@ struct LevelUpPanel: View {
             VStack(spacing: 0) {
                 Text("Level").caps(Ink.dim).pop(0)
                 Text("\(level)")
-                    .font(.custom("Jacquard24-Regular", fixedSize: 132))
+                    .font(.custom("Jacquard24-Regular", fixedSize: 176))
                     .foregroundStyle(Ink.lantern)
                     .padding(.top, 6)
                     .padding(.bottom, 14)

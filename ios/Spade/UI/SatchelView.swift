@@ -80,6 +80,9 @@ struct SatchelView: View {
         .sheet(item: $open) { item in
             ItemSheet(item: item)
         }
+        .onAppear {
+            if DemoMode.requested == "item" { open = Catalog.itemById["barrow_blade"] }
+        }
     }
 }
 

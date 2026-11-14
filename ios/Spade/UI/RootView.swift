@@ -48,7 +48,9 @@ struct RootView: View {
     private let dockHeight: CGFloat = 62
 
     init() {
-        let start = AppTab(rawValue: DemoMode.requested ?? "") ?? .quests
+        // The demo screens (used for automated screenshots) can open on a particular tab.
+        let demo = DemoMode.requested ?? ""
+        let start = AppTab(rawValue: demo) ?? (demo == "item" ? .satchel : demo == "picker" ? .hero : .quests)
         _tab = State(initialValue: start)
         _opened = State(initialValue: [start])
     }
