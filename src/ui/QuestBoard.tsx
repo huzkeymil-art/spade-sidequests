@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { sfx } from '../audio/sfx';
 import { formatCountdown, nextReset } from '../game/periods';
 import { DAILY_CLEAR_XP } from '../game/rewards';
 import { rerollsLeft } from '../game/state';
 import { useStore } from '../game/store';
 import { CADENCES, type ActiveQuest, type Cadence } from '../game/types';
 import { QuestForm } from './QuestForm';
+import { feedback } from './feedback';
 import { Icon, useStage } from './stage';
 
 const HOLD_MS = 650;
 const CADENCE_NAME: Record<Cadence, string> = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
+const NEXT_DEAL: Record<Cadence, string> = { daily: 'tomorrow', weekly: 'on Monday', monthly: 'on the 1st' };
 
 export function QuestBoard() {
   const save = useStore((s) => s.save);
@@ -21,11 +22,12 @@ export function QuestBoard() {
   const swaps = rerollsLeft(save);
   const done = save.boards.daily.quests.filter((q) => q.done).length;
   const total = save.boards.daily.quests.length;
+  const allDone = board.quests.length > 0 && board.quests.every((q) => q.done);
 
   return (
     <>
       <div className="sheet-head">
-        <div className="cadences" role="tablist">
+        <div className="cadences" role="tablist" aria-label="How often">
           {CADENCES.map((c) => {
             const open = save.boards[c].quests.filter((q) => !q.done).length;
             return (
@@ -33,9 +35,10 @@ export function QuestBoard() {
                 key={c}
                 role="tab"
                 aria-selected={c === cadence}
+                aria-label={`${CADENCE_NAME[c]}, ${open} to do`}
                 className="cadence"
                 onClick={() => {
-                  sfx.tap();
+                  feedback.select();
                   setCadence(c);
                 }}
               >
@@ -66,7 +69,7 @@ export function QuestBoard() {
                 All of today's quests: +{DAILY_CLEAR_XP} XP
               </div>
             </div>
-            <div className="pips" aria-label={`${done} of ${total} done`}>
+            <div className="pips" role="img" aria-label={`${done} of ${total} done`}>
               {save.boards.daily.quests.map((q) => (
                 <span key={q.key} className={`pip ${q.done ? 'on' : ''}`} />
               ))}
@@ -74,14 +77,18 @@ export function QuestBoard() {
           </div>
         )}
 
+        {allDone && <p className="board-done">All sealed. Fresh quests arrive {NEXT_DEAL[cadence]}.</p>}
+
         <button
           className="add-quest"
           onClick={() => {
-            sfx.tap();
+            feedback.tap();
             setWriting(true);
           }}
         >
-          <span className="socket plate">+</span>
+          <span className="socket plate" aria-hidden="true">
+            +
+          </span>
           <span className="italic">Write a quest of your own</span>
         </button>
       </div>
@@ -125,12 +132,12 @@ function QuestRow({ quest, canSwap }: { quest: ActiveQuest; canSwap: boolean }) 
     const earned = events.reduce((sum, e) => (e.type === 'xp' ? sum + e.amount : sum), 0);
     if (earned > 0) {
       stage.cheer();
-      if (events.some((e) => e.type === 'clear')) sfx.clear();
-      else sfx.done();
+      if (events.some((e) => e.type === 'clear')) feedback.clear();
+      else feedback.done();
       setGain(earned);
       later(() => setGain(null), 950);
     } else {
-      sfx.step();
+      feedback.step();
     }
   };
 
@@ -150,7 +157,7 @@ function QuestRow({ quest, canSwap }: { quest: ActiveQuest; canSwap: boolean }) 
     setHolding(false);
     if (wasTap && performance.now() - p.at < 300) {
       setHint(true);
-      later(() => setHint(false), 1500);
+      later(() => setHint(false), 1800);
     }
   };
 
@@ -160,12 +167,26 @@ function QuestRow({ quest, canSwap }: { quest: ActiveQuest; canSwap: boolean }) 
   };
 
   const counted = quest.target > 1;
+  const lastStep = quest.progress + 1 >= quest.target;
+  const progress = counted ? `, ${quest.progress} of ${quest.target}` : '';
 
   return (
     <li
       className={`quest ${holding ? 'holding' : ''}`}
       data-done={quest.done}
       style={{ ['--hold' as string]: `${HOLD_MS}ms` }}
+      // For keyboards, switch control and VoiceOver: it behaves as a button.
+      role="button"
+      tabIndex={quest.done ? -1 : 0}
+      aria-disabled={quest.done}
+      aria-label={`${quest.title}${progress}. ${quest.done ? 'Sealed.' : `${quest.xp} XP. Press and hold to ${lastStep ? 'seal' : 'count'}.`}`}
+      onKeyDown={(e) => {
+        if (quest.done || e.target !== e.currentTarget) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          finish();
+        }
+      }}
       onPointerDown={onDown}
       onPointerMove={onMove}
       onPointerUp={() => release(true)}
@@ -173,7 +194,7 @@ function QuestRow({ quest, canSwap }: { quest: ActiveQuest; canSwap: boolean }) 
       onPointerLeave={() => release(false)}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <div className="socket plate">
+      <div className="socket plate" aria-hidden="true">
         <span className="socket-fill" />
         {quest.done ? (
           <Icon kind="prop" id="seal" size={28} res={20} />
@@ -184,12 +205,12 @@ function QuestRow({ quest, canSwap }: { quest: ActiveQuest; canSwap: boolean }) 
         ) : null}
       </div>
 
-      <div className="quest-main">
+      <div className="quest-main" aria-hidden="true">
         <div className="quest-title">{quest.title}</div>
         {hint ? (
           <div className="quest-meta">
             <span className="label" style={{ color: 'var(--lantern)' }}>
-              Press and hold to {counted && quest.progress + 1 < quest.target ? 'count it' : 'seal it'}
+              Press and hold to {counted && !lastStep ? 'count it' : 'seal it'}
             </span>
           </div>
         ) : (
@@ -202,13 +223,16 @@ function QuestRow({ quest, canSwap }: { quest: ActiveQuest; canSwap: boolean }) 
       </div>
 
       <div className="quest-side">
-        <span className="xp">+{quest.xp}</span>
+        <span className="xp" aria-hidden="true">
+          +{quest.xp}
+        </span>
         {canSwap && !quest.done && (
           <button
             className="swap"
             data-nohold
+            aria-label={`Swap "${quest.title}" for a different quest`}
             onClick={() => {
-              sfx.tap();
+              feedback.tap();
               reroll(quest.key);
             }}
           >

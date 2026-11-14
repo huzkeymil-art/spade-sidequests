@@ -17,6 +17,8 @@ This repository is the **web prototype**. It installs on an iPhone from Safari a
 - **Feats.** 25 achievements, each watching one number such as "best streak".
 - **Your digger.** Change skin, hair and scarf, and wear what you find.
 
+It is laid out like a native iPhone app: a floating tab bar, sheets with a grabber that you can drag down to dismiss, grouped settings, touch targets of at least 44 points, and text that follows the phone's text-size setting.
+
 The 3D scene doubles as a progress display:
 
 | In the scene | What it shows |
@@ -31,7 +33,7 @@ The 3D scene doubles as a progress display:
 2. Tap **Share**, then **Add to Home Screen**.
 3. Open Spade from its new icon. It now runs full-screen and works with no signal.
 
-Progress is saved on the device only. Settings has **Copy save** and **Load save** for backing it up or moving it.
+Progress is saved on the device only. Settings has **Back up save**, which opens the share sheet so the save can go to Files or AirDrop, and **Restore from a file** to bring it back.
 
 ### Publishing it (one-time setup)
 
@@ -76,6 +78,7 @@ A few ideas hold it together:
 - **Models are data.** Nothing is loaded from a 3D model file. Each object is a short list of boxes, cylinders and balls (see `src/three/models`), like a LEGO instruction sheet.
 - **Quests are dealt with a seeded shuffle.** The date is part of the seed, so today's quests are the same every time you open the app, and different tomorrow.
 - **The look is a recipe.** Light is worked out at the corners of each triangle, textures are tiny and blurry, the scene is drawn small and enlarged with hard pixels, and a dither pattern fakes extra shades (`src/three/RetroMaterial.ts`, `src/three/post.ts`).
+- **iPhone conventions, Spade's material.** `src/ui/theme.css` follows iOS layout rules but swaps glass and rounded corners for cut corners and dot patterns. `src/ui/Sheet.tsx` holds the sheet, alert and switch row. `src/ui/platform.ts` talks to the phone: keyboard height, share sheet, haptics, storage.
 
 ### Changing things
 
@@ -93,7 +96,7 @@ These parts are meant to carry straight over:
 | `src/content/*.json` | Load the same files unchanged. |
 | `src/game/*.ts` | Port function by function. The tests describe the expected behaviour. |
 | `src/three/models/*.ts` | The same part lists map onto `SCNBox`, `SCNCylinder`, `SCNCone` and `SCNSphere`. |
-| Settings → Copy save | The save is plain JSON, so the native app can import it. |
+| Settings → Back up save | The save is plain JSON, so the native app can import it. |
 
 Things the web version cannot do that the native one can: a notification when quests reset, haptic taps, and home-screen widgets.
 

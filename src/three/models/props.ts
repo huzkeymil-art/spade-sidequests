@@ -78,6 +78,12 @@ export const PROPS: Record<string, Part[]> = {
     { s: 'cyl', r: [0, 0.17], h: 0.44, sides: 6, at: [0.02, 0.17, 0], rot: [0, 0, -6], c: '#454a41', c2: '#2c3028' },
   ],
   seal: spadeMark(BONE, 1),
+  moon: [
+    { s: 'ball', r: 0.34, seg: [10, 8], c: '#f1eed6', c2: '#a7a88f', emit: 0.55 },
+    { s: 'ball', r: [0.09, 0.09, 0.03], seg: [6, 4], at: [-0.1, 0.1, 0.31], c: '#bdbb9f', c2: '#bdbb9f', emit: 0.6 },
+    { s: 'ball', r: [0.06, 0.06, 0.03], seg: [6, 4], at: [0.13, -0.06, 0.31], c: '#bdbb9f', c2: '#bdbb9f', emit: 0.6 },
+    { s: 'ball', r: [0.045, 0.045, 0.03], seg: [6, 4], at: [-0.04, -0.16, 0.3], c: '#bdbb9f', c2: '#bdbb9f', emit: 0.6 },
+  ],
 
   // ---- Categories -------------------------------------------------------
   body: [

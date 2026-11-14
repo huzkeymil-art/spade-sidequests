@@ -1,6 +1,7 @@
 import { featProgress } from '../game/achievements';
 import { FEATS, ITEM_BY_ID } from '../game/content';
 import { useStore } from '../game/store';
+import { formatNumber } from './platform';
 import { Icon } from './stage';
 
 /** Achievements and lifetime numbers. */
@@ -15,6 +16,13 @@ export function Feats() {
     return b.value / b.goal - a.value / a.goal;
   });
 
+  const stats: [number, string][] = [
+    [save.counts.quests, 'Quests'],
+    [save.counts.bestStreak, 'Best run'],
+    [save.counts.dailyClears, 'Full days'],
+    [save.inventory.length, 'Finds'],
+  ];
+
   return (
     <>
       <div className="sheet-head">
@@ -25,22 +33,12 @@ export function Feats() {
           </span>
         </div>
         <div className="stats">
-          <div className="stat">
-            <b>{save.counts.quests}</b>
-            <span className="label faint">Quests</span>
-          </div>
-          <div className="stat">
-            <b>{save.counts.bestStreak}</b>
-            <span className="label faint">Best run</span>
-          </div>
-          <div className="stat">
-            <b>{save.counts.dailyClears}</b>
-            <span className="label faint">Full days</span>
-          </div>
-          <div className="stat">
-            <b>{save.inventory.length}</b>
-            <span className="label faint">Finds</span>
-          </div>
+          {stats.map(([value, name]) => (
+            <div key={name} className="stat">
+              <b>{formatNumber(value)}</b>
+              <span className="label faint">{name}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -56,19 +54,23 @@ export function Feats() {
                   {feat.item && ITEM_BY_ID[feat.item] ? ` Reward: ${ITEM_BY_ID[feat.item].name}.` : ''}
                 </div>
                 {!done && goal > 1 && (
-                  <div className="gauge">
+                  <div className="gauge" role="progressbar" aria-label={`${feat.name} progress`} aria-valuemin={0} aria-valuemax={goal} aria-valuenow={value}>
                     {value > 0 && <div className="gauge-fill" style={{ width: `${(value / goal) * 100}%` }} />}
                   </div>
                 )}
               </div>
               <div className="quest-side">
                 <span className="xp" style={done ? { color: 'var(--faint)' } : undefined}>
-                  +{feat.xp}
+                  +{formatNumber(feat.xp)}
                 </span>
-                {!done && goal > 1 && (
-                  <span className="label faint">
-                    {value}/{goal}
-                  </span>
+                {done ? (
+                  <span className="label faint">Earned</span>
+                ) : (
+                  goal > 1 && (
+                    <span className="label faint">
+                      {formatNumber(value)}/{formatNumber(goal)}
+                    </span>
+                  )
                 )}
               </div>
             </li>

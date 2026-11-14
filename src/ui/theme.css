@@ -1,10 +1,32 @@
 /*
   Spade's look.
 
-  House rules: no rounded cards, no drop shadows, no glows, no blur, no smooth
-  gradients. Corners are cut ("notched"), shading is made of dot patterns, and
+  The layout follows iPhone conventions: a floating tab bar, sheets that slide
+  up with a grabber, grouped lists, touch targets of at least 44 points, and
+  text that follows the phone's text-size setting.
+
+  The material is Spade's own. No rounded corners, drop shadows, blur or smooth
+  gradients: corners are cut ("notched"), shading is made of dot patterns, and
   things move in ticks rather than glides, to match the chunky 3D scene.
 */
+
+/*
+  Every text size in the app is a multiple of one base size, set here.
+  Normally that base is 17px. On iPhones and iPads (the only devices that pass
+  the test on the @supports line) it becomes whatever the owner chose under
+  Settings > Display & Text Size, so the whole app grows and shrinks with it.
+*/
+html {
+  font-size: 17px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@supports (-webkit-touch-callout: none) {
+  html {
+    font: -apple-system-body;
+  }
+}
 
 :root {
   --ink: #0d0f0c;
@@ -13,30 +35,62 @@
   --moss: #2e3626;
   --moss-2: #4a563b;
   --bone: #e6dfc8;
-  --dim: #9a9c88;
-  --faint: #62665a;
+  --dim: #a3a591;
+  /* The quietest colour still allowed for words: 4.9 to 1 against the background. */
+  --faint: #7f8373;
+  /* For decoration only, never for words anyone needs to read. */
+  --ghost: #575b4f;
   --lantern: #f2b544;
   --verdigris: #5fb39a;
-  --rust: #c8553d;
+  --rust: #d9634a;
   --moonsteel: #7aa7d9;
 
   /* Width of one chunky scene pixel. The 3D stage keeps this up to date. */
   --px: 1.4px;
   /* Where the panel begins. The 3D stage animates this. */
   --sheet-top: 42vh;
+  /* Height of the on-screen keyboard. Kept up to date by platform.ts. */
+  --kb: 0px;
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --margin: 20px;
+
+  /* The text unit: the phone's chosen text size, kept within sensible limits. */
+  --u: clamp(14px, 1rem, 23px);
+  /* Big titles grow less, or they would push everything else off the screen. */
+  --ud: clamp(15px, 1rem, 19.5px);
+
+  --t-body: calc(var(--u) * 1.06);
+  --t-text: var(--u);
+  --t-sub: calc(var(--u) * 0.94);
+  --t-foot: calc(var(--u) * 0.88);
+  --t-label: calc(var(--u) * 0.88);
+  --t-num: calc(var(--u) * 1.3);
+  --t-num-lg: calc(var(--u) * 1.76);
+  --d-0: calc(var(--ud) * 8.47);
+  --d-1: calc(var(--ud) * 5.65);
+  --d-2: calc(var(--ud) * 2.82);
+  --d-3: calc(var(--ud) * 2.35);
+  --d-4: calc(var(--ud) * 2.12);
+  --d-5: calc(var(--ud) * 1.76);
 
   --display: 'Jacquard 24', 'Iowan Old Style', Palatino, serif;
   --label: 'Jersey 15', ui-monospace, Menlo, monospace;
   --text: 'IM Fell English', 'Iowan Old Style', Palatino, Georgia, serif;
 
-  /* Dot patterns: half-filled and quarter-filled, in a few colours. */
+  /* The floating tab bar, and the room content must leave for it. */
+  --dock-h: 62px;
+  --dock-bottom: max(calc(var(--safe-bottom) - 10px), 12px);
+  --dock-space: calc(var(--dock-h) + var(--dock-bottom));
+
+  /* Dot patterns in a 2 x 2 grid: a quarter, half or three-quarters filled. */
   --dots-moss-25: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2' shape-rendering='crispEdges'%3E%3Crect width='1' height='1' fill='%234a563b'/%3E%3C/svg%3E");
   --dots-moss-50: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2' shape-rendering='crispEdges'%3E%3Crect width='1' height='1' fill='%234a563b'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%234a563b'/%3E%3C/svg%3E");
   --dots-verdigris-50: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2' shape-rendering='crispEdges'%3E%3Crect width='1' height='1' fill='%235fb39a'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%235fb39a'/%3E%3C/svg%3E");
+  --dots-ink-25: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2' shape-rendering='crispEdges'%3E%3Crect width='1' height='1' fill='%230d0f0c'/%3E%3C/svg%3E");
   --dots-ink-50: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2' shape-rendering='crispEdges'%3E%3Crect width='1' height='1' fill='%230d0f0c'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%230d0f0c'/%3E%3C/svg%3E");
+  --dots-ink-75: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='2' shape-rendering='crispEdges'%3E%3Crect width='2' height='1' fill='%230d0f0c'/%3E%3Crect x='1' y='1' width='1' height='1' fill='%230d0f0c'/%3E%3C/svg%3E");
   --dots-size: calc(var(--px) * 2);
 }
 
@@ -60,12 +114,19 @@ body {
   background: var(--ink);
   color: var(--bone);
   font-family: var(--text);
-  font-size: 17px;
+  font-size: var(--t-text);
   line-height: 1.3;
   -webkit-font-smoothing: antialiased;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
+  caret-color: var(--lantern);
+}
+
+::selection {
+  background: var(--lantern);
+  color: var(--ink);
 }
 
 button,
@@ -73,6 +134,9 @@ input,
 textarea {
   font: inherit;
   color: inherit;
+  border-radius: 0;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 button {
@@ -82,6 +146,7 @@ button {
   background: none;
   cursor: pointer;
   touch-action: manipulation;
+  text-align: inherit;
 }
 
 h1,
@@ -98,10 +163,17 @@ li {
 
 img {
   display: block;
+  -webkit-user-drag: none;
 }
 
 [hidden] {
   display: none !important;
+}
+
+/* A clear ring for anyone driving the app from a keyboard or switch control. */
+:focus-visible {
+  outline: 2px solid var(--lantern);
+  outline-offset: 2px;
 }
 
 /* ---- Type ----------------------------------------------------------------- */
@@ -115,7 +187,7 @@ img {
 
 .label {
   font-family: var(--label);
-  font-size: 15px;
+  font-size: var(--t-label);
   line-height: 1;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -209,23 +281,25 @@ img {
 }
 
 .btn {
-  --n: 7px;
+  --n: 8px;
   --edge: var(--moss-2);
   --fill: var(--loam-2);
-  min-height: 46px;
-  padding: 0 18px;
+  min-height: 50px;
+  padding: 6px 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   font-family: var(--label);
-  font-size: 15px;
+  font-size: var(--t-label);
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  text-align: center;
   color: var(--bone);
 }
 
 .btn:active {
+  --fill: var(--moss);
   transform: translateY(2px);
 }
 
@@ -233,6 +307,11 @@ img {
   --edge: var(--lantern);
   --fill: var(--lantern);
   color: var(--ink);
+}
+
+.btn.primary:active {
+  --edge: #c9922c;
+  --fill: #c9922c;
 }
 
 .btn.danger {
@@ -243,7 +322,8 @@ img {
 .btn:disabled {
   --edge: var(--moss);
   --fill: var(--loam);
-  color: var(--faint);
+  color: var(--ghost);
+  transform: none;
 }
 
 .btn.block {
@@ -251,22 +331,61 @@ img {
   width: 100%;
 }
 
-.textlink {
-  font-family: var(--label);
-  font-size: 15px;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--dim);
-  padding: 8px 0;
+/* A square button holding only a symbol. */
+.icon-btn {
+  --n: 8px;
+  --edge: var(--moss-2);
+  --fill: var(--loam-2);
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* ---- HUD (over the scene) -------------------------------------------------- */
+.icon-btn:active {
+  --fill: var(--moss);
+}
+
+/* A close cross, drawn from two bars. */
+.glyph-x,
+.glyph-x::after {
+  display: block;
+  width: 16px;
+  height: 2px;
+  background: var(--bone);
+}
+
+.glyph-x {
+  position: relative;
+  transform: rotate(45deg);
+}
+
+.glyph-x::after {
+  content: '';
+  position: absolute;
+  transform: rotate(90deg);
+}
+
+/* A small right-pointing arrow for rows that open something. */
+.chevron {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--faint);
+  border-right: 2px solid var(--faint);
+  transform: rotate(45deg);
+  margin-right: 3px;
+}
+
+/* ---- HUD (floating over the scene) ------------------------------------------ */
 
 .hud {
   position: absolute;
   top: calc(var(--safe-top) + 10px);
-  left: 12px;
-  right: 12px;
+  left: 16px;
+  right: 16px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -278,17 +397,23 @@ img {
 }
 
 .hud-plate {
-  --fill: rgba(13, 15, 12, 0.82);
+  --n: 8px;
+  --fill: rgba(13, 15, 12, 0.86);
   --edge: var(--moss);
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 44px;
   height: 44px;
   padding: 0 11px;
 }
 
+button.hud-plate:active {
+  --fill: var(--moss);
+}
+
 .hud-level {
-  font-size: 36px;
+  font-size: var(--d-4);
   color: var(--lantern);
   transform: translateY(-1px);
 }
@@ -300,11 +425,11 @@ img {
 
 .hud-streak {
   font-family: var(--label);
-  font-size: 30px;
+  font-size: var(--t-num-lg);
   line-height: 1;
 }
 
-/* ---- Sheet (the panel under the scene) -------------------------------------- */
+/* ---- Panel (under the scene) -------------------------------------------------- */
 
 .sheet {
   position: absolute;
@@ -317,13 +442,16 @@ img {
   background: var(--ink);
 }
 
-.sheet[hidden] {
-  display: none;
+.screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .sheet-head {
   flex: none;
-  padding: 2px 18px 0;
+  padding: 2px var(--margin) 0;
 }
 
 .sheet-body {
@@ -332,10 +460,11 @@ img {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 0 18px 22px;
+  padding: 0 var(--margin) calc(var(--dock-space) + 30px);
 }
 
-.sheet-body::-webkit-scrollbar {
+.sheet-body::-webkit-scrollbar,
+.sheet-scroll::-webkit-scrollbar {
   display: none;
 }
 
@@ -343,11 +472,13 @@ img {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: 12px;
   padding: 12px 0 10px;
 }
 
 .screen-title h2 {
-  font-size: 40px;
+  font-size: var(--d-3);
+  min-width: 0;
 }
 
 /* XP gauge: a notched bar that fills in ticks. */
@@ -383,10 +514,6 @@ img {
   background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), var(--ink) calc(10% - 1px) 10%);
 }
 
-.gauge.lantern .gauge-fill {
-  background: var(--lantern);
-}
-
 .gauge-row {
   display: flex;
   align-items: center;
@@ -394,34 +521,92 @@ img {
   padding-top: 7px;
 }
 
-/* ---- Tab bar ----------------------------------------------------------------- */
+/*
+  Where the list slides under the tab bar it dissolves into the background:
+  three bands of dots, each denser than the last, then solid.
+*/
+.edge-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  height: calc(var(--dock-space) + var(--dots-size) * 12);
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
 
-.tabbar {
+.edge-fade i {
   flex: none;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  height: calc(62px + var(--safe-bottom));
-  padding-bottom: var(--safe-bottom);
-  border-top: 1px solid var(--moss);
+  height: calc(var(--dots-size) * 4);
+  background-size: var(--dots-size) var(--dots-size);
+}
+
+.edge-fade i:nth-child(1) {
+  background-image: var(--dots-ink-25);
+}
+.edge-fade i:nth-child(2) {
+  background-image: var(--dots-ink-50);
+}
+.edge-fade i:nth-child(3) {
+  background-image: var(--dots-ink-75);
+}
+.edge-fade i:nth-child(4) {
+  flex: 1;
   background: var(--ink);
 }
 
+/* ---- Tab bar (floating) --------------------------------------------------------- */
+
+.dock {
+  --n: 14px;
+  --edge: var(--moss-2);
+  --fill: var(--loam-2);
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: var(--dock-bottom);
+  z-index: 4;
+  height: var(--dock-h);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  padding: 5px;
+}
+
 .tab {
-  position: relative;
+  --n: 9px;
+  --edge: transparent;
+  --fill: transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
+  min-width: 0;
   color: var(--faint);
+}
+
+.tab .label {
+  font-size: min(var(--t-label), 15px);
+  letter-spacing: 0.06em;
 }
 
 .tab .icon {
   filter: grayscale(0.7) brightness(0.95);
-  opacity: 0.6;
+  opacity: 0.62;
 }
 
+.tab:active {
+  --fill: var(--moss);
+}
+
+/* The selected tab sits in a darker well, as selected tabs do in dark mode. */
 .tab[aria-selected='true'] {
+  --edge: var(--moss);
+  --fill: var(--ink);
   color: var(--bone);
 }
 
@@ -430,42 +615,33 @@ img {
   opacity: 1;
 }
 
-.tab[aria-selected='true']::before {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 50%;
-  width: 30px;
-  height: 3px;
-  margin-left: -15px;
-  background: var(--lantern);
-}
-
-/* ---- Quest board --------------------------------------------------------------- */
+/* ---- Quest board ------------------------------------------------------------------ */
 
 .cadences {
   display: flex;
   align-items: baseline;
-  gap: 18px;
-  padding: 12px 0 4px;
+  gap: clamp(10px, 4vw, 18px);
+  padding: 6px 0 0;
 }
 
 .cadence {
+  min-height: 44px;
+  padding: 4px 0;
   font-family: var(--display);
-  font-size: 30px;
+  font-size: min(var(--d-5), 7.4vw);
   line-height: 1;
   color: var(--faint);
-  padding: 4px 0;
+  white-space: nowrap;
 }
 
 .cadence[aria-selected='true'] {
-  font-size: 40px;
+  font-size: min(var(--d-3), 9.8vw);
   color: var(--bone);
 }
 
 .cadence-count {
   font-family: var(--label);
-  font-size: 15px;
+  font-size: min(var(--t-label), 15px);
   letter-spacing: 0.06em;
   color: var(--lantern);
   margin-left: 5px;
@@ -475,7 +651,8 @@ img {
 .board-note {
   display: flex;
   justify-content: space-between;
-  padding-bottom: 8px;
+  gap: 12px;
+  padding: 2px 0 9px;
   border-bottom: 1px solid var(--moss);
 }
 
@@ -485,9 +662,30 @@ img {
   align-items: center;
   gap: 13px;
   min-height: 68px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--moss);
+  margin: 0 calc(var(--margin) * -1);
+  padding: 10px var(--margin);
   touch-action: pan-y;
+}
+
+/* The dividing line starts and ends at the text margins, like a ruled page. */
+.quest::after,
+.bonus::after {
+  content: '';
+  position: absolute;
+  left: var(--margin);
+  right: var(--margin);
+  bottom: 0;
+  height: 1px;
+  background: var(--moss);
+}
+
+.bonus::after {
+  left: 0;
+  right: 0;
+}
+
+.quest.holding {
+  background: var(--loam);
 }
 
 .socket {
@@ -495,8 +693,8 @@ img {
   --edge: var(--moss-2);
   --fill: var(--loam);
   flex: none;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -531,7 +729,7 @@ img {
 
 .socket-count {
   font-family: var(--label);
-  font-size: 15px;
+  font-size: min(var(--t-label), 16px);
   color: var(--dim);
 }
 
@@ -557,8 +755,9 @@ img {
 }
 
 .quest-title {
-  font-size: 18px;
+  font-size: var(--t-body);
   line-height: 1.22;
+  overflow-wrap: anywhere;
 }
 
 .quest[data-done='true'] .quest-title {
@@ -576,10 +775,6 @@ img {
   color: var(--faint);
 }
 
-.quest-meta .label {
-  font-size: 15px;
-}
-
 .quest-side {
   flex: none;
   display: flex;
@@ -591,7 +786,7 @@ img {
 
 .xp {
   font-family: var(--label);
-  font-size: 22px;
+  font-size: var(--t-num);
   line-height: 1;
   color: var(--verdigris);
 }
@@ -600,21 +795,32 @@ img {
   color: var(--faint);
 }
 
+/* The word is small, but the area that responds to a finger is a full 44 points. */
 .swap {
+  min-width: 52px;
+  min-height: 44px;
+  margin: -9px calc(var(--margin) * -1) -13px 0;
+  padding: 0 var(--margin) 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   font-family: var(--label);
-  font-size: 15px;
+  font-size: var(--t-label);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--dim);
-  padding: 4px 0 4px 10px;
+}
+
+.swap:active {
+  color: var(--bone);
 }
 
 .float-xp {
   position: absolute;
-  right: 0;
+  right: var(--margin);
   top: 20px;
   font-family: var(--label);
-  font-size: 30px;
+  font-size: var(--t-num-lg);
   color: var(--lantern);
   pointer-events: none;
   animation: float-up 0.9s steps(9, end) forwards;
@@ -635,12 +841,18 @@ img {
 }
 
 .bonus {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 13px 0;
-  border-bottom: 1px solid var(--moss);
+}
+
+.board-done {
+  padding: 14px 0 2px;
+  color: var(--dim);
+  font-style: italic;
 }
 
 .pips {
@@ -663,10 +875,15 @@ img {
   display: flex;
   align-items: center;
   gap: 13px;
-  width: 100%;
-  padding: 14px 0 6px;
+  width: calc(100% + var(--margin) * 2);
+  min-height: 64px;
+  margin: 0 calc(var(--margin) * -1);
+  padding: 10px var(--margin);
   color: var(--dim);
-  text-align: left;
+}
+
+.add-quest:active {
+  background: var(--loam);
 }
 
 .add-quest .socket {
@@ -676,10 +893,10 @@ img {
   color: var(--dim);
 }
 
-/* ---- Slots and grids -------------------------------------------------------------- */
+/* ---- Slots, chips and swatches -------------------------------------------------------- */
 
 .slot {
-  --n: 6px;
+  --n: 7px;
   --edge: var(--moss);
   --fill: var(--loam);
   position: relative;
@@ -697,8 +914,7 @@ img {
 
 .slot.unknown {
   --fill: var(--ink);
-  background-image: none;
-  color: var(--moss-2);
+  color: var(--ghost);
   font-family: var(--label);
   font-size: 30px;
 }
@@ -710,6 +926,10 @@ img {
 .slot.selected {
   --edge: var(--bone);
   --fill: var(--loam-2);
+}
+
+.slot-cell:active .slot {
+  --fill: var(--moss);
 }
 
 .slot-pip {
@@ -740,9 +960,14 @@ img {
   min-width: 0;
 }
 
+.slot-cell .label {
+  font-size: min(var(--t-label), 15px);
+  letter-spacing: 0.05em;
+}
+
 .chips {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -750,9 +975,9 @@ img {
 .chips.strip {
   flex-wrap: nowrap;
   overflow-x: auto;
-  margin: 0 -18px;
-  padding-left: 18px;
-  padding-right: 18px;
+  margin: 0 calc(var(--margin) * -1);
+  padding-left: var(--margin);
+  padding-right: var(--margin);
 }
 
 .chips.strip::-webkit-scrollbar {
@@ -761,23 +986,26 @@ img {
 
 .chips.strip .chip {
   flex: none;
-  padding: 0 9px;
 }
 
 .chip {
-  --n: 4px;
+  --n: 6px;
   --edge: var(--moss);
   --fill: var(--ink);
-  min-height: 32px;
-  padding: 0 11px;
+  min-height: 44px;
+  padding: 0 12px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-family: var(--label);
-  font-size: 15px;
+  font-size: var(--t-label);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--dim);
+}
+
+.chip:active {
+  --fill: var(--moss);
 }
 
 .chip[aria-pressed='true'],
@@ -794,10 +1022,10 @@ img {
 }
 
 .swatch {
-  --n: 4px;
+  --n: 6px;
   --edge: var(--moss);
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
 }
 
 .swatch[aria-pressed='true'] {
@@ -805,11 +1033,11 @@ img {
 }
 
 .swatch::before {
-  inset: 3px;
+  inset: 4px;
 }
 
 .section {
-  padding: 14px 0 4px;
+  padding: 16px 0 4px;
 }
 
 .section > .label {
@@ -818,18 +1046,113 @@ img {
   padding-bottom: 9px;
 }
 
+.rename {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  min-height: 44px;
+}
+
+.rename h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 3px 0;
+}
+
+.rename:active h2 {
+  color: var(--dim);
+}
+
+/* ---- Grouped lists (Settings) ---------------------------------------------------------- */
+
+.group {
+  --n: 9px;
+  --edge: var(--moss);
+  --fill: var(--loam);
+  display: block;
+}
+
 .row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
   min-height: 52px;
+  padding: 9px 14px;
   border-bottom: 1px solid var(--moss);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+button.row:active {
+  background: var(--moss);
+}
+
+.row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.row-note {
+  font-family: var(--label);
+  font-size: var(--t-label);
+  line-height: 1.05;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.row.danger {
+  color: var(--rust);
+}
+
+.group-note {
+  padding: 9px 14px 0;
+  font-size: var(--t-foot);
+  font-style: italic;
+  color: var(--dim);
+}
+
+.toggle {
+  --n: 5px;
+  --edge: var(--moss-2);
+  --fill: var(--ink);
+  flex: none;
+  width: 51px;
+  height: 31px;
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 19px;
+  height: 19px;
+  background: var(--faint);
+  transition: transform 0.12s steps(3, end);
+}
+
+.toggle[data-on='true'] {
+  --edge: var(--verdigris);
+}
+
+.toggle[data-on='true']::after {
+  background: var(--verdigris);
+  transform: translateX(20px);
 }
 
 .stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
   border-top: 1px solid var(--moss);
   border-bottom: 1px solid var(--moss);
 }
@@ -839,13 +1162,19 @@ img {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .stat b {
   font-family: var(--label);
   font-weight: 400;
-  font-size: 30px;
+  font-size: var(--t-num-lg);
   line-height: 1;
+}
+
+.stat .label {
+  font-size: min(var(--t-label), 15px);
+  letter-spacing: 0.05em;
 }
 
 .feat {
@@ -866,7 +1195,7 @@ img {
 }
 
 .feat-desc {
-  font-size: 15px;
+  font-size: var(--t-foot);
   color: var(--faint);
   font-style: italic;
 }
@@ -876,99 +1205,171 @@ img {
   margin-top: 7px;
 }
 
-/* ---- Toggle ---------------------------------------------------------------------- */
+/* ---- Sheets and alerts (slide over the app) ---------------------------------------------- */
 
-.toggle {
-  --n: 4px;
-  --edge: var(--moss-2);
-  --fill: var(--ink);
-  width: 50px;
-  height: 28px;
-  flex: none;
-}
-
-.toggle::after {
-  content: '';
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  width: 18px;
-  height: 18px;
-  background: var(--faint);
-  transition: transform 0.12s steps(3, end);
-}
-
-.toggle[aria-checked='true'] {
-  --edge: var(--verdigris);
-}
-
-.toggle[aria-checked='true']::after {
-  background: var(--verdigris);
-  transform: translateX(22px);
-}
-
-/* ---- Overlays ------------------------------------------------------------------- */
-
-.modal {
+.scrim {
   position: absolute;
   inset: 0;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  background: var(--ink);
-  animation: rise 0.22s steps(5, end);
+  z-index: 40;
+  background: var(--dots-ink-50) rgba(13, 15, 12, 0.5);
+  background-size: var(--dots-size) var(--dots-size);
+  image-rendering: pixelated;
+  animation: fade-in 0.16s steps(3, end);
 }
 
-@keyframes rise {
+.scrim.leaving {
+  animation: fade-out 0.18s steps(3, end) forwards;
+}
+
+.alert-scrim {
+  z-index: 50;
+}
+
+@keyframes fade-in {
   from {
-    transform: translateY(40px);
     opacity: 0;
   }
 }
 
-.modal-head {
-  flex: none;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: calc(var(--safe-top) + 16px) 18px 10px;
-  border-bottom: 1px solid var(--moss);
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
 }
 
-.modal-head h2 {
-  font-size: 48px;
-}
-
-.modal-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 0 18px calc(var(--safe-bottom) + 24px);
-}
-
-.drawer-shade {
-  position: absolute;
-  inset: 0;
-  z-index: 15;
-  background: var(--dots-ink-50);
-  background-size: var(--dots-size) var(--dots-size);
-  image-rendering: pixelated;
-}
-
-.drawer {
+.modal-sheet {
+  --n: 18px;
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 16;
-  padding: 18px 18px calc(var(--safe-bottom) + 18px);
+  z-index: 41;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100% - var(--safe-top) - 12px);
+  padding-bottom: var(--kb);
+  background: var(--moss-2);
+  /* Only the top corners are cut: the bottom runs off the screen. */
+  clip-path: polygon(var(--n) 0, calc(100% - var(--n)) 0, 100% var(--n), 100% 100%, 0 100%, 0 var(--n));
+  transition: transform 0.2s steps(5, end);
+  animation: rise 0.22s steps(6, end);
+}
+
+.modal-sheet::before {
+  content: '';
+  position: absolute;
+  inset: 1px 0 0;
+  z-index: -1;
   background: var(--loam);
-  border-top: 1px solid var(--moss-2);
-  animation: rise 0.2s steps(4, end);
+  clip-path: polygon(calc(var(--n) - 0.5px) 0, calc(100% - var(--n) + 0.5px) 0, 100% calc(var(--n) - 0.5px), 100% 100%, 0 100%, 0 calc(var(--n) - 0.5px));
+}
+
+.modal-sheet.large {
+  height: calc(100% - var(--safe-top) - 12px);
+}
+
+.modal-sheet.leaving {
+  animation: sink 0.18s steps(5, end) forwards;
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes sink {
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.sheet-drag {
+  flex: none;
+  touch-action: none;
+  cursor: grab;
+}
+
+.grabber {
+  display: block;
+  width: 36px;
+  height: 5px;
+  margin: 8px auto 0;
+  background: var(--moss-2);
+}
+
+.sheet-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px 10px var(--margin);
+}
+
+.sheet-title {
+  font-size: var(--d-3);
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.sheet-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 var(--margin) calc(max(var(--safe-bottom), 12px) + 14px);
+}
+
+.sheet-scroll > .section:first-child {
+  padding-top: 4px;
+}
+
+.sheet-foot {
+  flex: none;
+  padding: 12px var(--margin) calc(max(var(--safe-bottom), 12px) + 6px);
+  border-top: 1px solid var(--moss);
+}
+
+.alert {
+  --n: 12px;
+  --edge: var(--moss-2);
+  --fill: var(--loam);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 51;
+  width: min(310px, calc(100% - 48px));
+  padding: 22px 18px 18px;
+  transform: translate(-50%, -50%);
+  animation: fade-in 0.16s steps(3, end);
+}
+
+.alert-title {
+  font-size: var(--t-num);
+  line-height: 1.15;
+}
+
+.alert-message {
+  padding-top: 8px;
+  font-size: var(--t-sub);
+  color: var(--dim);
+}
+
+.alert-actions {
+  display: flex;
+  gap: 10px;
+  padding-top: 18px;
+}
+
+.alert-actions .btn {
+  flex: 1;
+  padding: 6px 8px;
 }
 
 .field {
-  --n: 5px;
+  --n: 6px;
   --edge: var(--moss-2);
   --fill: var(--ink);
   display: block;
@@ -978,13 +1379,14 @@ img {
 .field textarea {
   display: block;
   width: 100%;
-  min-height: 48px;
+  min-height: 50px;
   padding: 11px 13px;
   border: 0;
   outline: 0;
   background: none;
   font-family: var(--text);
-  font-size: 19px;
+  /* Never below 16px: smaller text boxes make iPhones zoom the whole page in. */
+  font-size: max(16px, calc(var(--u) * 1.12));
   -webkit-user-select: text;
   user-select: text;
 }
@@ -997,7 +1399,8 @@ img {
   resize: none;
 }
 
-.field input::placeholder {
+.field input::placeholder,
+.field textarea::placeholder {
   color: var(--faint);
   font-style: italic;
 }
@@ -1006,7 +1409,15 @@ img {
   --edge: var(--lantern);
 }
 
-/* Reward and title panels sit on the ink below the scene. */
+.field-count {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 6px;
+}
+
+/* ---- Big moments --------------------------------------------------------------------- */
+
+/* Panels that sit on the dark ground below the scene. They rise with the keyboard. */
 .below {
   position: absolute;
   left: 0;
@@ -1016,11 +1427,15 @@ img {
   z-index: 10;
   display: flex;
   flex-direction: column;
-  padding: 4px 22px calc(var(--safe-bottom) + 22px);
+  padding: 4px 22px calc(max(var(--safe-bottom), 14px) + 12px);
+  background: var(--ink);
+  transform: translateY(calc(var(--kb) * -1));
+  transition: transform 0.2s steps(5, end);
 }
 
 .below .spacer {
   flex: 1;
+  min-height: 12px;
 }
 
 .reveal > * {
@@ -1041,7 +1456,7 @@ img {
 }
 
 .found-name {
-  font-size: 48px;
+  font-size: var(--d-2);
   padding: 7px 0 9px;
 }
 
@@ -1055,7 +1470,7 @@ img {
 }
 
 .title-logo h1 {
-  font-size: 96px;
+  font-size: min(var(--d-1), 26vw);
   color: var(--bone);
   text-shadow: 0 calc(var(--px) * 2) 0 var(--ink);
 }
@@ -1072,7 +1487,9 @@ img {
 }
 
 .levelup-number {
-  font-size: 144px;
+  font-size: min(var(--d-0), 30vh);
+  /* These numerals hang below the line, so leave room before the rank beneath. */
+  padding: 6px 0 0.16em;
   color: var(--lantern);
   animation: slam 0.42s steps(5, end);
 }
@@ -1087,9 +1504,9 @@ img {
 .toasts {
   position: absolute;
   top: calc(var(--safe-top) + 62px);
-  left: 12px;
-  right: 12px;
-  z-index: 30;
+  left: 16px;
+  right: 16px;
+  z-index: 60;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1097,18 +1514,59 @@ img {
 }
 
 .toast {
+  --n: 9px;
   --fill: var(--loam);
   --edge: var(--verdigris);
   display: flex;
   align-items: center;
   gap: 11px;
+  width: 100%;
+  min-height: 52px;
   padding: 8px 12px;
+  pointer-events: auto;
   animation: pop 0.22s steps(4, end);
 }
 
 .toast-main {
   flex: 1;
   min-width: 0;
+}
+
+/* The "How Spade works" sheet: a short list of pictures and one-line explanations. */
+.guide-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 0;
+}
+
+.guide-row p {
+  font-size: var(--t-sub);
+  color: var(--dim);
+  padding-top: 2px;
+}
+
+/* ---- Sideways phones ------------------------------------------------------------------ */
+
+/* Spade is laid out for an upright phone. Turned on its side, it asks to be turned back. */
+.turn-notice {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .turn-notice {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 24px;
+    background: var(--ink);
+    text-align: center;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

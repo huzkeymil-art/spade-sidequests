@@ -105,6 +105,10 @@ export interface HeroSave {
 export interface Settings {
   retro: boolean;
   sound: boolean;
+  /** Small taps felt through the phone, where the device supports them. */
+  haptics: boolean;
+  /** Whether the "How Spade works" sheet has been shown. */
+  guideSeen: boolean;
   categories: Record<Category, boolean>;
 }
 
