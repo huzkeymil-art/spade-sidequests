@@ -15,6 +15,15 @@ enum Feedback {
     private static let selection = UISelectionFeedbackGenerator()
     private static let notice = UINotificationFeedbackGenerator()
 
+    /// Gets the sounds and the haptic motor ready ahead of the first touch, so that touch doesn't lag.
+    static func prepare() {
+        if hapticsOn {
+            light.prepare()
+            selection.prepare()
+        }
+        if soundOn { Synth.shared.warmUp() }
+    }
+
     /// An ordinary button press.
     static func tap() {
         if hapticsOn { light.impactOccurred() }
@@ -192,18 +201,27 @@ final class Synth {
         do {
             // "Ambient" respects the silent switch and doesn't interrupt music.
             try AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
-            for _ in 0..<4 {
-                let player = AVAudioPlayerNode()
-                engine.attach(player)
-                engine.connect(player, to: engine.mainMixerNode, format: format)
-                players.append(player)
+            if players.isEmpty {
+                for _ in 0..<4 {
+                    let player = AVAudioPlayerNode()
+                    engine.attach(player)
+                    engine.connect(player, to: engine.mainMixerNode, format: format)
+                    players.append(player)
+                }
             }
             try engine.start()
-            for effect in Effect.allCases { buffers[effect] = render(effect) }
+            if buffers.isEmpty {
+                for effect in Effect.allCases { buffers[effect] = render(effect) }
+            }
             ready = true
         } catch {
             ready = false
         }
+    }
+
+    /// Builds the sounds now instead of on the first one played.
+    func warmUp() {
+        start()
     }
 
     func play(_ effect: Effect) {

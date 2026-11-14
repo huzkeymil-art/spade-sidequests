@@ -320,6 +320,11 @@ struct RootView: View {
         dressHero()
         applySettings()
         offerGuide()
+        Task { @MainActor in
+            // A moment after launch, once the first screen is up.
+            try? await Task.sleep(for: .seconds(0.8))
+            Feedback.prepare()
+        }
         switch DemoMode.requested {
         case "settings": settingsOpen = true
         case "guide": guideOpen = true
