@@ -146,6 +146,16 @@ struct SettingsSheet: View {
                             rowLabel("How Spade works")
                         }
                         .buttonStyle(RowButtonStyle())
+                        Hairline()
+                        Link(destination: URL(string: "https://spade-sidequests-support.fwmiller94.chatgpt.site/support/")!) {
+                            rowLabel("Contact support", note: "Help with Spade")
+                        }
+                        .buttonStyle(RowButtonStyle())
+                        Hairline()
+                        Link(destination: URL(string: "https://spade-sidequests-support.fwmiller94.chatgpt.site/privacy/")!) {
+                            rowLabel("Privacy policy", note: "How your data is handled")
+                        }
+                        .buttonStyle(RowButtonStyle())
                     }
 
                     SectionLabel("Start over")
