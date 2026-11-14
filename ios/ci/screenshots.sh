@@ -63,5 +63,6 @@ for name in $PRINT; do
 done
 
 echo "--- app log (errors and faults) ---"
-xcrun simctl spawn "$DEVICE" log show --last 4m --style compact \
-  --predicate 'process == "Spade" AND (messageType == error OR messageType == fault)' 2>/dev/null | tail -40 || true
+# Reading the simulator's log can be slow, so it gets one minute at most.
+perl -e 'alarm shift; exec @ARGV' 60 xcrun simctl spawn "$DEVICE" log show --last 3m --style compact \
+  --predicate 'process == "Spade" AND (messageType == error OR messageType == fault)' 2>/dev/null | tail -30 | cut -c1-300 || true

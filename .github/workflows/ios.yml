@@ -53,6 +53,7 @@ jobs:
           grep -E ": warning: " build.log | sed "s|$PWD/||" | awk '!seen[$0]++' | cut -c1-300 | head -40 || true
           echo "BUILD OK"
       - name: Run in the simulator and take screenshots
+        timeout-minutes: 12
         run: bash ios/ci/screenshots.sh
       - uses: actions/upload-artifact@v4
         if: always()
@@ -77,3 +78,18 @@ jobs:
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -m "Update simulator screenshots" || exit 0
           git push -q origin HEAD:"$BRANCH" || echo "The branch moved on; the next run will save its screenshots."
+      # The same kind of build Codemagic makes for TestFlight, minus the signing.
+      - name: Check the App Store build
+        run: |
+          xcodebuild -project ios/Spade.xcodeproj -scheme Spade -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -archivePath build/Spade.xcarchive CODE_SIGNING_ALLOWED=NO \
+            CURRENT_PROJECT_VERSION="$(date -u +%y%m%d%H%M)" archive > archive.log 2>&1 || {
+            grep -E ": (error|note): " archive.log | sed "s|$PWD/||" | awk '!seen[$0]++' | cut -c1-500 | head -120
+            echo "ARCHIVE FAILED"
+            exit 1
+          }
+          APP=build/Spade.xcarchive/Products/Applications/Spade.app
+          plutil -p "$APP/Info.plist" | grep -E "CFBundle(Identifier|Version|ShortVersionString|DisplayName|IconName)|UILaunchScreen|UIColorName|MinimumOSVersion|ITSApp|ttf"
+          du -sh "$APP"
+          echo "ARCHIVE OK"
