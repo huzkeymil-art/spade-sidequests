@@ -16,7 +16,7 @@ func statValue(_ save: Save, _ stat: StatName) -> Int {
     case .level: return levelInfo(save.xp).level
     case .items: return save.inventory.count
     case .slotsFilled: return Slot.allCases.filter { save.worn($0) != nil }.count
-    case .mythics: return save.inventory.filter { Content.itemById[$0]?.rarity == .mythic }.count
+    case .mythics: return save.inventory.filter { Catalog.itemById[$0]?.rarity == .mythic }.count
     }
 }
 
@@ -35,5 +35,5 @@ func featProgress(_ save: Save, _ feat: FeatDef) -> FeatProgress {
 
 /// Feats whose goal has been reached but which haven't been awarded yet.
 func pendingFeats(_ save: Save) -> [FeatDef] {
-    Content.feats.filter { save.feats[$0.id] == nil && statValue(save, $0.stat) >= $0.goal }
+    Catalog.feats.filter { save.feats[$0.id] == nil && statValue(save, $0.stat) >= $0.goal }
 }

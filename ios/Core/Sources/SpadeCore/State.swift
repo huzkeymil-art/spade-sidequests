@@ -64,7 +64,7 @@ private func addXp(_ save: Save, _ amount: Int, _ reason: XpReason, _ events: in
 }
 
 private func giveItem(_ save: Save, _ itemId: String, _ from: ItemOrigin, _ events: inout [GameEvent]) -> Save {
-    guard let item = Content.itemById[itemId] else { return save }
+    guard let item = Catalog.itemById[itemId] else { return save }
     if save.inventory.contains(itemId) {
         // Already owned: it "echoes" into bonus XP instead.
         let bonus = echoXp(item.rarity)
@@ -213,7 +213,7 @@ func equip(_ save: Save, _ slot: Slot, _ itemId: String?, now: Date) -> Outcome 
     var events: [GameEvent] = []
     var next = save
     if let itemId {
-        guard let item = Content.itemById[itemId], item.slot == slot, save.inventory.contains(itemId) else {
+        guard let item = Catalog.itemById[itemId], item.slot == slot, save.inventory.contains(itemId) else {
             return Outcome(save: save)
         }
         next.equipped[slot.rawValue] = itemId
@@ -249,10 +249,10 @@ func repairSave(_ data: Data, now: Date) -> Save? {
 
     // Keep only real items, once each.
     var seen = Set<String>()
-    save.inventory = save.inventory.filter { Content.itemById[$0] != nil && seen.insert($0).inserted }
+    save.inventory = save.inventory.filter { Catalog.itemById[$0] != nil && seen.insert($0).inserted }
     // Only owned items of the right kind may be worn.
     save.equipped = save.equipped.filter { slot, id in
-        save.inventory.contains(id) && Content.itemById[id]?.slot.rawValue == slot
+        save.inventory.contains(id) && Catalog.itemById[id]?.slot.rawValue == slot
     }
 
     func clamp(_ value: Int, _ count: Int, _ fallback: Int) -> Int {
@@ -260,10 +260,10 @@ func repairSave(_ data: Data, now: Date) -> Save? {
     }
     let base = HeroSave()
     save.hero.name = String(save.hero.name.prefix(16))
-    save.hero.skin = clamp(save.hero.skin, Content.looks.skin.count, base.skin)
-    save.hero.hair = clamp(save.hero.hair, Content.looks.hair.count, base.hair)
-    save.hero.hairStyle = clamp(save.hero.hairStyle, Content.looks.hairStyles.count, base.hairStyle)
-    save.hero.scarf = clamp(save.hero.scarf, Content.looks.scarf.count, base.scarf)
+    save.hero.skin = clamp(save.hero.skin, Catalog.looks.skin.count, base.skin)
+    save.hero.hair = clamp(save.hero.hair, Catalog.looks.hair.count, base.hair)
+    save.hero.hairStyle = clamp(save.hero.hairStyle, Catalog.looks.hairStyles.count, base.hairStyle)
+    save.hero.scarf = clamp(save.hero.scarf, Catalog.looks.scarf.count, base.scarf)
 
     save.activeDays = Array(save.activeDays.suffix(60))
     return save

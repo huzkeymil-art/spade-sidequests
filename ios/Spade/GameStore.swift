@@ -78,7 +78,7 @@ final class GameStore: ObservableObject {
     var moment: Moment? { moments.first }
 
     func item(_ id: String) -> ItemDef? {
-        Content.itemById[id]
+        Catalog.itemById[id]
     }
 
     // MARK: - Actions

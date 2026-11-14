@@ -68,7 +68,7 @@ func rankUnlockedAt(_ level: Int) -> String? {
 /// Items handed out for reaching a level: level -> item id.
 let milestones: [Int: String] = {
     var out: [Int: String] = [:]
-    for item in Content.items where item.source == .milestone {
+    for item in Catalog.items where item.source == .milestone {
         if let level = item.level { out[level] = item.id }
     }
     return out
@@ -109,7 +109,7 @@ struct LootResult {
 func rollLoot(_ cadence: Cadence, _ rng: inout SeededRng, owned: [String]) -> LootResult? {
     if rng.next() >= dropChance(cadence) { return nil }
     let rarity = weightedPick(rarityOdds(cadence), &rng)
-    let pool = Content.items.filter { $0.source == .loot && $0.rarity == rarity }
+    let pool = Catalog.items.filter { $0.source == .loot && $0.rarity == rarity }
     if pool.isEmpty { return nil }
     let unowned = pool.filter { !owned.contains($0.id) }
     let from = unowned.isEmpty ? pool : unowned

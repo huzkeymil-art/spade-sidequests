@@ -210,7 +210,7 @@ final class ParityTests: XCTestCase {
                 case .item(let itemId, let fresh, _, _):
                     itemsSeen.append("\(itemId):\(fresh ? "new" : "again")")
                     // Wear every new find, so the "all five slots" feat can trigger.
-                    if fresh, let item = Content.itemById[itemId] {
+                    if fresh, let item = Catalog.itemById[itemId] {
                         absorb(equip(save, item.slot, itemId, now: now), now)
                     }
                 default:

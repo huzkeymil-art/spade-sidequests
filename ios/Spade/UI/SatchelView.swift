@@ -20,13 +20,13 @@ struct SatchelView: View {
 
     var body: some View {
         let save = store.save
-        let shown = Content.items.filter { filter == nil || $0.slot == filter }
+        let shown = Catalog.items.filter { filter == nil || $0.slot == filter }
 
         VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Satchel").font(Typeface.display(40)).foregroundStyle(Ink.bone)
                 Spacer()
-                Text("\(save.inventory.count) / \(Content.items.count) found").caps(Ink.dim)
+                Text("\(save.inventory.count) / \(Catalog.items.count) found").caps(Ink.dim)
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)
@@ -154,9 +154,9 @@ struct FeatsView: View {
 
     var body: some View {
         let save = store.save
-        let earned = Content.feats.filter { save.feats[$0.id] != nil }.count
+        let earned = Catalog.feats.filter { save.feats[$0.id] != nil }.count
         // Earned feats first (newest at the top), then the rest by how close they are.
-        let rows = Content.feats
+        let rows = Catalog.feats
             .map { Entry(feat: $0, progress: featProgress(save, $0)) }
             .sorted { a, b in
                 if a.progress.done != b.progress.done { return a.progress.done }
@@ -175,7 +175,7 @@ struct FeatsView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text("Feats").font(Typeface.display(40)).foregroundStyle(Ink.bone)
                     Spacer()
-                    Text("\(earned) / \(Content.feats.count) earned").caps(Ink.dim)
+                    Text("\(earned) / \(Catalog.feats.count) earned").caps(Ink.dim)
                 }
                 .padding(.top, 12)
                 .padding(.bottom, 10)

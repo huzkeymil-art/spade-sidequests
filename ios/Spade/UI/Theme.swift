@@ -206,10 +206,10 @@ struct PlateButtonStyle: ButtonStyle {
     var block = false
 
     func makeBody(configuration: Configuration) -> some View {
-        Body(configuration: configuration, kind: kind, block: block)
+        Face(configuration: configuration, kind: kind, block: block)
     }
 
-    private struct Body: View {
+    private struct Face: View {
         let configuration: Configuration
         let kind: Kind
         let block: Bool

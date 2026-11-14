@@ -262,7 +262,7 @@ private struct ToastRow: View {
             case .clear:
                 row(icon: "flame", title: "Lantern full", note: "Every quest today", xp: dailyClearXp, edge: Ink.lantern)
             case .feat(let id):
-                if let feat = Content.featById[id] {
+                if let feat = Catalog.featById[id] {
                     row(icon: "feat", title: feat.name, note: "Feat earned", xp: feat.xp, edge: Ink.verdigris)
                 }
             }

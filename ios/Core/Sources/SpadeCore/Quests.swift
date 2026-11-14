@@ -47,7 +47,7 @@ func activatePinned(_ quest: CustomQuest, period: String) -> ActiveQuest {
 /// Every quest that could be dealt for this cadence: built-in ones in enabled kinds, plus unpinned custom ones.
 private func deck(_ cadence: Cadence, _ ctx: DealContext) -> [DeckEntry] {
     let anyEnabled = ctx.categories.values.contains(true)
-    let builtIn = Content.quests.filter { quest in
+    let builtIn = Catalog.quests.filter { quest in
         quest.cadence == cadence && (!anyEnabled || ctx.categories[quest.category.rawValue] == true)
     }
     let own = ctx.custom.filter { $0.cadence == cadence && !$0.pinned }

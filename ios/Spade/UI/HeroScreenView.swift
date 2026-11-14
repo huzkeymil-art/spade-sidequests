@@ -15,7 +15,7 @@ struct HeroScreenView: View {
 
     var body: some View {
         let save = store.save
-        let looks = Content.looks
+        let looks = Catalog.looks
 
         VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -143,7 +143,7 @@ struct SlotPickerSheet: View {
 
     var body: some View {
         let save = store.save
-        let owned = Content.items.filter { $0.slot == slot && save.inventory.contains($0.id) }
+        let owned = Catalog.items.filter { $0.slot == slot && save.inventory.contains($0.id) }
         let worn = save.worn(slot)
 
         VStack(spacing: 0) {

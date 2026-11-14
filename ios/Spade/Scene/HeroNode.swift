@@ -13,7 +13,7 @@ struct HeroLook: Equatable {
 
     /// Turns the saved palette indexes into real colours.
     init(_ hero: HeroSave) {
-        let looks = Content.looks
+        let looks = Catalog.looks
         func pick(_ list: [String], _ index: Int) -> String {
             list.indices.contains(index) ? list[index] : list[0]
         }

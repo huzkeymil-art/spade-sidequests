@@ -10,7 +10,7 @@ struct Looks: Codable {
     var hairStyles: [String]
 }
 
-enum Content {
+enum Catalog {
     static let quests: [QuestDef] = load("quests")
     static let items: [ItemDef] = load("items")
     static let feats: [FeatDef] = load("achievements")

@@ -18,17 +18,17 @@ final class RulesTests: XCTestCase {
     }
 
     func testContentIsComplete() {
-        XCTAssertEqual(Content.items.count, 33)
-        XCTAssertEqual(Content.feats.count, 25)
-        XCTAssertEqual(Set(Content.quests.map { $0.id }).count, Content.quests.count, "quest ids are unique")
+        XCTAssertEqual(Catalog.items.count, 33)
+        XCTAssertEqual(Catalog.feats.count, 25)
+        XCTAssertEqual(Set(Catalog.quests.map { $0.id }).count, Catalog.quests.count, "quest ids are unique")
         for cadence in Cadence.allCases {
             for kind in QuestKind.allCases {
-                let n = Content.quests.filter { $0.cadence == cadence && $0.category == kind }.count
+                let n = Catalog.quests.filter { $0.cadence == cadence && $0.category == kind }.count
                 XCTAssertGreaterThanOrEqual(n, dealCount(cadence), "\(cadence.rawValue)/\(kind.rawValue)")
             }
         }
-        for feat in Content.feats {
-            if let item = feat.item { XCTAssertNotNil(Content.itemById[item], feat.id) }
+        for feat in Catalog.feats {
+            if let item = feat.item { XCTAssertNotNil(Catalog.itemById[item], feat.id) }
         }
     }
 

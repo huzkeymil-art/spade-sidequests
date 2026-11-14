@@ -42,17 +42,25 @@ jobs:
           xcodebuild -version
       - name: Build for the simulator
         run: |
-          set -o pipefail
+          # The full log is long, so it goes to a file; only the problems are printed.
           xcodebuild -project ios/Spade.xcodeproj -scheme Spade -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath build CODE_SIGNING_ALLOWED=NO -quiet build
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build > build.log 2>&1 || {
+            grep -E ": (error|note): " build.log | sed "s|$PWD/||" | awk '!seen[$0]++' | cut -c1-500 | head -120
+            echo "BUILD FAILED"
+            exit 1
+          }
+          grep -E ": warning: " build.log | sed "s|$PWD/||" | awk '!seen[$0]++' | cut -c1-300 | head -40 || true
+          echo "BUILD OK"
       - name: Run in the simulator and take screenshots
         run: bash ios/ci/screenshots.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: screenshots
-          path: shots/*.png
+          path: |
+            shots/*.png
+            build.log
           if-no-files-found: ignore
       # While the app is being built up, the latest screenshots are also saved on
       # the pull request's branch, so they can be looked at next to the code.
