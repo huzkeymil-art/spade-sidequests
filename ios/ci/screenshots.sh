@@ -50,6 +50,11 @@ for name in $SCREENS; do
   fi
 done
 
+# Smaller copies, for sharing.
+for name in $SCREENS; do
+  [ -f "shots/$name.png" ] && sips -Z 1300 -s format jpeg -s formatOptions 70 "shots/$name.png" --out "shots/$name.jpg" >/dev/null
+done
+
 for name in $PRINT; do
   sips -Z 560 -s format jpeg -s formatOptions 42 "shots/$name.png" --out "shots/$name.small.jpg" >/dev/null
   echo "BEGIN_IMAGE $name"

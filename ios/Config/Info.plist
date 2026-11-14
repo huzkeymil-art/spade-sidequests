@@ -11,5 +11,10 @@
 	</array>
 	<key>SCNDisableLinearSpaceRendering</key>
 	<true/>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchInk</string>
+	</dict>
 </dict>
 </plist>
