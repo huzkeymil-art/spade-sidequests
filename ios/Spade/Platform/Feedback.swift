@@ -83,9 +83,12 @@ enum Feedback {
 
 /// Sound effects, made from scratch. There are no sound files: each effect is a
 /// few notes built from simple waves, shaped so they fade out like a plucked string.
-@MainActor
-final class Synth {
+///
+/// Everything here runs on its own queue, off the main thread. Starting the
+/// phone's audio system can take a moment, and the screen must never wait for it.
+final class Synth: @unchecked Sendable {
     static let shared = Synth()
+    private let queue = DispatchQueue(label: "spade.synth", qos: .userInitiated)
 
     enum Effect: CaseIterable {
         case tap, step, done, clear, dig, reveal, level, feat
@@ -221,10 +224,14 @@ final class Synth {
 
     /// Builds the sounds now instead of on the first one played.
     func warmUp() {
-        start()
+        queue.async { self.start() }
     }
 
     func play(_ effect: Effect) {
+        queue.async { self.playNow(effect) }
+    }
+
+    private func playNow(_ effect: Effect) {
         start()
         guard ready, let buffer = buffers[effect] else { return }
         if !engine.isRunning { try? engine.start() }

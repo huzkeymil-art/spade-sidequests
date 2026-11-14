@@ -3,6 +3,8 @@
 The native app: Swift, SwiftUI for the screens, SceneKit for the 3D scene.
 It needs iOS 17 or newer and runs upright on iPhone.
 
+![The quest board, the hero screen, an item being dug up, and the satchel, in the iPhone Simulator](../docs/ios-screenshots.png)
+
 It plays by exactly the same rules as the web version, and a save backed up from
 either one loads in the other.
 
@@ -41,8 +43,11 @@ from the repository root and commit what it changes.
 Every pull request that touches `ios/` runs `.github/workflows/ios.yml`:
 
 - **rules** runs the Swift rule tests on Linux.
-- **app** builds the app on a Mac, opens each screen in the iPhone Simulator and
-  saves screenshots (download them from the run's **Artifacts**).
+- **app** builds the app on a Mac, opens each screen in the iPhone Simulator (a
+  current iPhone, then a small one), and saves screenshots. It fails if the 3D
+  scene comes out blank on any screen that shows it. Then it makes the same
+  release build Codemagic makes, without signing it. The screenshots and build
+  logs are under the run's **Artifacts**.
 
 With a Mac: open `ios/Spade.xcodeproj` in Xcode 16 or newer and press Run.
 The rule tests run anywhere Swift is installed: `swift test --package-path ios/Core`.

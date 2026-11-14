@@ -28,9 +28,7 @@ jobs:
 
   app:
     runs-on: macos-latest
-    timeout-minutes: 30
-    permissions:
-      contents: write
+    timeout-minutes: 40
     env:
       SCREENS: launch quests hero satchel feats settings guide form dig level item picker smooth
       SMALL_SCREENS: launch quests hero dig
@@ -53,31 +51,8 @@ jobs:
           grep -E ": warning: " build.log | sed "s|$PWD/||" | awk '!seen[$0]++' | cut -c1-300 | head -40 || true
           echo "BUILD OK"
       - name: Run in the simulator and take screenshots
-        timeout-minutes: 16
+        timeout-minutes: 24
         run: bash ios/ci/screenshots.sh
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: screenshots
-          path: |
-            shots/*.png
-            build.log
-          if-no-files-found: ignore
-      # While the app is being built up, the latest screenshots are also saved on
-      # the pull request's branch, so they can be looked at next to the code.
-      - name: Save screenshots on the branch
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          BRANCH: ${{ github.head_ref }}
-        run: |
-          git fetch --depth 1 origin "$BRANCH"
-          git checkout -q -B shots-update FETCH_HEAD
-          mkdir -p ios/ci/shots
-          cp shots/*.jpg ios/ci/shots/
-          git add ios/ci/shots
-          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -q -m "Update simulator screenshots" || exit 0
-          git push -q origin HEAD:"$BRANCH" || echo "The branch moved on; the next run will save its screenshots."
       # The same kind of build Codemagic makes for TestFlight, minus the signing.
       - name: Check the App Store build
         run: |
@@ -93,3 +68,12 @@ jobs:
           plutil -p "$APP/Info.plist" | grep -E "CFBundle(Identifier|Version|ShortVersionString|DisplayName|IconName)|UILaunchScreen|UIColorName|MinimumOSVersion|ITSApp|ttf"
           du -sh "$APP"
           echo "ARCHIVE OK"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: |
+            shots/*.png
+            build.log
+            archive.log
+          if-no-files-found: ignore

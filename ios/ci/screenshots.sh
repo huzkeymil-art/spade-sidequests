@@ -6,12 +6,19 @@
 #   SMALL_SCREENS  demo screens to capture again on the smallest iPhone available,
 #                  to check that nothing is squeezed off a short screen
 #   WAIT           seconds to let each screen settle before the picture is taken
+#
+# It also checks that the 3D scene really was drawn on the screens that show it,
+# and fails if any of them came out blank.
 set -euo pipefail
 
 BUNDLE_ID=com.huzkeymil.spade
 SCREENS=${SCREENS:-launch}
 SMALL_SCREENS=${SMALL_SCREENS:-}
 WAIT=${WAIT:-7}
+HERE=$(cd "$(dirname "$0")" && pwd)
+# The screens where the scene is in full view (the others have a sheet over it).
+SCENE_SCREENS=" launch quests hero satchel feats dig level smooth "
+FAILED=0
 
 APP=$(find build/Build/Products -maxdepth 2 -name "Spade.app" | head -1)
 [ -n "$APP" ] || { echo "Spade.app was not found in build/"; exit 1; }
@@ -44,6 +51,34 @@ print(udid)
 ' "$1"
 }
 
+# Makes a small iPhone simulator if none is installed, and prints its id.
+make_small_device() {
+  local runtime
+  runtime=$(xcrun simctl list runtimes available -j | python3 -c '
+import json, sys
+found = [r for r in json.load(sys.stdin)["runtimes"] if "iOS" in r["name"]]
+found.sort(key=lambda r: [int(p) for p in r["version"].split(".")])
+print(found[-1]["identifier"] if found else "")')
+  [ -n "$runtime" ] || return 0
+  # Try the smallest models first; not every iOS version supports every model.
+  xcrun simctl list devicetypes -j | python3 -c '
+import json, sys
+names = [t for t in json.load(sys.stdin)["devicetypes"] if "iPhone SE" in t["name"] or "mini" in t["name"]]
+for t in sorted(names, key=lambda t: t["name"], reverse=True):
+    print(t["identifier"])' | while read -r kind; do
+    if id=$(xcrun simctl create "Spade small" "$kind" "$runtime" 2>/dev/null); then
+      echo "simulator: made a ${kind##*.}" >&2
+      echo "$id"
+      break
+    fi
+  done
+}
+
+# How much of the scene area of a screenshot is drawn on, as a percentage.
+scene_drawn() {
+  python3 "$HERE/lit.py" "$1" 2>/dev/null || echo 0
+}
+
 # capture <device id> <file prefix> <screen names...>
 capture() {
   local device=$1 prefix=$2
@@ -52,16 +87,33 @@ capture() {
   xcrun simctl bootstatus "$device" -b >/dev/null
   xcrun simctl install "$device" "$APP"
   for name in "$@"; do
+    local file="shots/$prefix$name.png" note=""
     xcrun simctl terminate "$device" "$BUNDLE_ID" >/dev/null 2>&1 || true
     xcrun simctl launch "$device" "$BUNDLE_ID" -demo "$name" >/dev/null
     sleep "$WAIT"
-    xcrun simctl io "$device" screenshot "shots/$prefix$name.png" >/dev/null 2>&1
+    xcrun simctl io "$device" screenshot "$file" >/dev/null 2>&1
+    if [[ "$SCENE_SCREENS" == *" $name "* ]]; then
+      local drawn
+      drawn=$(scene_drawn "$file")
+      if [ "$drawn" -lt 50 ]; then
+        # A cold simulator can be slow to draw its first frame. Give it one more chance.
+        sleep 12
+        xcrun simctl io "$device" screenshot "$file" >/dev/null 2>&1
+        drawn=$(scene_drawn "$file")
+        note=", on the second look"
+      fi
+      note=" (scene $drawn% drawn$note)"
+      if [ "$drawn" -lt 50 ]; then
+        echo "FAILED: the 3D scene did not appear on '$prefix$name'."
+        FAILED=1
+      fi
+    fi
     # A smaller copy, for sharing.
-    sips -Z 1300 -s format jpeg -s formatOptions 70 "shots/$prefix$name.png" --out "shots/$prefix$name.jpg" >/dev/null
+    sips -Z 1300 -s format jpeg -s formatOptions 70 "$file" --out "shots/$prefix$name.jpg" >/dev/null
     local running
     running=$(xcrun simctl spawn "$device" launchctl list 2>/dev/null || true)
     if grep -q "$BUNDLE_ID" <<<"$running"; then
-      echo "captured $prefix$name"
+      echo "captured $prefix$name$note"
     else
       echo "WARNING: the app was not running after '$prefix$name'. It may have crashed."
     fi
@@ -81,10 +133,13 @@ capture "$BIG" "" $SCREENS
 
 if [ -n "$SMALL_SCREENS" ]; then
   SMALL=$(pick_device small)
+  [ -n "$SMALL" ] || SMALL=$(make_small_device || true)
   if [ -n "$SMALL" ]; then
     # shellcheck disable=SC2086
     capture "$SMALL" "small-" $SMALL_SCREENS
   else
-    echo "No small iPhone simulator is installed, so the small-screen check was skipped."
+    echo "No small iPhone simulator could be set up, so the small-screen check was skipped."
   fi
 fi
+
+exit "$FAILED"
