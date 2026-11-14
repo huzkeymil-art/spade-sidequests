@@ -28,7 +28,9 @@ jobs:
 
   app:
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
+    permissions:
+      contents: write
     env:
       SCREENS: launch quests hero satchel feats settings guide form dig level item picker smooth
       SMALL_SCREENS: launch quests hero dig
@@ -51,8 +53,23 @@ jobs:
           grep -E ": warning: " build.log | sed "s|$PWD/||" | awk '!seen[$0]++' | cut -c1-300 | head -40 || true
           echo "BUILD OK"
       - name: Run in the simulator and take screenshots
-        timeout-minutes: 16
+        timeout-minutes: 24
         run: bash ios/ci/screenshots.sh
+      # TEMPORARY, for this pull request only: saves the screenshots on the branch so the
+      # small-screen layout can be looked over. Removed again before the pull request is done.
+      - name: Save screenshots on the branch
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          git fetch --depth 1 origin "$BRANCH"
+          git checkout -q -B shots-update FETCH_HEAD
+          mkdir -p ios/ci/shots
+          cp shots/*.jpg ios/ci/shots/
+          git add ios/ci/shots
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Update simulator screenshots" || exit 0
+          git push -q origin HEAD:"$BRANCH" || echo "The branch moved on; the next run will save its screenshots."
       # The same kind of build Codemagic makes for TestFlight, minus the signing.
       - name: Check the App Store build
         run: |
