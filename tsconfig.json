@@ -25,6 +25,7 @@
   "include": [
     "src",
     "dev",
+    "scripts/ios-data.ts",
     "vite.config.ts"
   ]
 }

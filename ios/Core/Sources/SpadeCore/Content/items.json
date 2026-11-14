@@ -1,0 +1,39 @@
+[
+  { "id": "rusty_spade", "name": "Rusty Spade", "slot": "hand", "rarity": "common", "source": "starter", "lore": "Every dig starts with the first shovelful." },
+  { "id": "oak_staff", "name": "Oak Staff", "slot": "hand", "rarity": "common", "source": "loot", "lore": "Good for walking. Better for leaning." },
+  { "id": "garden_fork", "name": "Garden Fork", "slot": "hand", "rarity": "common", "source": "loot", "lore": "Four tines for stubborn ground." },
+  { "id": "miners_pick", "name": "Miner's Pick", "slot": "hand", "rarity": "uncommon", "source": "loot", "lore": "For the days that are mostly rock." },
+  { "id": "barrow_blade", "name": "Barrow Blade", "slot": "hand", "rarity": "uncommon", "source": "loot", "lore": "Buried with care, a long time ago." },
+  { "id": "wayfinders_crook", "name": "Wayfinder's Crook", "slot": "hand", "rarity": "rare", "source": "loot", "lore": "It carries its own small dawn." },
+  { "id": "moonsteel_spade", "name": "Moonsteel Spade", "slot": "hand", "rarity": "rare", "source": "milestone", "level": 10, "lore": "Forged cold. It parts frozen earth like water." },
+  { "id": "gravediggers_oath", "name": "Oathkeeper", "slot": "hand", "rarity": "mythic", "source": "milestone", "level": 25, "lore": "Sworn to finish whatever it starts." },
+
+  { "id": "wool_cap", "name": "Wool Cap", "slot": "head", "rarity": "common", "source": "loot", "lore": "Knitted by someone who worried about your ears." },
+  { "id": "straw_hat", "name": "Straw Hat", "slot": "head", "rarity": "common", "source": "loot", "lore": "Shade you can wear." },
+  { "id": "miners_helm", "name": "Candle Helm", "slot": "head", "rarity": "uncommon", "source": "loot", "lore": "One small flame, pointed wherever you look." },
+  { "id": "fogcloak_hood", "name": "Fogcloak Hood", "slot": "head", "rarity": "uncommon", "source": "loot", "lore": "The mist parts a little less for you now." },
+  { "id": "barrow_helm", "name": "Barrow Helm", "slot": "head", "rarity": "rare", "source": "loot", "lore": "Whoever wore it first stood very straight." },
+  { "id": "moonsteel_cap", "name": "Moonsteel Cap", "slot": "head", "rarity": "rare", "source": "milestone", "level": 15, "lore": "Cool to the touch, even at noon." },
+  { "id": "crown_of_roots", "name": "Crown of Roots", "slot": "head", "rarity": "mythic", "source": "loot", "lore": "It was growing down there. It still is." },
+
+  { "id": "patched_tunic", "name": "Patched Tunic", "slot": "body", "rarity": "common", "source": "loot", "lore": "More patch than tunic. Every one a story." },
+  { "id": "diggers_apron", "name": "Digger's Apron", "slot": "body", "rarity": "common", "source": "loot", "lore": "Pockets for everything you find." },
+  { "id": "travel_cloak", "name": "Travel Cloak", "slot": "body", "rarity": "uncommon", "source": "loot", "lore": "Smells faintly of rain and campfire." },
+  { "id": "ringmail", "name": "Ringmail", "slot": "body", "rarity": "uncommon", "source": "loot", "lore": "A thousand small circles, each one holding." },
+  { "id": "wardens_coat", "name": "Warden's Coat", "slot": "body", "rarity": "rare", "source": "milestone", "level": 20, "lore": "Brass buttons, polished by habit." },
+  { "id": "moonsteel_plate", "name": "Moonsteel Plate", "slot": "body", "rarity": "rare", "source": "loot", "lore": "Light as a held breath." },
+  { "id": "foxfire_mantle", "name": "Foxfire Mantle", "slot": "body", "rarity": "mythic", "source": "feat", "lore": "The hem glows where it brushes the ground." },
+
+  { "id": "pot_lid", "name": "Pot Lid", "slot": "shield", "rarity": "common", "source": "loot", "lore": "It has stopped soup. It can stop this." },
+  { "id": "plank_shield", "name": "Plank Shield", "slot": "shield", "rarity": "common", "source": "loot", "lore": "Three boards and stubbornness." },
+  { "id": "round_buckler", "name": "Round Buckler", "slot": "shield", "rarity": "uncommon", "source": "loot", "lore": "Small, quick, and louder than it looks." },
+  { "id": "barrow_shield", "name": "Spadecrest Shield", "slot": "shield", "rarity": "rare", "source": "milestone", "level": 5, "lore": "The mark of those who keep digging." },
+  { "id": "moon_mirror", "name": "Moon Mirror", "slot": "shield", "rarity": "mythic", "source": "loot", "lore": "It shows the night sky, even indoors." },
+
+  { "id": "lucky_pebble", "name": "Lucky Pebble", "slot": "charm", "rarity": "common", "source": "milestone", "level": 3, "lore": "Found, not bought. That is the luck." },
+  { "id": "firefly", "name": "Firefly", "slot": "charm", "rarity": "common", "source": "loot", "lore": "It decided to follow you." },
+  { "id": "dusk_moth", "name": "Dusk Moth", "slot": "charm", "rarity": "uncommon", "source": "loot", "lore": "Loves your lantern more than you do." },
+  { "id": "ember_wisp", "name": "Ember Wisp", "slot": "charm", "rarity": "uncommon", "source": "feat", "lore": "A spark that learned to stay lit." },
+  { "id": "foxfire_wisp", "name": "Foxfire Wisp", "slot": "charm", "rarity": "rare", "source": "loot", "lore": "Cold light from old wood." },
+  { "id": "pocket_moon", "name": "Pocket Moon", "slot": "charm", "rarity": "mythic", "source": "milestone", "level": 30, "lore": "It waxes when you do." }
+]

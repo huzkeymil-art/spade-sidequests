@@ -10,8 +10,8 @@ export const LANTERN_POS = new THREE.Vector3(-0.98, 0, 0.6);
 export const DIG_POS = new THREE.Vector3(0.72, 0, 1.05);
 export const STONE_POS = new THREE.Vector3(1.02, 0, -1.0);
 
-const SKY_TOP = new THREE.Color(0x05080a);
-const SKY_MID = new THREE.Color(0x0f1c1f);
+export const SKY_TOP = new THREE.Color(0x05080a);
+export const SKY_MID = new THREE.Color(0x0f1c1f);
 export const HORIZON = new THREE.Color(0x24393a);
 
 // ---------------------------------------------------------------------------
@@ -24,7 +24,7 @@ function groundHeight(x: number, z: number): number {
   return roll * THREE.MathUtils.smoothstep(r, 2.2, 9);
 }
 
-function makeGround(): THREE.Mesh {
+export function makeGround(): THREE.Mesh {
   const rings = [0, 0.45, 0.9, 1.4, 2, 2.8, 3.8, 5.2, 7.5, 11, 17, 28, 60];
   const spokes = 22;
   const rng = makeRng(77);
@@ -91,14 +91,14 @@ function makeGround(): THREE.Mesh {
 const STONE = '#59635a';
 const STONE_DARK = '#232823';
 
-const weekStoneParts: Part[] = [
+export const weekStoneParts: Part[] = [
   { s: 'box', size: [0.56, 1.95, 0.34], taper: [0.72, 0.8], at: [0, 0.95, 0], c: STONE, c2: STONE_DARK, tile: 'stone' },
   // A chipped shoulder, so the top isn't a clean rectangle.
   { s: 'box', size: [0.3, 0.3, 0.3], taper: 0.5, at: [-0.08, 1.98, 0.0], rot: [0, 20, 8], c: STONE, tile: 'stone' },
   { s: 'box', size: [0.74, 0.16, 0.5], taper: 0.85, at: [0, 0.06, 0], c: STONE_DARK, tile: 'stone' },
 ];
 
-const scatterParts: Part[] = [
+export const scatterParts: Part[] = [
   { s: 'ball', r: [0.2, 0.12, 0.16], seg: [6, 4], at: [-1.75, 0.05, -0.5], rot: [0, 30, 0], c: STONE, c2: STONE_DARK, tile: 'stone' },
   { s: 'ball', r: [0.1, 0.07, 0.09], seg: [5, 4], at: [-1.48, 0.03, -0.32], c: STONE, c2: STONE_DARK, tile: 'stone' },
   { s: 'ball', r: [0.26, 0.16, 0.2], seg: [6, 4], at: [2.05, 0.06, 0.1], rot: [0, -20, 0], c: STONE, c2: STONE_DARK, tile: 'stone' },
@@ -108,7 +108,7 @@ const scatterParts: Part[] = [
   { s: 'ball', r: [0.2, 0.1, 0.18], seg: [6, 4], at: [1.08, 0.03, 0.42], c: '#4b3d2a', c2: '#2a2118', tile: 'soil' },
 ];
 
-function grassParts(): Part[] {
+export function grassParts(): Part[] {
   const rng = makeRng(404);
   const parts: Part[] = [];
   const clumps: [number, number][] = [
@@ -134,7 +134,7 @@ function grassParts(): Part[] {
   return parts;
 }
 
-function treeParts(): Part[] {
+export function treeParts(): Part[] {
   const bark = '#2b2620';
   const dark = '#14110e';
   return [
@@ -151,7 +151,7 @@ function treeParts(): Part[] {
 }
 
 /** A jagged strip of far-off hills and bare trees, seen only as a silhouette. */
-function makeRidge(z: number, seed: number, baseHeight: number, color: string, spikiness: number): THREE.Mesh {
+export function makeRidge(z: number, seed: number, baseHeight: number, color: string, spikiness: number): THREE.Mesh {
   const rng = makeRng(seed);
   const positions: number[] = [];
   const tints: number[] = [];
@@ -231,7 +231,8 @@ function makeSky(): THREE.Mesh {
   return mesh;
 }
 
-function makeStars(): THREE.Points {
+/** Where the stars are: directions on the sky, plus a random number each for brightness and twinkle. */
+export function starField(): { positions: Float32Array; seeds: Float32Array } {
   const rng = makeRng(2024);
   const count = 150;
   const positions = new Float32Array(count * 3);
@@ -245,6 +246,11 @@ function makeStars(): THREE.Points {
     positions[i * 3 + 2] = Math.cos(az) * Math.cos(el);
     seeds[i] = rng();
   }
+  return { positions, seeds };
+}
+
+function makeStars(): THREE.Points {
+  const { positions, seeds } = starField();
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geo.setAttribute('seed', new THREE.BufferAttribute(seeds, 1));
@@ -363,7 +369,7 @@ function makeMoon(): Moon {
 // Runes
 
 /** Seven carved marks, one per weekday, each drawn on an 8 x 8 grid. */
-const RUNE_ROWS = [
+export const RUNE_ROWS = [
   '...XX......XX...XX....XX.XX......XX.....XX.XX.XX..XXXX..',
   '..XXXX....XXXX...XX..XX..XXXX....XX.....XX.XX.XX.XX..XX.',
   '.XXXXXX..XX..XX...XXXX...XX.XX...XX..XX..XXXXXX.XX....XX',
@@ -453,22 +459,23 @@ export interface Lantern {
   flare(time: number): void;
 }
 
+const IRON = '#3a3d3c';
+
+export const lanternParts: Part[] = [
+  { s: 'cyl', r: [0.085, 0.095], h: 0.035, sides: 6, at: [0, 0.018, 0], c: IRON, tile: 'metal' },
+  { s: 'box', size: [0.014, 0.2, 0.014], at: [-0.062, 0.135, -0.062], c: IRON },
+  { s: 'box', size: [0.014, 0.2, 0.014], at: [0.062, 0.135, -0.062], c: IRON },
+  { s: 'box', size: [0.014, 0.2, 0.014], at: [-0.062, 0.135, 0.062], c: IRON },
+  { s: 'box', size: [0.014, 0.2, 0.014], at: [0.062, 0.135, 0.062], c: IRON },
+  { s: 'cyl', r: [0.03, 0.105], h: 0.075, sides: 6, at: [0, 0.272, 0], c: IRON, tile: 'metal' },
+  { s: 'cyl', r: 0.045, h: 0.012, sides: 6, at: [0, 0.345, 0], rot: [90, 0, 0], c: IRON },
+];
+
 function makeLantern(): Lantern {
   const group = new THREE.Group();
   group.position.copy(LANTERN_POS);
   group.rotation.y = 0.5;
-  const iron = '#3a3d3c';
-  group.add(
-    buildMesh([
-      { s: 'cyl', r: [0.085, 0.095], h: 0.035, sides: 6, at: [0, 0.018, 0], c: iron, tile: 'metal' },
-      { s: 'box', size: [0.014, 0.2, 0.014], at: [-0.062, 0.135, -0.062], c: iron },
-      { s: 'box', size: [0.014, 0.2, 0.014], at: [0.062, 0.135, -0.062], c: iron },
-      { s: 'box', size: [0.014, 0.2, 0.014], at: [-0.062, 0.135, 0.062], c: iron },
-      { s: 'box', size: [0.014, 0.2, 0.014], at: [0.062, 0.135, 0.062], c: iron },
-      { s: 'cyl', r: [0.03, 0.105], h: 0.075, sides: 6, at: [0, 0.272, 0], c: iron, tile: 'metal' },
-      { s: 'cyl', r: 0.045, h: 0.012, sides: 6, at: [0, 0.345, 0], rot: [90, 0, 0], c: iron },
-    ]),
-  );
+  group.add(buildMesh(lanternParts));
 
   // The flame is its own mesh so its size and colour can change.
   const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xffd98a });
@@ -521,7 +528,8 @@ function makeLantern(): Lantern {
 // ---------------------------------------------------------------------------
 // Fireflies
 
-function makeMotes(): THREE.Points {
+/** Where the fireflies start, plus a random number each that sets their drift and blink. */
+export function moteField(): { positions: Float32Array; seeds: Float32Array } {
   const rng = makeRng(31);
   const count = 26;
   const positions = new Float32Array(count * 3);
@@ -532,6 +540,11 @@ function makeMotes(): THREE.Points {
     positions[i * 3 + 2] = (rng() - 0.5) * 5 - 0.5;
     seeds[i] = rng();
   }
+  return { positions, seeds };
+}
+
+function makeMotes(): THREE.Points {
+  const { positions, seeds } = moteField();
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geo.setAttribute('seed', new THREE.BufferAttribute(seeds, 1));

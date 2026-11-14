@@ -16,9 +16,9 @@ const BOX_WOOD = '#3d2f22';
 const BOX_IRON = '#5c5f5e';
 const BRASS = '#c9a04a';
 
-const moundParts: Part[] = [{ s: 'ball', r: [0.46, 0.2, 0.4], seg: [8, 5], at: [0, 0.02, 0], c: SOIL, c2: SOIL_DARK, tile: 'soil' }];
+export const moundParts: Part[] = [{ s: 'ball', r: [0.46, 0.2, 0.4], seg: [8, 5], at: [0, 0.02, 0], c: SOIL, c2: SOIL_DARK, tile: 'soil' }];
 
-const boxParts: Part[] = [
+export const boxParts: Part[] = [
   { s: 'box', size: [0.46, 0.24, 0.32], at: [0, 0.12, 0], c: BOX_WOOD, tile: 'wood' },
   { s: 'box', size: [0.05, 0.25, 0.33], at: [-0.15, 0.12, 0], c: BOX_IRON, tile: 'metal' },
   { s: 'box', size: [0.05, 0.25, 0.33], at: [0.15, 0.12, 0], c: BOX_IRON, tile: 'metal' },
@@ -27,12 +27,20 @@ const boxParts: Part[] = [
 ];
 
 // The lid is modelled with its hinge (back edge) at the origin, so it can swing open.
-const lidParts: Part[] = [
+export const lidParts: Part[] = [
   { s: 'box', size: [0.48, 0.1, 0.34], taper: [0.92, 0.8], at: [0, 0.05, 0.17], c: BOX_WOOD, tile: 'wood' },
   { s: 'box', size: [0.05, 0.105, 0.35], taper: [1, 0.8], at: [-0.15, 0.05, 0.17], c: BOX_IRON, tile: 'metal' },
   { s: 'box', size: [0.05, 0.105, 0.35], taper: [1, 0.8], at: [0.15, 0.05, 0.17], c: BOX_IRON, tile: 'metal' },
   { s: 'box', size: [0.08, 0.1, 0.03], at: [0, 0.0, 0.345], c: BRASS, tile: 'metal' },
 ];
+
+export const CLOD_COUNT = 12;
+
+/** One clod of earth. They come in four sizes and two shades. */
+export function clodParts(i: number): Part[] {
+  const size = 0.035 + (i % 4) * 0.014;
+  return [{ s: 'box', size: [size, size, size], c: i % 3 === 0 ? SOIL_DARK : SOIL, tile: 'soil' }];
+}
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 /** 0 to 1 over the time window [from, to]. */
@@ -83,9 +91,8 @@ export class Unearth {
     this.group.add(this.beam, this.itemPivot);
     this.itemPivot.add(this.halo);
 
-    for (let i = 0; i < 12; i++) {
-      const size = 0.035 + (i % 4) * 0.014;
-      const mesh = buildMesh([{ s: 'box', size: [size, size, size], c: i % 3 === 0 ? SOIL_DARK : SOIL, tile: 'soil' }]);
+    for (let i = 0; i < CLOD_COUNT; i++) {
+      const mesh = buildMesh(clodParts(i));
       this.group.add(mesh);
       this.clods.push({ mesh, velocity: new THREE.Vector3(), spin: new THREE.Vector3() });
     }

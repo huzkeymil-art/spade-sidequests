@@ -1,0 +1,27 @@
+# Checks the native iPhone app.
+#
+#   rules: runs the Swift rule tests on Linux (quick).
+#   app:   builds the app on a Mac, runs it in the iPhone Simulator and saves screenshots.
+#
+# Signing and TestFlight uploads are not done here. Codemagic does those (see codemagic.yaml).
+name: iOS
+
+on:
+  pull_request:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    container: swift:6.0
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test the game rules
+        run: swift test --package-path ios/Core

@@ -1,0 +1,92 @@
+[
+  { "id": "d_walk", "cadence": "daily", "category": "body", "difficulty": 2, "title": "Walk for 20 minutes" },
+  { "id": "d_stretch", "cadence": "daily", "category": "body", "difficulty": 1, "title": "Stretch for 5 minutes" },
+  { "id": "d_water", "cadence": "daily", "category": "body", "difficulty": 1, "title": "Drink a glass of water with each meal", "target": 3 },
+  { "id": "d_reps", "cadence": "daily", "category": "body", "difficulty": 2, "title": "Do 15 push-ups, sit-ups or squats" },
+  { "id": "d_outside", "cadence": "daily", "category": "body", "difficulty": 1, "title": "Spend 15 minutes outside" },
+  { "id": "d_stairs", "cadence": "daily", "category": "body", "difficulty": 1, "title": "Take the stairs every chance you get" },
+  { "id": "d_bedtime", "cadence": "daily", "category": "body", "difficulty": 2, "title": "Be in bed on time tonight" },
+  { "id": "d_greens", "cadence": "daily", "category": "body", "difficulty": 1, "title": "Eat a fruit or vegetable you would normally skip" },
+  { "id": "d_breathless", "cadence": "daily", "category": "body", "difficulty": 3, "title": "Run, bike or swim until you are out of breath" },
+  { "id": "d_dance", "cadence": "daily", "category": "body", "difficulty": 1, "title": "Dance to one whole song" },
+
+  { "id": "d_read", "cadence": "daily", "category": "mind", "difficulty": 2, "title": "Read 15 pages of a book" },
+  { "id": "d_fact", "cadence": "daily", "category": "mind", "difficulty": 1, "title": "Learn one new fact and tell someone" },
+  { "id": "d_words", "cadence": "daily", "category": "mind", "difficulty": 2, "title": "Learn 5 words in another language" },
+  { "id": "d_puzzle", "cadence": "daily", "category": "mind", "difficulty": 2, "title": "Solve a puzzle or brain teaser" },
+  { "id": "d_noscreen", "cadence": "daily", "category": "mind", "difficulty": 3, "title": "Go one full hour with no screens" },
+  { "id": "d_journal", "cadence": "daily", "category": "mind", "difficulty": 1, "title": "Write three sentences about today" },
+  { "id": "d_wonder", "cadence": "daily", "category": "mind", "difficulty": 1, "title": "Look up a question you have always wondered about" },
+  { "id": "d_ahead", "cadence": "daily", "category": "mind", "difficulty": 3, "title": "Finish tomorrow's work before dinner" },
+  { "id": "d_focus", "cadence": "daily", "category": "mind", "difficulty": 2, "title": "Practise something hard for 10 focused minutes" },
+  { "id": "d_plan", "cadence": "daily", "category": "mind", "difficulty": 1, "title": "Write down tomorrow's top three tasks" },
+
+  { "id": "d_draw", "cadence": "daily", "category": "craft", "difficulty": 2, "title": "Draw something for 10 minutes" },
+  { "id": "d_music", "cadence": "daily", "category": "craft", "difficulty": 2, "title": "Play an instrument or sing for 10 minutes" },
+  { "id": "d_fix", "cadence": "daily", "category": "craft", "difficulty": 2, "title": "Build or fix one small thing" },
+  { "id": "d_photo", "cadence": "daily", "category": "craft", "difficulty": 1, "title": "Take a photo of something beautiful" },
+  { "id": "d_cook", "cadence": "daily", "category": "craft", "difficulty": 2, "title": "Help make a meal" },
+  { "id": "d_verse", "cadence": "daily", "category": "craft", "difficulty": 2, "title": "Write a short poem or four lines of a story" },
+  { "id": "d_tinker", "cadence": "daily", "category": "craft", "difficulty": 2, "title": "Tinker with a project for 15 minutes" },
+  { "id": "d_idea", "cadence": "daily", "category": "craft", "difficulty": 1, "title": "Jot down one idea for something to make" },
+
+  { "id": "d_thanks", "cadence": "daily", "category": "heart", "difficulty": 1, "title": "Thank someone and mean it" },
+  { "id": "d_compliment", "cadence": "daily", "category": "heart", "difficulty": 1, "title": "Give someone a real compliment" },
+  { "id": "d_reach", "cadence": "daily", "category": "heart", "difficulty": 2, "title": "Message or call someone you miss" },
+  { "id": "d_help", "cadence": "daily", "category": "heart", "difficulty": 2, "title": "Help someone without being asked" },
+  { "id": "d_listen", "cadence": "daily", "category": "heart", "difficulty": 1, "title": "Ask someone about their day and really listen" },
+  { "id": "d_goodthings", "cadence": "daily", "category": "heart", "difficulty": 1, "title": "Name three good things from today" },
+  { "id": "d_breathe", "cadence": "daily", "category": "heart", "difficulty": 1, "title": "Sit quietly and breathe for 3 minutes" },
+  { "id": "d_share", "cadence": "daily", "category": "heart", "difficulty": 1, "title": "Share something of yours" },
+
+  { "id": "d_bed", "cadence": "daily", "category": "home", "difficulty": 1, "title": "Make your bed" },
+  { "id": "d_tidy", "cadence": "daily", "category": "home", "difficulty": 1, "title": "Tidy one surface: a desk, a shelf or a floor" },
+  { "id": "d_dishes", "cadence": "daily", "category": "home", "difficulty": 2, "title": "Wash up after a meal" },
+  { "id": "d_bins", "cadence": "daily", "category": "home", "difficulty": 1, "title": "Take out the rubbish or recycling" },
+  { "id": "d_clothes", "cadence": "daily", "category": "home", "difficulty": 1, "title": "Put your clean clothes away" },
+  { "id": "d_pack", "cadence": "daily", "category": "home", "difficulty": 1, "title": "Pack tomorrow's bag tonight" },
+
+  { "id": "w_active", "cadence": "weekly", "category": "body", "difficulty": 3, "title": "Be active on 4 different days", "target": 4 },
+  { "id": "w_longwalk", "cadence": "weekly", "category": "body", "difficulty": 2, "title": "Take one long walk, an hour or more" },
+  { "id": "w_game", "cadence": "weekly", "category": "body", "difficulty": 2, "title": "Play a sport or a game outdoors" },
+  { "id": "w_sleep", "cadence": "weekly", "category": "body", "difficulty": 3, "title": "Get to bed on time on 5 nights", "target": 5 },
+  { "id": "w_newmove", "cadence": "weekly", "category": "body", "difficulty": 1, "title": "Try an exercise you have never done" },
+
+  { "id": "w_read", "cadence": "weekly", "category": "mind", "difficulty": 2, "title": "Read on 3 different days", "target": 3 },
+  { "id": "w_skill", "cadence": "weekly", "category": "mind", "difficulty": 2, "title": "Spend an hour learning a new skill" },
+  { "id": "w_notes", "cadence": "weekly", "category": "mind", "difficulty": 2, "title": "Watch a documentary and note three things" },
+  { "id": "w_evening", "cadence": "weekly", "category": "mind", "difficulty": 3, "title": "Have one screen-free evening" },
+
+  { "id": "w_make", "cadence": "weekly", "category": "craft", "difficulty": 3, "title": "Make something from start to finish" },
+  { "id": "w_practice", "cadence": "weekly", "category": "craft", "difficulty": 2, "title": "Practise your craft on 3 days", "target": 3 },
+  { "id": "w_recipe", "cadence": "weekly", "category": "craft", "difficulty": 2, "title": "Cook or bake a recipe you have never tried" },
+  { "id": "w_sketch", "cadence": "weekly", "category": "craft", "difficulty": 1, "title": "Fill a whole page with sketches or notes" },
+
+  { "id": "w_kind", "cadence": "weekly", "category": "heart", "difficulty": 2, "title": "Do 3 kind things nobody asked for", "target": 3 },
+  { "id": "w_time", "cadence": "weekly", "category": "heart", "difficulty": 1, "title": "Spend unhurried time with a friend or family" },
+  { "id": "w_letter", "cadence": "weekly", "category": "heart", "difficulty": 2, "title": "Write a note or letter to someone" },
+  { "id": "w_newface", "cadence": "weekly", "category": "heart", "difficulty": 3, "title": "Have a real conversation with someone new" },
+
+  { "id": "w_room", "cadence": "weekly", "category": "home", "difficulty": 2, "title": "Deep-clean your room" },
+  { "id": "w_declutter", "cadence": "weekly", "category": "home", "difficulty": 2, "title": "Give away or recycle 5 things", "target": 5 },
+  { "id": "w_chore", "cadence": "weekly", "category": "home", "difficulty": 3, "title": "Take over a chore from someone, all week" },
+
+  { "id": "m_active", "cadence": "monthly", "category": "body", "difficulty": 3, "title": "Be active on 15 days this month", "target": 15 },
+  { "id": "m_hike", "cadence": "monthly", "category": "body", "difficulty": 2, "title": "Go on a proper hike or a long ride" },
+  { "id": "m_newsport", "cadence": "monthly", "category": "body", "difficulty": 2, "title": "Try a sport or activity that is new to you" },
+
+  { "id": "m_book", "cadence": "monthly", "category": "mind", "difficulty": 3, "title": "Finish a whole book" },
+  { "id": "m_lessons", "cadence": "monthly", "category": "mind", "difficulty": 2, "title": "Complete 4 lessons of something new", "target": 4 },
+  { "id": "m_deep", "cadence": "monthly", "category": "mind", "difficulty": 2, "title": "Go deep on one topic and explain it to someone" },
+
+  { "id": "m_project", "cadence": "monthly", "category": "craft", "difficulty": 3, "title": "Finish a project you can show someone" },
+  { "id": "m_gift", "cadence": "monthly", "category": "craft", "difficulty": 2, "title": "Make a gift by hand" },
+  { "id": "m_share", "cadence": "monthly", "category": "craft", "difficulty": 3, "title": "Share your work: perform, post or present it" },
+
+  { "id": "m_give", "cadence": "monthly", "category": "heart", "difficulty": 3, "title": "Give 2 hours to helping other people" },
+  { "id": "m_reconnect", "cadence": "monthly", "category": "heart", "difficulty": 2, "title": "Reconnect with someone you lost touch with" },
+  { "id": "m_gratitude", "cadence": "monthly", "category": "heart", "difficulty": 2, "title": "Write down good things on 10 days", "target": 10 },
+
+  { "id": "m_space", "cadence": "monthly", "category": "home", "difficulty": 2, "title": "Reorganise one whole space" },
+  { "id": "m_grow", "cadence": "monthly", "category": "home", "difficulty": 2, "title": "Plant something and keep it alive" }
+]
