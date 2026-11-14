@@ -1,0 +1,57 @@
+# Codemagic builds the iPhone app on a Mac in the cloud, signs it, and sends it
+# to App Store Connect, where it shows up under TestFlight.
+#
+# One-time setup, step by step: ios/README.md
+
+workflows:
+  spade-testflight:
+    name: Spade to TestFlight
+    max_build_duration: 45
+    instance_type: mac_mini_m2
+
+    integrations:
+      # The name given to the App Store Connect API key when it was added to
+      # Codemagic (Team settings > Team integrations > Developer Portal).
+      # If you named yours differently, change this line to match.
+      app_store_connect: spade
+
+    environment:
+      # Codemagic fetches the certificate and provisioning profile saved under
+      # Code signing identities that match this app.
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.huzkeymil.spade
+      vars:
+        XCODE_PROJECT: ios/Spade.xcodeproj
+        XCODE_SCHEME: Spade
+      xcode: latest
+
+    scripts:
+      - name: Point the project at the signing files
+        script: xcode-project use-profiles
+
+      - name: Build and sign the app
+        script: |
+          # Every upload needs a build number higher than the last one.
+          # The date and time (year, month, day, hour, minute) always is.
+          BUILD_NUMBER_NOW=$(date -u +%y%m%d%H%M)
+          echo "Build number: $BUILD_NUMBER_NOW"
+          xcode-project build-ipa \
+            --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME" \
+            --archive-xcargs "COMPILER_INDEX_STORE_ENABLE=NO CURRENT_PROJECT_VERSION=$BUILD_NUMBER_NOW"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+
+    publishing:
+      app_store_connect:
+        # Uploads the build using the API key named above.
+        auth: integration
+        # Internal testers (you, and anyone on your App Store Connect team) can
+        # install the build as soon as Apple finishes processing it.
+        # Set this to true to also send each build to Apple's beta review, which
+        # is what outside testers need. Fill in "Test Information" in TestFlight first.
+        submit_to_testflight: false

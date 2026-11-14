@@ -2,41 +2,17 @@ import * as THREE from 'three';
 import { world } from './RetroMaterial';
 import { PostPass } from './post';
 import { Hero, type Gear, type HeroLook } from './hero';
-import { HORIZON, makeScenery, STONE_POS, type Scenery } from './scenery';
+import { HORIZON, makeScenery, type Scenery } from './scenery';
+import { DEFAULT_HERO_YAW, DIG_HERO_YAW, FOV, SHOTS, type Shot, type View } from './shots';
 import { Unearth } from './unearth';
 import { IconForge } from './icons';
 
 // The stage: one 3D scene that sits behind the whole app.
 // It owns the camera, the hero and the scenery, and redraws about 30 times a second.
 
-export type View = 'title' | 'quests' | 'hero' | 'satchel' | 'feats' | 'dig';
+export type { View } from './shots';
 
-interface Shot {
-  /** The point the camera looks at. */
-  target: [number, number, number];
-  /** How far back the camera stands, and how high. */
-  dist: number;
-  height: number;
-  /** Camera angle around the target, in radians. */
-  yaw: number;
-  /** Where on screen the target lands: 0 = top edge, 1 = bottom edge. */
-  screenY: number;
-  /** Where the panel of UI begins, as a fraction of the screen height. 1 = no panel. */
-  sheet: number;
-}
-
-const SHOTS: Record<View, Shot> = {
-  title: { target: [0.25, 1.0, 0], dist: 12.5, height: 0.9, yaw: 0, screenY: 0.4, sheet: 0.66 },
-  quests: { target: [0.3, 0.9, 0], dist: 13, height: 1.35, yaw: 0, screenY: 0.25, sheet: 0.42 },
-  hero: { target: [0, 0.8, 0], dist: 8.2, height: 0.78, yaw: -0.075, screenY: 0.33, sheet: 0.54 },
-  satchel: { target: [0, 0.84, 0], dist: 11, height: 0.8, yaw: -0.075, screenY: 0.225, sheet: 0.38 },
-  feats: { target: [STONE_POS.x - 0.5, 1.02, STONE_POS.z], dist: 13.5, height: 0.8, yaw: -0.1, screenY: 0.215, sheet: 0.38 },
-  dig: { target: [0.5, 0.7, 0.8], dist: 7.2, height: 1.3, yaw: 0.16, screenY: 0.33, sheet: 0.6 },
-};
-
-const FOV = 32;
 const FRAME = 1 / 30;
-const DEFAULT_HERO_YAW = -0.22;
 
 export interface Progress {
   /** Dailies finished today, and how many there are. */
@@ -152,7 +128,7 @@ export class Stage {
     // Only the Hero screen lets the avatar stay turned; elsewhere it swings back to face front.
     this.freeSpin = view === 'hero';
     // During a dig the hero turns to watch.
-    if (!this.freeSpin) this.heroYawTarget = view === 'dig' ? 0.5 : DEFAULT_HERO_YAW;
+    if (!this.freeSpin) this.heroYawTarget = view === 'dig' ? DIG_HERO_YAW : DEFAULT_HERO_YAW;
   }
 
   /** Jumps straight to a view with no camera glide (used on first load). */

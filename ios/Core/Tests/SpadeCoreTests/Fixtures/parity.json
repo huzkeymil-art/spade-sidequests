@@ -1,0 +1,2679 @@
+{
+ "hashes": [
+  {
+   "text": "",
+   "hash": 2166136261
+  },
+  {
+   "text": "spade",
+   "hash": 893954450
+  },
+  {
+   "text": "12345|daily|2026-11-14",
+   "hash": 1716331484
+  },
+  {
+   "text": "héllo ✓ wörld",
+   "hash": 1521400407
+  },
+  {
+   "text": "c_abc123_0",
+   "hash": 2177434520
+  }
+ ],
+ "rng": [
+  {
+   "seed": 1,
+   "values": [
+    0.6270739405881613,
+    0.002735721180215478,
+    0.5274470399599522,
+    0.9810509674716741,
+    0.9683778982143849,
+    0.281103502959013
+   ]
+  },
+  {
+   "seed": 99,
+   "values": [
+    0.2604658124037087,
+    0.8048227655235678,
+    0.5408715349622071,
+    0.6902434257790446,
+    0.001138708321377635,
+    0.8175430877599865
+   ]
+  },
+  {
+   "seed": 4242,
+   "values": [
+    0.5467061335220933,
+    0.27860878920182586,
+    0.9312369171530008,
+    0.5072224664036185,
+    0.668778280261904,
+    0.2878789729438722
+   ]
+  },
+  {
+   "seed": 2147483646,
+   "values": [
+    0.9936443585902452,
+    0.3810898973606527,
+    0.3795308177359402,
+    0.9987986800260842,
+    0.6068933391943574,
+    0.26112334174104035
+   ]
+  },
+  {
+   "seed": 4294967295,
+   "values": [
+    0.8964226141106337,
+    0.189478256739676,
+    0.7156526781618595,
+    0.9440599093213677,
+    0.8452364315744489,
+    0.5391399988438934
+   ]
+  }
+ ],
+ "labelled": [
+  {
+   "seed": 99,
+   "labels": [
+    "daily",
+    "2026-11-14"
+   ],
+   "values": [
+    0.9186038179323077,
+    0.8292786905076355,
+    0.32227321178652346,
+    0.08521646470762789
+   ]
+  },
+  {
+   "seed": 12345,
+   "labels": [
+    "loot",
+    "2026-W46:w_active"
+   ],
+   "values": [
+    0.18830057443119586,
+    0.013949061511084437,
+    0.737427219748497,
+    0.7139380485750735
+   ]
+  }
+ ],
+ "shuffles": [
+  {
+   "seed": 3,
+   "result": [
+    9,
+    5,
+    6,
+    1,
+    2,
+    4,
+    8,
+    3,
+    0,
+    7
+   ]
+  },
+  {
+   "seed": 77,
+   "result": [
+    1,
+    7,
+    2,
+    6,
+    9,
+    8,
+    3,
+    5,
+    0,
+    4
+   ]
+  }
+ ],
+ "periods": [
+  {
+   "y": 2026,
+   "m": 11,
+   "d": 14,
+   "day": "2026-11-14",
+   "week": "2026-W46",
+   "month": "2026-11",
+   "weekday": 5,
+   "monthProgress": 0.4666666666666667,
+   "weekDays": [
+    "2026-11-09",
+    "2026-11-10",
+    "2026-11-11",
+    "2026-11-12",
+    "2026-11-13",
+    "2026-11-14",
+    "2026-11-15"
+   ],
+   "nextDaily": "2026-11-15",
+   "nextWeekly": "2026-11-16",
+   "nextMonthly": "2026-12-01"
+  },
+  {
+   "y": 2026,
+   "m": 11,
+   "d": 15,
+   "day": "2026-11-15",
+   "week": "2026-W46",
+   "month": "2026-11",
+   "weekday": 6,
+   "monthProgress": 0.5,
+   "weekDays": [
+    "2026-11-09",
+    "2026-11-10",
+    "2026-11-11",
+    "2026-11-12",
+    "2026-11-13",
+    "2026-11-14",
+    "2026-11-15"
+   ],
+   "nextDaily": "2026-11-16",
+   "nextWeekly": "2026-11-16",
+   "nextMonthly": "2026-12-01"
+  },
+  {
+   "y": 2026,
+   "m": 11,
+   "d": 16,
+   "day": "2026-11-16",
+   "week": "2026-W47",
+   "month": "2026-11",
+   "weekday": 0,
+   "monthProgress": 0.5333333333333333,
+   "weekDays": [
+    "2026-11-16",
+    "2026-11-17",
+    "2026-11-18",
+    "2026-11-19",
+    "2026-11-20",
+    "2026-11-21",
+    "2026-11-22"
+   ],
+   "nextDaily": "2026-11-17",
+   "nextWeekly": "2026-11-23",
+   "nextMonthly": "2026-12-01"
+  },
+  {
+   "y": 2026,
+   "m": 12,
+   "d": 31,
+   "day": "2026-12-31",
+   "week": "2026-W53",
+   "month": "2026-12",
+   "weekday": 3,
+   "monthProgress": 1,
+   "weekDays": [
+    "2026-12-28",
+    "2026-12-29",
+    "2026-12-30",
+    "2026-12-31",
+    "2027-01-01",
+    "2027-01-02",
+    "2027-01-03"
+   ],
+   "nextDaily": "2027-01-01",
+   "nextWeekly": "2027-01-04",
+   "nextMonthly": "2027-01-01"
+  },
+  {
+   "y": 2027,
+   "m": 1,
+   "d": 1,
+   "day": "2027-01-01",
+   "week": "2026-W53",
+   "month": "2027-01",
+   "weekday": 4,
+   "monthProgress": 0.03225806451612903,
+   "weekDays": [
+    "2026-12-28",
+    "2026-12-29",
+    "2026-12-30",
+    "2026-12-31",
+    "2027-01-01",
+    "2027-01-02",
+    "2027-01-03"
+   ],
+   "nextDaily": "2027-01-02",
+   "nextWeekly": "2027-01-04",
+   "nextMonthly": "2027-02-01"
+  },
+  {
+   "y": 2027,
+   "m": 1,
+   "d": 3,
+   "day": "2027-01-03",
+   "week": "2026-W53",
+   "month": "2027-01",
+   "weekday": 6,
+   "monthProgress": 0.0967741935483871,
+   "weekDays": [
+    "2026-12-28",
+    "2026-12-29",
+    "2026-12-30",
+    "2026-12-31",
+    "2027-01-01",
+    "2027-01-02",
+    "2027-01-03"
+   ],
+   "nextDaily": "2027-01-04",
+   "nextWeekly": "2027-01-04",
+   "nextMonthly": "2027-02-01"
+  },
+  {
+   "y": 2027,
+   "m": 1,
+   "d": 4,
+   "day": "2027-01-04",
+   "week": "2027-W01",
+   "month": "2027-01",
+   "weekday": 0,
+   "monthProgress": 0.12903225806451613,
+   "weekDays": [
+    "2027-01-04",
+    "2027-01-05",
+    "2027-01-06",
+    "2027-01-07",
+    "2027-01-08",
+    "2027-01-09",
+    "2027-01-10"
+   ],
+   "nextDaily": "2027-01-05",
+   "nextWeekly": "2027-01-11",
+   "nextMonthly": "2027-02-01"
+  },
+  {
+   "y": 2024,
+   "m": 12,
+   "d": 30,
+   "day": "2024-12-30",
+   "week": "2025-W01",
+   "month": "2024-12",
+   "weekday": 0,
+   "monthProgress": 0.967741935483871,
+   "weekDays": [
+    "2024-12-30",
+    "2024-12-31",
+    "2025-01-01",
+    "2025-01-02",
+    "2025-01-03",
+    "2025-01-04",
+    "2025-01-05"
+   ],
+   "nextDaily": "2024-12-31",
+   "nextWeekly": "2025-01-06",
+   "nextMonthly": "2025-01-01"
+  },
+  {
+   "y": 2024,
+   "m": 2,
+   "d": 29,
+   "day": "2024-02-29",
+   "week": "2024-W09",
+   "month": "2024-02",
+   "weekday": 3,
+   "monthProgress": 1,
+   "weekDays": [
+    "2024-02-26",
+    "2024-02-27",
+    "2024-02-28",
+    "2024-02-29",
+    "2024-03-01",
+    "2024-03-02",
+    "2024-03-03"
+   ],
+   "nextDaily": "2024-03-01",
+   "nextWeekly": "2024-03-04",
+   "nextMonthly": "2024-03-01"
+  },
+  {
+   "y": 2025,
+   "m": 3,
+   "d": 30,
+   "day": "2025-03-30",
+   "week": "2025-W13",
+   "month": "2025-03",
+   "weekday": 6,
+   "monthProgress": 0.967741935483871,
+   "weekDays": [
+    "2025-03-24",
+    "2025-03-25",
+    "2025-03-26",
+    "2025-03-27",
+    "2025-03-28",
+    "2025-03-29",
+    "2025-03-30"
+   ],
+   "nextDaily": "2025-03-31",
+   "nextWeekly": "2025-03-31",
+   "nextMonthly": "2025-04-01"
+  },
+  {
+   "y": 2026,
+   "m": 3,
+   "d": 1,
+   "day": "2026-03-01",
+   "week": "2026-W09",
+   "month": "2026-03",
+   "weekday": 6,
+   "monthProgress": 0.03225806451612903,
+   "weekDays": [
+    "2026-02-23",
+    "2026-02-24",
+    "2026-02-25",
+    "2026-02-26",
+    "2026-02-27",
+    "2026-02-28",
+    "2026-03-01"
+   ],
+   "nextDaily": "2026-03-02",
+   "nextWeekly": "2026-03-02",
+   "nextMonthly": "2026-04-01"
+  },
+  {
+   "y": 2026,
+   "m": 10,
+   "d": 25,
+   "day": "2026-10-25",
+   "week": "2026-W43",
+   "month": "2026-10",
+   "weekday": 6,
+   "monthProgress": 0.8064516129032258,
+   "weekDays": [
+    "2026-10-19",
+    "2026-10-20",
+    "2026-10-21",
+    "2026-10-22",
+    "2026-10-23",
+    "2026-10-24",
+    "2026-10-25"
+   ],
+   "nextDaily": "2026-10-26",
+   "nextWeekly": "2026-10-26",
+   "nextMonthly": "2026-11-01"
+  },
+  {
+   "y": 2028,
+   "m": 2,
+   "d": 28,
+   "day": "2028-02-28",
+   "week": "2028-W09",
+   "month": "2028-02",
+   "weekday": 0,
+   "monthProgress": 0.9655172413793104,
+   "weekDays": [
+    "2028-02-28",
+    "2028-02-29",
+    "2028-03-01",
+    "2028-03-02",
+    "2028-03-03",
+    "2028-03-04",
+    "2028-03-05"
+   ],
+   "nextDaily": "2028-02-29",
+   "nextWeekly": "2028-03-06",
+   "nextMonthly": "2028-03-01"
+  },
+  {
+   "y": 2021,
+   "m": 1,
+   "d": 3,
+   "day": "2021-01-03",
+   "week": "2020-W53",
+   "month": "2021-01",
+   "weekday": 6,
+   "monthProgress": 0.0967741935483871,
+   "weekDays": [
+    "2020-12-28",
+    "2020-12-29",
+    "2020-12-30",
+    "2020-12-31",
+    "2021-01-01",
+    "2021-01-02",
+    "2021-01-03"
+   ],
+   "nextDaily": "2021-01-04",
+   "nextWeekly": "2021-01-04",
+   "nextMonthly": "2021-02-01"
+  }
+ ],
+ "deals": [
+  {
+   "seed": 1,
+   "cadence": "daily",
+   "period": "2026-11-14",
+   "recent": [],
+   "off": [],
+   "custom": [],
+   "quests": [
+    {
+     "key": "2026-11-14:d_walk",
+     "defId": "d_walk",
+     "xp": 30,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2026-11-14:d_draw",
+     "defId": "d_draw",
+     "xp": 30,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2026-11-14:d_noscreen",
+     "defId": "d_noscreen",
+     "xp": 45,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    }
+   ]
+  },
+  {
+   "seed": 1,
+   "cadence": "daily",
+   "period": "2026-11-15",
+   "recent": [],
+   "off": [],
+   "custom": [],
+   "quests": [
+    {
+     "key": "2026-11-15:d_journal",
+     "defId": "d_journal",
+     "xp": 20,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2026-11-15:d_dance",
+     "defId": "d_dance",
+     "xp": 20,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2026-11-15:d_help",
+     "defId": "d_help",
+     "xp": 30,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    }
+   ]
+  },
+  {
+   "seed": 99,
+   "cadence": "daily",
+   "period": "2026-11-14",
+   "recent": [
+    "d_walk",
+    "d_read",
+    "d_bed"
+   ],
+   "off": [],
+   "custom": [],
+   "quests": [
+    {
+     "key": "2026-11-14:d_dance",
+     "defId": "d_dance",
+     "xp": 20,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2026-11-14:d_clothes",
+     "defId": "d_clothes",
+     "xp": 20,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2026-11-14:d_breathe",
+     "defId": "d_breathe",
+     "xp": 20,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    }
+   ]
+  },
+  {
+   "seed": 99,
+   "cadence": "weekly",
+   "period": "2026-W46",
+   "recent": [],
+   "off": [],
+   "custom": [],
+   "quests": [
+    {
+     "key": "2026-W46:w_chore",
+     "defId": "w_chore",
+     "xp": 150,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2026-W46:w_read",
+     "defId": "w_read",
+     "xp": 125,
+     "target": 3,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2026-W46:w_recipe",
+     "defId": "w_recipe",
+     "xp": 125,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    }
+   ]
+  },
+  {
+   "seed": 99,
+   "cadence": "monthly",
+   "period": "2026-11",
+   "recent": [],
+   "off": [],
+   "custom": [],
+   "quests": [
+    {
+     "key": "2026-11:m_active",
+     "defId": "m_active",
+     "xp": 600,
+     "target": 15,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2026-11:m_share",
+     "defId": "m_share",
+     "xp": 600,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    }
+   ]
+  },
+  {
+   "seed": 12345,
+   "cadence": "daily",
+   "period": "2027-01-01",
+   "recent": [],
+   "off": [
+    "body",
+    "home"
+   ],
+   "custom": [],
+   "quests": [
+    {
+     "key": "2027-01-01:d_draw",
+     "defId": "d_draw",
+     "xp": 30,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2027-01-01:d_share",
+     "defId": "d_share",
+     "xp": 20,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2027-01-01:d_journal",
+     "defId": "d_journal",
+     "xp": 20,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    }
+   ]
+  },
+  {
+   "seed": 12345,
+   "cadence": "weekly",
+   "period": "2026-W53",
+   "recent": [],
+   "off": [
+    "mind",
+    "craft",
+    "heart",
+    "home"
+   ],
+   "custom": [],
+   "quests": [
+    {
+     "key": "2026-W53:w_newmove",
+     "defId": "w_newmove",
+     "xp": 100,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2026-W53:w_active",
+     "defId": "w_active",
+     "xp": 150,
+     "target": 4,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2026-W53:w_game",
+     "defId": "w_game",
+     "xp": 125,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    }
+   ]
+  },
+  {
+   "seed": 4242,
+   "cadence": "daily",
+   "period": "2026-11-27",
+   "recent": [],
+   "off": [],
+   "custom": [
+    {
+     "id": "c_one",
+     "cadence": "daily",
+     "category": "home",
+     "difficulty": 1,
+     "title": "Feed the cat",
+     "pinned": true
+    },
+    {
+     "id": "c_two",
+     "cadence": "daily",
+     "category": "craft",
+     "difficulty": 3,
+     "title": "Juggle",
+     "pinned": false
+    },
+    {
+     "id": "c_three",
+     "cadence": "weekly",
+     "category": "mind",
+     "difficulty": 2,
+     "title": "Chess club",
+     "pinned": true
+    }
+   ],
+   "quests": [
+    {
+     "key": "2026-11-27:c_one",
+     "defId": "c_one",
+     "xp": 20,
+     "target": 1,
+     "custom": true,
+     "pinned": true
+    },
+    {
+     "key": "2026-11-27:d_stretch",
+     "defId": "d_stretch",
+     "xp": 20,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2026-11-27:d_thanks",
+     "defId": "d_thanks",
+     "xp": 20,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    }
+   ]
+  },
+  {
+   "seed": 4242,
+   "cadence": "weekly",
+   "period": "2026-W48",
+   "recent": [],
+   "off": [],
+   "custom": [
+    {
+     "id": "c_one",
+     "cadence": "daily",
+     "category": "home",
+     "difficulty": 1,
+     "title": "Feed the cat",
+     "pinned": true
+    },
+    {
+     "id": "c_two",
+     "cadence": "daily",
+     "category": "craft",
+     "difficulty": 3,
+     "title": "Juggle",
+     "pinned": false
+    },
+    {
+     "id": "c_three",
+     "cadence": "weekly",
+     "category": "mind",
+     "difficulty": 2,
+     "title": "Chess club",
+     "pinned": true
+    }
+   ],
+   "quests": [
+    {
+     "key": "2026-W48:c_three",
+     "defId": "c_three",
+     "xp": 125,
+     "target": 1,
+     "custom": true,
+     "pinned": true
+    },
+    {
+     "key": "2026-W48:w_sketch",
+     "defId": "w_sketch",
+     "xp": 100,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    },
+    {
+     "key": "2026-W48:w_notes",
+     "defId": "w_notes",
+     "xp": 125,
+     "target": 1,
+     "custom": false,
+     "pinned": false
+    }
+   ]
+  }
+ ],
+ "swaps": [
+  {
+   "seed": 1,
+   "before": [
+    "d_draw",
+    "d_stretch",
+    "d_clothes"
+   ],
+   "after": [
+    "d_draw",
+    "d_tidy",
+    "d_clothes"
+   ]
+  },
+  {
+   "seed": 99,
+   "before": [
+    "d_reach",
+    "d_clothes",
+    "d_fix"
+   ],
+   "after": [
+    "d_reach",
+    "d_focus",
+    "d_fix"
+   ]
+  },
+  {
+   "seed": 4242,
+   "before": [
+    "d_fix",
+    "d_breathe",
+    "d_stretch"
+   ],
+   "after": [
+    "d_fix",
+    "d_music",
+    "d_stretch"
+   ]
+  }
+ ],
+ "loot": [
+  {
+   "seed": 555,
+   "key": "p0:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p1:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p2:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p3:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p4:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p5:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p6:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p7:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p8:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p9:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p10:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p11:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p12:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p13:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p14:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p15:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p16:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p17:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p18:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p19:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "plank_shield",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p20:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p21:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p22:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p23:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p24:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p25:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p26:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p27:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "travel_cloak",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p28:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p29:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p30:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p31:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p32:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p33:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p34:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p35:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p36:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p37:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p38:q_daily",
+   "cadence": "daily",
+   "owned": [],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p39:q_daily",
+   "cadence": "daily",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": null,
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p0:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "barrow_blade",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p1:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "round_buckler",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p2:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "dusk_moth",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p3:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "moonsteel_plate",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p4:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "foxfire_wisp",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p5:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "miners_helm",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p6:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "barrow_blade",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p7:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "barrow_blade",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p8:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "miners_helm",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p9:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "ringmail",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p10:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "crown_of_roots",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p11:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "travel_cloak",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p12:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "barrow_blade",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p13:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "moonsteel_plate",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p14:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "ringmail",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p15:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "miners_helm",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p16:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "moonsteel_plate",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p17:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "travel_cloak",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p18:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "ringmail",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p19:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "miners_helm",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p20:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "wayfinders_crook",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p21:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "wayfinders_crook",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p22:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "miners_helm",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p23:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "barrow_blade",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p24:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "barrow_blade",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p25:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "barrow_helm",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p26:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "barrow_helm",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p27:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "ringmail",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p28:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "foxfire_wisp",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p29:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "moonsteel_plate",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p30:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "round_buckler",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p31:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "fogcloak_hood",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p32:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "foxfire_wisp",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p33:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "fogcloak_hood",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p34:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "barrow_helm",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p35:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "barrow_blade",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p36:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "barrow_helm",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p37:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "foxfire_wisp",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p38:q_weekly",
+   "cadence": "weekly",
+   "owned": [],
+   "item": "barrow_helm",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p39:q_weekly",
+   "cadence": "weekly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "wayfinders_crook",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p0:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "barrow_helm",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p1:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "barrow_helm",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p2:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "wayfinders_crook",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p3:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "wayfinders_crook",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p4:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "barrow_helm",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p5:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "crown_of_roots",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p6:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "foxfire_wisp",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p7:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "foxfire_wisp",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p8:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "moonsteel_plate",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p9:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "barrow_helm",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p10:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "foxfire_wisp",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p11:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "wayfinders_crook",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p12:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "barrow_helm",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p13:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "moonsteel_plate",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p14:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "wayfinders_crook",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p15:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "wayfinders_crook",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p16:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "moonsteel_plate",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p17:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "barrow_helm",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p18:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "wayfinders_crook",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p19:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "foxfire_wisp",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p20:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "wayfinders_crook",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p21:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "barrow_helm",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p22:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "foxfire_wisp",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p23:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "wayfinders_crook",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p24:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "foxfire_wisp",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p25:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "foxfire_wisp",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p26:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "barrow_helm",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p27:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "barrow_helm",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p28:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "crown_of_roots",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p29:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "moonsteel_plate",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p30:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "wayfinders_crook",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p31:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "barrow_helm",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p32:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "foxfire_wisp",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p33:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "foxfire_wisp",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p34:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "wayfinders_crook",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p35:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "foxfire_wisp",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p36:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "foxfire_wisp",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p37:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "foxfire_wisp",
+   "fresh": false
+  },
+  {
+   "seed": 555,
+   "key": "p38:q_monthly",
+   "cadence": "monthly",
+   "owned": [],
+   "item": "crown_of_roots",
+   "fresh": true
+  },
+  {
+   "seed": 555,
+   "key": "p39:q_monthly",
+   "cadence": "monthly",
+   "owned": [
+    "oak_staff",
+    "wool_cap",
+    "miners_pick",
+    "barrow_helm",
+    "crown_of_roots",
+    "moon_mirror",
+    "wayfinders_crook",
+    "moonsteel_plate",
+    "foxfire_wisp"
+   ],
+   "item": "moon_mirror",
+   "fresh": false
+  }
+ ],
+ "levels": [
+  {
+   "xp": 0,
+   "level": 1,
+   "into": 0,
+   "need": 100
+  },
+  {
+   "xp": 99,
+   "level": 1,
+   "into": 99,
+   "need": 100
+  },
+  {
+   "xp": 100,
+   "level": 2,
+   "into": 0,
+   "need": 150
+  },
+  {
+   "xp": 249,
+   "level": 2,
+   "into": 149,
+   "need": 150
+  },
+  {
+   "xp": 250,
+   "level": 3,
+   "into": 0,
+   "need": 200
+  },
+  {
+   "xp": 1480,
+   "level": 7,
+   "into": 130,
+   "need": 400
+  },
+  {
+   "xp": 5950,
+   "level": 15,
+   "into": 0,
+   "need": 800
+  },
+  {
+   "xp": 123456,
+   "level": 69,
+   "into": 2756,
+   "need": 3500
+  }
+ ],
+ "scenario": {
+  "seed": 777,
+  "xp": 13280,
+  "level": 22,
+  "inventory": [
+   "rusty_spade",
+   "lucky_pebble",
+   "wayfinders_crook",
+   "barrow_helm",
+   "dusk_moth",
+   "barrow_shield",
+   "moonsteel_plate",
+   "foxfire_wisp",
+   "pot_lid",
+   "miners_pick",
+   "barrow_blade",
+   "moonsteel_spade",
+   "oak_staff",
+   "wool_cap",
+   "ember_wisp",
+   "patched_tunic",
+   "ringmail",
+   "travel_cloak",
+   "moon_mirror",
+   "firefly",
+   "diggers_apron",
+   "moonsteel_cap",
+   "miners_helm",
+   "fogcloak_hood",
+   "round_buckler",
+   "straw_hat",
+   "crown_of_roots",
+   "wardens_coat",
+   "plank_shield"
+  ],
+  "equipped": {
+   "hand": "oak_staff",
+   "charm": "firefly",
+   "head": "crown_of_roots",
+   "shield": "plank_shield",
+   "body": "wardens_coat"
+  },
+  "counts": {
+   "quests": 158,
+   "daily": 130,
+   "weekly": 24,
+   "monthly": 4,
+   "dailyClears": 43,
+   "customDone": 40,
+   "customMade": 2,
+   "bestStreak": 24
+  },
+  "streak": {
+   "count": 24,
+   "lastDay": "2026-12-15"
+  },
+  "feats": [
+   "broken_ground",
+   "deepwalker",
+   "delver",
+   "dressed_for_it",
+   "full_lantern",
+   "full_pockets",
+   "hoard",
+   "kindling",
+   "lamplighter",
+   "moonturn",
+   "old_light",
+   "own_path",
+   "pathfinder",
+   "rune_reader",
+   "self_made",
+   "seven_runes",
+   "steady_flame",
+   "ten_deep",
+   "tunneler",
+   "well_dug"
+  ],
+  "activeDays": [
+   "2026-11-01",
+   "2026-11-02",
+   "2026-11-03",
+   "2026-11-04",
+   "2026-11-05",
+   "2026-11-06",
+   "2026-11-07",
+   "2026-11-08",
+   "2026-11-09",
+   "2026-11-10",
+   "2026-11-11",
+   "2026-11-12",
+   "2026-11-13",
+   "2026-11-14",
+   "2026-11-15",
+   "2026-11-16",
+   "2026-11-17",
+   "2026-11-18",
+   "2026-11-19",
+   "2026-11-22",
+   "2026-11-23",
+   "2026-11-24",
+   "2026-11-25",
+   "2026-11-26",
+   "2026-11-27",
+   "2026-11-28",
+   "2026-11-29",
+   "2026-11-30",
+   "2026-12-01",
+   "2026-12-02",
+   "2026-12-03",
+   "2026-12-04",
+   "2026-12-05",
+   "2026-12-06",
+   "2026-12-07",
+   "2026-12-08",
+   "2026-12-09",
+   "2026-12-10",
+   "2026-12-11",
+   "2026-12-12",
+   "2026-12-13",
+   "2026-12-14",
+   "2026-12-15"
+  ],
+  "customIds": [
+   "c_mw3hu2o0_0",
+   "c_mw6cps00_1"
+  ],
+  "daily": [
+   "c_mw3hu2o0_0",
+   "d_tinker",
+   "d_clothes"
+  ],
+  "weekly": [
+   "w_practice",
+   "w_declutter",
+   "w_kind"
+  ],
+  "monthly": [
+   "m_book",
+   "m_active"
+  ],
+  "levelsSeen": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22
+  ],
+  "itemsSeen": [
+   "lucky_pebble:new",
+   "wayfinders_crook:new",
+   "barrow_helm:new",
+   "dusk_moth:new",
+   "barrow_shield:new",
+   "moonsteel_plate:new",
+   "foxfire_wisp:new",
+   "pot_lid:new",
+   "foxfire_wisp:again",
+   "miners_pick:new",
+   "barrow_blade:new",
+   "moonsteel_spade:new",
+   "oak_staff:new",
+   "wool_cap:new",
+   "ember_wisp:new",
+   "patched_tunic:new",
+   "ringmail:new",
+   "travel_cloak:new",
+   "moonsteel_plate:again",
+   "moon_mirror:new",
+   "firefly:new",
+   "barrow_helm:again",
+   "diggers_apron:new",
+   "moonsteel_cap:new",
+   "miners_helm:new",
+   "barrow_helm:again",
+   "fogcloak_hood:new",
+   "round_buckler:new",
+   "barrow_blade:again",
+   "miners_helm:again",
+   "straw_hat:new",
+   "ringmail:again",
+   "miners_pick:again",
+   "dusk_moth:again",
+   "moonsteel_plate:again",
+   "crown_of_roots:new",
+   "wardens_coat:new",
+   "travel_cloak:again",
+   "barrow_blade:again",
+   "dusk_moth:again",
+   "travel_cloak:again",
+   "miners_pick:again",
+   "round_buckler:again",
+   "plank_shield:new"
+  ],
+  "totalEvents": 365,
+  "saveJson": "{\"version\":1,\"seed\":777,\"createdAt\":1793534400000,\"onboarded\":true,\"hero\":{\"name\":\"Tess\",\"skin\":1,\"hair\":1,\"hairStyle\":1,\"scarf\":0},\"xp\":13280,\"inventory\":[\"rusty_spade\",\"lucky_pebble\",\"wayfinders_crook\",\"barrow_helm\",\"dusk_moth\",\"barrow_shield\",\"moonsteel_plate\",\"foxfire_wisp\",\"pot_lid\",\"miners_pick\",\"barrow_blade\",\"moonsteel_spade\",\"oak_staff\",\"wool_cap\",\"ember_wisp\",\"patched_tunic\",\"ringmail\",\"travel_cloak\",\"moon_mirror\",\"firefly\",\"diggers_apron\",\"moonsteel_cap\",\"miners_helm\",\"fogcloak_hood\",\"round_buckler\",\"straw_hat\",\"crown_of_roots\",\"wardens_coat\",\"plank_shield\"],\"equipped\":{\"hand\":\"oak_staff\",\"charm\":\"firefly\",\"head\":\"crown_of_roots\",\"shield\":\"plank_shield\",\"body\":\"wardens_coat\"},\"boards\":{\"daily\":{\"period\":\"2026-12-15\",\"quests\":[{\"key\":\"2026-12-15:c_mw3hu2o0_0\",\"defId\":\"c_mw3hu2o0_0\",\"cadence\":\"daily\",\"category\":\"home\",\"title\":\"Feed the cat\",\"xp\":20,\"target\":1,\"progress\":1,\"done\":true,\"custom\":true,\"pinned\":true},{\"key\":\"2026-12-15:d_tinker\",\"defId\":\"d_tinker\",\"cadence\":\"daily\",\"category\":\"craft\",\"title\":\"Tinker with a project for 15 minutes\",\"xp\":30,\"target\":1,\"progress\":1,\"done\":true,\"custom\":false,\"pinned\":false},{\"key\":\"2026-12-15:d_clothes\",\"defId\":\"d_clothes\",\"cadence\":\"daily\",\"category\":\"home\",\"title\":\"Put your clean clothes away\",\"xp\":20,\"target\":1,\"progress\":1,\"done\":true,\"custom\":false,\"pinned\":false}],\"rerolls\":0,\"cleared\":true},\"weekly\":{\"period\":\"2026-W51\",\"quests\":[{\"key\":\"2026-W51:w_practice\",\"defId\":\"w_practice\",\"cadence\":\"weekly\",\"category\":\"craft\",\"title\":\"Practise your craft on 3 days\",\"xp\":125,\"target\":3,\"progress\":3,\"done\":true,\"custom\":false,\"pinned\":false},{\"key\":\"2026-W51:w_declutter\",\"defId\":\"w_declutter\",\"cadence\":\"weekly\",\"category\":\"home\",\"title\":\"Give away or recycle 5 things\",\"xp\":125,\"target\":5,\"progress\":5,\"done\":true,\"custom\":false,\"pinned\":false},{\"key\":\"2026-W51:w_kind\",\"defId\":\"w_kind\",\"cadence\":\"weekly\",\"category\":\"heart\",\"title\":\"Do 3 kind things nobody asked for\",\"xp\":125,\"target\":3,\"progress\":3,\"done\":true,\"custom\":false,\"pinned\":false}],\"rerolls\":0,\"cleared\":false},\"monthly\":{\"period\":\"2026-12\",\"quests\":[{\"key\":\"2026-12:m_book\",\"defId\":\"m_book\",\"cadence\":\"monthly\",\"category\":\"mind\",\"title\":\"Finish a whole book\",\"xp\":600,\"target\":1,\"progress\":1,\"done\":true,\"custom\":false,\"pinned\":false},{\"key\":\"2026-12:m_active\",\"defId\":\"m_active\",\"cadence\":\"monthly\",\"category\":\"body\",\"title\":\"Be active on 15 days this month\",\"xp\":600,\"target\":15,\"progress\":15,\"done\":true,\"custom\":false,\"pinned\":false}],\"rerolls\":0,\"cleared\":false}},\"recent\":{\"daily\":[\"c_mw3hu2o0_0\",\"d_breathless\",\"d_bed\"],\"weekly\":[\"w_sketch\",\"w_skill\",\"w_sleep\"],\"monthly\":[\"m_give\",\"m_grow\"]},\"streak\":{\"count\":24,\"lastDay\":\"2026-12-15\"},\"activeDays\":[\"2026-11-01\",\"2026-11-02\",\"2026-11-03\",\"2026-11-04\",\"2026-11-05\",\"2026-11-06\",\"2026-11-07\",\"2026-11-08\",\"2026-11-09\",\"2026-11-10\",\"2026-11-11\",\"2026-11-12\",\"2026-11-13\",\"2026-11-14\",\"2026-11-15\",\"2026-11-16\",\"2026-11-17\",\"2026-11-18\",\"2026-11-19\",\"2026-11-22\",\"2026-11-23\",\"2026-11-24\",\"2026-11-25\",\"2026-11-26\",\"2026-11-27\",\"2026-11-28\",\"2026-11-29\",\"2026-11-30\",\"2026-12-01\",\"2026-12-02\",\"2026-12-03\",\"2026-12-04\",\"2026-12-05\",\"2026-12-06\",\"2026-12-07\",\"2026-12-08\",\"2026-12-09\",\"2026-12-10\",\"2026-12-11\",\"2026-12-12\",\"2026-12-13\",\"2026-12-14\",\"2026-12-15\"],\"counts\":{\"quests\":158,\"daily\":130,\"weekly\":24,\"monthly\":4,\"dailyClears\":43,\"customDone\":40,\"customMade\":2,\"bestStreak\":24},\"feats\":{\"broken_ground\":1793534400000,\"full_lantern\":1793534400000,\"seven_runes\":1793534400000,\"full_pockets\":1793534400000,\"moonturn\":1793534400000,\"delver\":1793534400000,\"dressed_for_it\":1793534400000,\"ten_deep\":1793620800000,\"kindling\":1793707200000,\"pathfinder\":1793707200000,\"own_path\":1793880000000,\"steady_flame\":1794052800000,\"hoard\":1794052800000,\"old_light\":1794225600000,\"lamplighter\":1794312000000,\"well_dug\":1794571200000,\"self_made\":1794657600000,\"rune_reader\":1794830400000,\"deepwalker\":1796385600000,\"tunneler\":1797249600000},\"custom\":[{\"id\":\"c_mw3hu2o0_0\",\"cadence\":\"daily\",\"category\":\"home\",\"difficulty\":1,\"title\":\"Feed the cat\",\"pinned\":true},{\"id\":\"c_mw6cps00_1\",\"cadence\":\"daily\",\"category\":\"craft\",\"difficulty\":3,\"title\":\"Juggle three balls\",\"pinned\":false}],\"settings\":{\"retro\":true,\"sound\":true,\"haptics\":true,\"guideSeen\":false,\"categories\":{\"body\":true,\"mind\":true,\"craft\":true,\"heart\":true,\"home\":true}}}"
+ }
+}

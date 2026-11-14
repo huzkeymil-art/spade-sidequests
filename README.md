@@ -6,7 +6,12 @@ Spade is a dark, simple quest app with the feel of a late-90s 3D adventure game:
 
 ![The quest board, the hero screen, an item being dug up, and the satchel](docs/screenshots.png)
 
-This repository is the **web prototype**. It installs on an iPhone from Safari and runs full-screen and offline. A native Swift version is planned to follow it, using this one as the blueprint.
+There are two versions in this repository, and they play by the same rules:
+
+- **The web app** installs on an iPhone from Safari and runs full-screen and offline. It was the prototype.
+- **The iPhone app** (`ios/`) is the native version, written in Swift. It adds haptics, daily reminders and the system share sheet, and goes out through TestFlight. See [ios/README.md](ios/README.md).
+
+A save backed up from one loads in the other.
 
 ## How it plays
 
@@ -27,7 +32,7 @@ The 3D scene doubles as a progress display:
 | Seven runes on the standing stone | The week, Monday at the bottom. A rune lights for each day you finish a daily. |
 | Moon phase | The month. A sliver on the 1st, full on the last day. |
 
-## Put it on an iPhone
+## Put the web app on an iPhone
 
 1. Open the app's web address in **Safari**.
 2. Tap **Share**, then **Add to Home Screen**.
@@ -55,6 +60,7 @@ npm test          # run the game-rule tests
 npm run build     # make the finished app in dist/
 npm run preview   # try the finished app, with offline support
 npm run icons     # redraw the app icons
+npm run ios:data  # export models, textures and test examples for the iPhone app
 ```
 
 While `npm run dev` is running, `http://localhost:5173/dev/stage.html` shows the 3D scene on its own, which is handy when tuning the art. For example: `dev/stage.html?view=hero&gear=hand:barrow_blade,head:straw_hat&month=1`.
@@ -68,8 +74,10 @@ src/
   three/     The 3D scene: models, lighting, the dither effect, the dig-up.
   ui/        The screens.
   audio/     Sound effects, generated in code.
-scripts/     Draws the app icons.
+scripts/     Draws the app icons, and exports data for the iPhone app.
 dev/         A test page for the 3D scene.
+ios/         The native iPhone app (see ios/README.md).
+codemagic.yaml   Builds the iPhone app and sends it to TestFlight.
 ```
 
 A few ideas hold it together:
@@ -87,18 +95,18 @@ A few ideas hold it together:
 - **Add a feat:** `src/content/achievements.json`.
 - **Rebalance XP, levels or loot odds:** `src/game/rewards.ts`.
 
-## For the Swift version
+## The iPhone app
 
-These parts are meant to carry straight over:
+The native app is built from the web app rather than beside it, so the two cannot drift apart:
 
-| Prototype | Swift app |
+| Web app | iPhone app |
 | --- | --- |
-| `src/content/*.json` | Load the same files unchanged. |
-| `src/game/*.ts` | Port function by function. The tests describe the expected behaviour. |
-| `src/three/models/*.ts` | The same part lists map onto `SCNBox`, `SCNCylinder`, `SCNCone` and `SCNSphere`. |
-| Settings → Back up save | The save is plain JSON, so the native app can import it. |
+| `src/content/*.json` | Copied unchanged into `ios/Core`. |
+| `src/game/*.ts` | Ported function by function to `ios/Core`. Shared worked examples prove both give the same answers. |
+| `src/three/models/*.ts` | Exported as shapes to `ios/Spade/Resources/models.json`, which SceneKit builds. |
+| Settings → Back up save | The same JSON save loads in both. |
 
-Things the web version cannot do that the native one can: a notification when quests reset, haptic taps, and home-screen widgets.
+`npm run ios:data` refreshes everything in the right-hand column. Building it, testing it without a Mac, and the full TestFlight setup are in [ios/README.md](ios/README.md).
 
 ## Credits
 

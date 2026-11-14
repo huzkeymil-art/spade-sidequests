@@ -122,3 +122,9 @@ for (const [name, size, grid] of files) {
   writeFileSync(join(OUT, name), png(size, grid));
   console.log(`wrote public/${name} (${size}px)`);
 }
+
+// The native app's icon: one large square, which Xcode scales to every size it needs.
+const IOS_ICON = join(OUT, '..', 'ios', 'Spade', 'Assets.xcassets', 'AppIcon.appiconset');
+mkdirSync(IOS_ICON, { recursive: true });
+writeFileSync(join(IOS_ICON, 'icon-1024.png'), png(1024, 32));
+console.log('wrote ios app icon (1024px)');
