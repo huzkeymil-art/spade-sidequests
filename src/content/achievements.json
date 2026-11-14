@@ -1,0 +1,33 @@
+[
+  { "id": "broken_ground", "name": "Broken Ground", "desc": "Complete your first quest.", "stat": "quests", "goal": 1, "xp": 25 },
+  { "id": "ten_deep", "name": "Ten Deep", "desc": "Complete 10 quests.", "stat": "quests", "goal": 10, "xp": 50 },
+  { "id": "well_dug", "name": "Well Dug", "desc": "Complete 50 quests.", "stat": "quests", "goal": 50, "xp": 150 },
+  { "id": "tunneler", "name": "Tunneler", "desc": "Complete 150 quests.", "stat": "quests", "goal": 150, "xp": 300 },
+  { "id": "bedrock", "name": "Bedrock", "desc": "Complete 500 quests.", "stat": "quests", "goal": 500, "xp": 800 },
+
+  { "id": "full_lantern", "name": "Full Lantern", "desc": "Finish every daily quest in one day.", "stat": "dailyClears", "goal": 1, "xp": 50 },
+  { "id": "lamplighter", "name": "Lamplighter", "desc": "Fill the lantern on 10 days.", "stat": "dailyClears", "goal": 10, "xp": 200 },
+
+  { "id": "kindling", "name": "Kindling", "desc": "Keep a 3-day streak.", "stat": "bestStreak", "goal": 3, "xp": 40 },
+  { "id": "steady_flame", "name": "Steady Flame", "desc": "Keep a 7-day streak.", "stat": "bestStreak", "goal": 7, "xp": 100, "item": "ember_wisp" },
+  { "id": "foxfire", "name": "Foxfire", "desc": "Keep a 30-day streak.", "stat": "bestStreak", "goal": 30, "xp": 400, "item": "foxfire_mantle" },
+  { "id": "moon_white", "name": "Moon-White", "desc": "Keep a 100-day streak.", "stat": "bestStreak", "goal": 100, "xp": 1000 },
+
+  { "id": "seven_runes", "name": "Seven Runes", "desc": "Complete a weekly quest.", "stat": "weekly", "goal": 1, "xp": 50 },
+  { "id": "rune_reader", "name": "Rune Reader", "desc": "Complete 10 weekly quests.", "stat": "weekly", "goal": 10, "xp": 250 },
+  { "id": "moonturn", "name": "Moonturn", "desc": "Complete a monthly quest.", "stat": "monthly", "goal": 1, "xp": 100 },
+  { "id": "six_moons", "name": "Six Moons", "desc": "Complete 6 monthly quests.", "stat": "monthly", "goal": 6, "xp": 600 },
+
+  { "id": "delver", "name": "Delver", "desc": "Reach level 5.", "stat": "level", "goal": 5, "xp": 75 },
+  { "id": "pathfinder", "name": "Pathfinder", "desc": "Reach level 10.", "stat": "level", "goal": 10, "xp": 150 },
+  { "id": "deepwalker", "name": "Deepwalker", "desc": "Reach level 20.", "stat": "level", "goal": 20, "xp": 500 },
+
+  { "id": "full_pockets", "name": "Full Pockets", "desc": "Own 5 items.", "stat": "items", "goal": 5, "xp": 60 },
+  { "id": "hoard", "name": "Hoard", "desc": "Own 15 items.", "stat": "items", "goal": 15, "xp": 200 },
+  { "id": "museum_piece", "name": "Museum Piece", "desc": "Own every item.", "stat": "items", "goal": 33, "xp": 1000 },
+  { "id": "dressed_for_it", "name": "Dressed for It", "desc": "Wear something in all five slots.", "stat": "slotsFilled", "goal": 5, "xp": 100 },
+  { "id": "old_light", "name": "Old Light", "desc": "Unearth a mythic item.", "stat": "mythics", "goal": 1, "xp": 250 },
+
+  { "id": "own_path", "name": "Own Path", "desc": "Write a quest of your own.", "stat": "customMade", "goal": 1, "xp": 30 },
+  { "id": "self_made", "name": "Self-Made", "desc": "Complete 10 of your own quests.", "stat": "customDone", "goal": 10, "xp": 150 }
+]
