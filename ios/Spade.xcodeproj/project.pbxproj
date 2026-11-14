@@ -19,7 +19,6 @@
 		};
 		A10000000000000000000003 /* SpadeCore */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			name = SpadeCore;
 			path = Core/Sources/SpadeCore;
 			sourceTree = "<group>";
 		};
