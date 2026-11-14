@@ -84,6 +84,7 @@ export class Stage {
   private freeSpin = false;
   private burstAt = -10;
   private sheetCss = '';
+  private reducedMotion = false;
 
   private readonly lookAt = new THREE.Vector3();
   private readonly resizeObserver: ResizeObserver;
@@ -159,6 +160,11 @@ export class Stage {
     this.setView(view);
     this.shot = { ...SHOTS[view] };
     this.lookAt.set(...this.shot.target);
+  }
+
+  /** When the player has asked for less animation: the camera cuts instead of gliding and stops drifting. */
+  setReducedMotion(on: boolean) {
+    this.reducedMotion = on;
   }
 
   setRetro(on: boolean) {
@@ -252,7 +258,7 @@ export class Stage {
 
   private update(dt: number) {
     const goal = SHOTS[this.view];
-    const ease = 1 - Math.exp(-dt * 5.5);
+    const ease = this.reducedMotion ? 1 : 1 - Math.exp(-dt * 5.5);
     const s = this.shot;
     s.dist += (goal.dist - s.dist) * ease;
     s.height += (goal.height - s.height) * ease;
@@ -283,22 +289,24 @@ export class Stage {
   private render() {
     const s = this.shot;
     // A slow, slight drift keeps the picture from feeling frozen.
-    const yaw = s.yaw + Math.sin(this.time * 0.17) * 0.035;
+    const yaw = s.yaw + (this.reducedMotion ? 0 : Math.sin(this.time * 0.17) * 0.035);
     this.camera.position.set(
       this.lookAt.x + Math.sin(yaw) * s.dist,
       s.height,
       this.lookAt.z + Math.cos(yaw) * s.dist,
     );
     this.camera.lookAt(this.lookAt);
+    // Short phones give the panel a bigger share of the screen, and the picture moves up to match.
+    const squeeze = s.sheet >= 1 ? 1 : 1 - THREE.MathUtils.clamp((780 - this.cssHeight) / 780, 0, 0.2) * 0.75;
     // Slide the picture up or down so the target lands at `screenY` instead of dead centre.
-    const shift = Math.round((0.5 - s.screenY) * this.lowHeight);
+    const shift = Math.round((0.5 - s.screenY * squeeze) * this.lowHeight);
     this.camera.setViewOffset(this.lowWidth, this.lowHeight, 0, shift, this.lowWidth, this.lowHeight);
 
     world.uFogNear.value = s.dist - 2;
     world.uFogFar.value = s.dist + 44;
 
     // The UI panel follows the same number the dither fade uses, so they never drift apart.
-    const sheetLow = Math.round(s.sheet * this.lowHeight);
+    const sheetLow = Math.round(s.sheet * squeeze * this.lowHeight);
     this.post.material.uniforms.uSheetY.value = s.sheet >= 1 ? 1e6 : sheetLow;
     const sheetCss = `${(s.sheet >= 1 ? this.cssHeight : (sheetLow * this.scale) / this.pixelRatio).toFixed(2)}px`;
     if (sheetCss !== this.sheetCss) {

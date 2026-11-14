@@ -54,6 +54,8 @@ export function newSave(seed: number, now: Date): Save {
     settings: {
       retro: true,
       sound: true,
+      haptics: true,
+      guideSeen: false,
       categories: { body: true, mind: true, craft: true, heart: true, home: true },
     },
   };
@@ -352,6 +354,9 @@ export function repairSave(raw: unknown, now: Date): Save | null {
     settings: {
       retro: input.settings?.retro ?? true,
       sound: input.settings?.sound ?? true,
+      haptics: input.settings?.haptics ?? true,
+      // A save from before the guide existed belongs to someone who already knows the game.
+      guideSeen: input.settings?.guideSeen ?? !!input.onboarded,
       categories,
     },
   };

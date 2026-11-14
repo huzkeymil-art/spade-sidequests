@@ -364,6 +364,8 @@ describe('saves', () => {
     expect(fixed.equipped).toEqual({});
     expect(fixed.hero.skin).toBe(1);
     expect(fixed.settings.categories.body).toBe(true);
+    expect(fixed.settings.haptics).toBe(true);
+    expect(fixed.settings.guideSeen).toBe(false); // never onboarded, so the guide is still to come
     expect(syncPeriods(fixed, now).boards.daily.quests).toHaveLength(3);
   });
 
@@ -374,6 +376,16 @@ describe('saves', () => {
     expect(fixed.boards.daily.quests).toHaveLength(3);
     expect(fixed.boards.weekly.quests).toHaveLength(3);
     expect(fixed.boards.monthly.quests).toHaveLength(2);
+  });
+
+  it('does not show the guide to a returning player whose save predates it', () => {
+    const now = at(2026, 11, 14);
+    const old = JSON.parse(JSON.stringify(started(now)));
+    delete old.settings.guideSeen;
+    delete old.settings.haptics;
+    const fixed = repairSave(old, now)!;
+    expect(fixed.settings.guideSeen).toBe(true);
+    expect(fixed.settings.haptics).toBe(true);
   });
 
   it('rejects things that are not saves', () => {

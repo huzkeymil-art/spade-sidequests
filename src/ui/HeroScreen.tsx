@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { sfx } from '../audio/sfx';
 import { ITEMS, ITEM_BY_ID, LOOKS } from '../game/content';
 import { levelInfo, rankFor } from '../game/rewards';
 import { useStore } from '../game/store';
 import { SLOTS, type Slot } from '../game/types';
+import { Sheet } from './Sheet';
+import { feedback } from './feedback';
 import { Icon } from './stage';
 
 const HAIR_NAMES: Record<string, string> = { crop: 'Crop', tuft: 'Tuft', long: 'Long', knot: 'Knot', none: 'Bare' };
+const SLOT_NAMES: Record<Slot, string> = { head: 'Head', body: 'Body', hand: 'Hand', shield: 'Shield', charm: 'Charm' };
 
 /** The avatar screen: what the hero wears and how they look. */
 export function HeroScreen() {
@@ -33,27 +35,33 @@ export function HeroScreen() {
                 autoFocus
                 value={draft}
                 maxLength={16}
+                aria-label="Hero name"
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={saveName}
                 onKeyDown={(e) => e.key === 'Enter' && saveName()}
                 enterKeyHint="done"
+                autoCapitalize="words"
+                autoComplete="off"
               />
             </label>
           ) : (
-            <button
-              onClick={() => {
-                setDraft(save.hero.name);
-                setNaming(true);
-              }}
-              aria-label="Rename your hero"
-            >
-              <h2 className="display">{save.hero.name}</h2>
-            </button>
-          )}
-          {!naming && (
-            <span className="label dim">
-              {rankFor(level)} · Lv {level}
-            </span>
+            <>
+              <button
+                className="rename"
+                aria-label={`${save.hero.name}. Rename your hero`}
+                onClick={() => {
+                  feedback.tap();
+                  setDraft(save.hero.name);
+                  setNaming(true);
+                }}
+              >
+                <h2 className="display">{save.hero.name}</h2>
+                <span className="label faint">Rename</span>
+              </button>
+              <span className="label dim" style={{ flex: 'none' }}>
+                {rankFor(level)} · Lv {level}
+              </span>
+            </>
           )}
         </div>
       </div>
@@ -68,8 +76,9 @@ export function HeroScreen() {
                 <button
                   key={slot}
                   className="slot-cell"
+                  aria-label={`${SLOT_NAMES[slot]}: ${id ? ITEM_BY_ID[id].name : 'empty'}. Change`}
                   onClick={() => {
-                    sfx.tap();
+                    feedback.tap();
                     setPicking(slot);
                   }}
                 >
@@ -93,7 +102,10 @@ export function HeroScreen() {
                 style={{ ['--fill' as string]: color }}
                 aria-pressed={save.hero.skin === i}
                 aria-label={`Skin tone ${i + 1}`}
-                onClick={() => setHero({ skin: i })}
+                onClick={() => {
+                  feedback.select();
+                  setHero({ skin: i });
+                }}
               />
             ))}
           </div>
@@ -101,9 +113,17 @@ export function HeroScreen() {
 
         <div className="section">
           <span className="label">Hair</span>
-          <div className="chips" style={{ paddingBottom: 9 }}>
+          <div className="chips" style={{ paddingBottom: 10 }}>
             {LOOKS.hairStyles.map((style, i) => (
-              <button key={style} className="chip plate" aria-pressed={save.hero.hairStyle === i} onClick={() => setHero({ hairStyle: i })}>
+              <button
+                key={style}
+                className="chip plate"
+                aria-pressed={save.hero.hairStyle === i}
+                onClick={() => {
+                  feedback.select();
+                  setHero({ hairStyle: i });
+                }}
+              >
                 {HAIR_NAMES[style] ?? style}
               </button>
             ))}
@@ -116,7 +136,10 @@ export function HeroScreen() {
                 style={{ ['--fill' as string]: color }}
                 aria-pressed={save.hero.hair === i}
                 aria-label={`Hair colour ${i + 1}`}
-                onClick={() => setHero({ hair: i })}
+                onClick={() => {
+                  feedback.select();
+                  setHero({ hair: i });
+                }}
               />
             ))}
           </div>
@@ -132,7 +155,10 @@ export function HeroScreen() {
                 style={{ ['--fill' as string]: color }}
                 aria-pressed={save.hero.scarf === i}
                 aria-label={`Scarf colour ${i + 1}`}
-                onClick={() => setHero({ scarf: i })}
+                onClick={() => {
+                  feedback.select();
+                  setHero({ scarf: i });
+                }}
               />
             ))}
           </div>
@@ -140,24 +166,15 @@ export function HeroScreen() {
       </div>
 
       {picking && (
-        <>
-          <div className="drawer-shade" onClick={() => setPicking(null)} />
-          <div className="drawer" role="dialog" aria-label={`Choose ${picking}`}>
-            <div className="screen-title" style={{ paddingTop: 0 }}>
-              <span className="label dim">Choose {picking}</span>
-              <button className="textlink" style={{ padding: 0 }} onClick={() => setPicking(null)}>
-                Done
-              </button>
-            </div>
-            <SlotPicker
-              slot={picking}
-              onPick={(id) => {
-                sfx.tap();
-                equip(picking, id);
-              }}
-            />
-          </div>
-        </>
+        <Sheet title={SLOT_NAMES[picking]} size="fit" onClose={() => setPicking(null)}>
+          <SlotPicker
+            slot={picking}
+            onPick={(id) => {
+              feedback.select();
+              equip(picking, id);
+            }}
+          />
+        </Sheet>
       )}
     </>
   );
@@ -175,13 +192,13 @@ function SlotPicker({ slot, onPick }: { slot: Slot; onPick: (id: string | null) 
   return (
     <>
       <div className="grid">
-        <button className="slot-cell" onClick={() => onPick(null)}>
+        <button className="slot-cell" aria-label="Wear nothing" aria-pressed={!worn} onClick={() => onPick(null)}>
           <span className={`slot plate ${!worn ? 'selected' : ''}`}>
             <span className="label faint">None</span>
           </span>
         </button>
         {owned.map((item) => (
-          <button key={item.id} className="slot-cell" onClick={() => onPick(item.id)} aria-label={item.name}>
+          <button key={item.id} className="slot-cell" onClick={() => onPick(item.id)} aria-label={item.name} aria-pressed={worn === item.id}>
             <span className={`slot plate ${worn === item.id ? 'worn' : ''}`}>
               <Icon kind="item" id={item.id} size={50} />
               <span className={`slot-pip rarity-${item.rarity}`} />
@@ -189,7 +206,7 @@ function SlotPicker({ slot, onPick }: { slot: Slot; onPick: (id: string | null) 
           </button>
         ))}
       </div>
-      <p style={{ paddingTop: 13, minHeight: 40 }}>
+      <p style={{ paddingTop: 14, minHeight: 44 }}>
         {worn ? (
           <>
             {ITEM_BY_ID[worn].name} <span className={`label rarity-${ITEM_BY_ID[worn].rarity}`}>· {ITEM_BY_ID[worn].rarity}</span>

@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { sfx } from '../audio/sfx';
 import { useStore } from '../game/store';
 import { CATEGORIES } from '../game/types';
+import { Confirm, Sheet, ToggleRow } from './Sheet';
+import { feedback } from './feedback';
+import { pickTextFile, shareSave } from './platform';
 import { Icon } from './stage';
 
 /** Settings: display, sound, which kinds of quest to deal, your own quests, and the save. */
-export function Settings({ onClose }: { onClose: () => void }) {
+export function Settings({ onClose, onGuide }: { onClose: () => void; onGuide: () => void }) {
   const save = useStore((s) => s.save);
   const setSettings = useStore((s) => s.setSettings);
   const toggleCategory = useStore((s) => s.toggleCategory);
@@ -14,161 +16,209 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const importSave = useStore((s) => s.importSave);
   const reset = useStore((s) => s.reset);
 
+  const [pasting, setPasting] = useState(false);
   const [text, setText] = useState('');
   const [note, setNote] = useState('');
   const [confirming, setConfirming] = useState(false);
 
-  const copy = async () => {
+  const backUp = async () => {
+    feedback.tap();
     const data = exportSave();
-    setText(data);
-    try {
-      await navigator.clipboard.writeText(data);
-      setNote('Copied. Paste it somewhere safe.');
-    } catch {
+    const result = await shareSave(data);
+    if (result === 'shared') setNote('Save shared.');
+    else if (result === 'copied') setNote('Save copied. Paste it somewhere safe.');
+    else if (result === 'failed') {
+      // Last resort: show the text so it can be copied by hand.
+      setText(data);
+      setPasting(true);
       setNote('Select the text below and copy it.');
     }
   };
 
-  const load = () => {
-    if (importSave(text.trim())) {
+  const load = (data: string) => {
+    if (importSave(data.trim())) {
       setNote('Save loaded.');
-      sfx.done();
+      setPasting(false);
+      setText('');
+      feedback.done();
     } else {
       setNote("That doesn't look like a Spade save.");
     }
   };
 
+  const restoreFromFile = async () => {
+    feedback.tap();
+    const data = await pickTextFile();
+    if (data !== null) load(data);
+  };
+
   return (
-    <div className="modal" role="dialog" aria-label="Settings">
-      <div className="modal-head">
-        <h2 className="display">Settings</h2>
-        <button className="textlink" onClick={onClose}>
-          Close
-        </button>
+    <Sheet title="Settings" onClose={onClose}>
+      <div className="section">
+        <span className="label">Display and feel</span>
+        <div className="group plate">
+          <ToggleRow label="Retro pixels" note="Chunky, dithered 3D" checked={save.settings.retro} onChange={(retro) => setSettings({ retro })} />
+          <ToggleRow label="Sound" checked={save.settings.sound} onChange={(sound) => setSettings({ sound })} />
+          <ToggleRow label="Haptics" note="Small taps you can feel" checked={save.settings.haptics} onChange={(haptics) => setSettings({ haptics })} />
+        </div>
       </div>
 
-      <div className="modal-body">
-        <div className="section">
-          <span className="label">Display and sound</span>
-          <div className="row" style={{ borderTop: '1px solid var(--moss)' }}>
-            <div>
-              <div>Retro pixels</div>
-              <div className="label faint" style={{ marginTop: 5 }}>
-                Chunky, dithered 3D
-              </div>
-            </div>
+      <div className="section">
+        <span className="label">Kinds of quest to deal</span>
+        <div className="chips">
+          {CATEGORIES.map((c) => (
             <button
-              className="toggle plate"
-              role="switch"
-              aria-checked={save.settings.retro}
-              aria-label="Retro pixels"
-              onClick={() => setSettings({ retro: !save.settings.retro })}
-            />
-          </div>
-          <div className="row">
-            <div>Sound</div>
-            <button
-              className="toggle plate"
-              role="switch"
-              aria-checked={save.settings.sound}
-              aria-label="Sound"
-              onClick={() => setSettings({ sound: !save.settings.sound })}
-            />
-          </div>
+              key={c}
+              className="chip plate"
+              aria-pressed={save.settings.categories[c]}
+              onClick={() => {
+                feedback.select();
+                toggleCategory(c);
+              }}
+            >
+              <Icon kind="prop" id={c} size={18} res={18} />
+              {c}
+            </button>
+          ))}
         </div>
+        <p className="group-note" style={{ paddingLeft: 0 }}>
+          Changes apply from the next deal. At least one kind stays on.
+        </p>
+      </div>
 
-        <div className="section">
-          <span className="label">Kinds of quest to deal</span>
-          <div className="chips">
-            {CATEGORIES.map((c) => (
-              <button key={c} className="chip plate" aria-pressed={save.settings.categories[c]} onClick={() => toggleCategory(c)}>
-                <Icon kind="prop" id={c} size={18} res={18} />
-                {c}
-              </button>
+      <div className="section">
+        <span className="label">Your own quests</span>
+        {save.custom.length === 0 ? (
+          <p className="italic dim">None yet. Add one from the bottom of the quest board.</p>
+        ) : (
+          <ul className="group plate">
+            {save.custom.map((q) => (
+              <li key={q.id} className="row" style={{ paddingRight: 0 }}>
+                <span className="row-text">
+                  <span>{q.title}</span>
+                  <span className="row-note">
+                    {q.cadence} · {q.pinned ? 'always shown' : 'in the deck'}
+                  </span>
+                </span>
+                <button
+                  className="label"
+                  style={{ color: 'var(--rust)', minWidth: 44, minHeight: 44, padding: '0 14px', flex: 'none' }}
+                  aria-label={`Remove "${q.title}"`}
+                  onClick={() => {
+                    feedback.tap();
+                    removeCustom(q.id);
+                  }}
+                >
+                  Remove
+                </button>
+              </li>
             ))}
-          </div>
-          <p className="italic faint" style={{ fontSize: 15, paddingTop: 9 }}>
-            Changes apply from the next deal.
-          </p>
-        </div>
+          </ul>
+        )}
+      </div>
 
-        <div className="section">
-          <span className="label">Your own quests</span>
-          {save.custom.length === 0 ? (
-            <p className="italic dim">None yet. Add one from the bottom of the quest board.</p>
-          ) : (
-            <ul style={{ borderTop: '1px solid var(--moss)' }}>
-              {save.custom.map((q) => (
-                <li key={q.id} className="row">
-                  <div style={{ minWidth: 0 }}>
-                    <div>{q.title}</div>
-                    <div className="label faint" style={{ marginTop: 5 }}>
-                      {q.cadence} · {q.pinned ? 'always shown' : 'in the deck'}
-                    </div>
-                  </div>
-                  <button className="textlink" style={{ color: 'var(--rust)' }} onClick={() => removeCustom(q.id)}>
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="section">
-          <span className="label">Your save</span>
-          <p className="dim" style={{ fontSize: 16, paddingBottom: 11 }}>
-            Progress lives only on this device. Copy it out to back it up or move it.
-          </p>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn plate" style={{ flex: 1 }} onClick={copy}>
-              Copy save
-            </button>
-            <button className="btn plate" style={{ flex: 1 }} disabled={text.trim().length === 0} onClick={load}>
-              Load save
-            </button>
-          </div>
-          <label className="field plate" style={{ marginTop: 10 }}>
-            <textarea
-              value={text}
-              placeholder="Paste a save here, then press Load save"
-              onChange={(e) => setText(e.target.value)}
-              spellCheck={false}
-              aria-label="Save data"
-            />
-          </label>
-          {note && (
-            <p className="label dim" style={{ paddingTop: 9 }}>
-              {note}
-            </p>
-          )}
-        </div>
-
-        <div className="section">
-          <span className="label">Start over</span>
+      <div className="section">
+        <span className="label">Your save</span>
+        <div className="group plate">
+          <button className="row" onClick={backUp}>
+            <span className="row-text">
+              <span>Back up save</span>
+              <span className="row-note">Share or copy it</span>
+            </span>
+            <span className="chevron" />
+          </button>
+          <button className="row" onClick={restoreFromFile}>
+            <span>Restore from a file</span>
+            <span className="chevron" />
+          </button>
           <button
-            className="btn plate danger block"
+            className="row"
+            aria-expanded={pasting}
             onClick={() => {
-              if (!confirming) {
-                setConfirming(true);
-                return;
-              }
-              reset();
-              onClose();
+              feedback.tap();
+              setPasting(!pasting);
             }}
           >
-            {confirming ? 'Tap again to erase everything' : 'Erase all progress'}
+            <span>Paste a save</span>
+            <span className="chevron" style={pasting ? { transform: 'rotate(135deg)' } : undefined} />
           </button>
         </div>
+        {pasting && (
+          <div style={{ paddingTop: 10 }}>
+            <label className="field plate">
+              <textarea
+                value={text}
+                placeholder="Paste a save here"
+                onChange={(e) => setText(e.target.value)}
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
+                aria-label="Save data"
+              />
+            </label>
+            <button className="btn plate block" style={{ marginTop: 10 }} disabled={text.trim().length === 0} onClick={() => load(text)}>
+              Load this save
+            </button>
+          </div>
+        )}
+        <p className="group-note" style={{ paddingLeft: 0 }} role="status">
+          {note || 'Progress lives only on this device. Back it up to keep it safe or move it to another phone.'}
+        </p>
+      </div>
 
-        <div className="section">
-          <span className="label">About</span>
-          <p className="dim" style={{ fontSize: 15 }}>
-            Spade 0.1. All models, textures and sounds are generated by the app's own code. Typefaces: Jacquard 24 and Jersey 15 by
-            Sarah Cadigan-Fried, IM Fell English by Igino Marini, under the SIL Open Font License.
-          </p>
+      <div className="section">
+        <span className="label">Help</span>
+        <div className="group plate">
+          <button
+            className="row"
+            onClick={() => {
+              feedback.tap();
+              onGuide();
+            }}
+          >
+            <span>How Spade works</span>
+            <span className="chevron" />
+          </button>
         </div>
       </div>
-    </div>
+
+      <div className="section">
+        <span className="label">Start over</span>
+        <div className="group plate">
+          <button
+            className="row danger"
+            onClick={() => {
+              feedback.tap();
+              setConfirming(true);
+            }}
+          >
+            <span>Erase all progress</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="section">
+        <span className="label">About</span>
+        <p className="dim" style={{ fontSize: 'var(--t-foot)' }}>
+          Spade 0.2. All models, textures and sounds are generated by the app's own code. Typefaces: Jacquard 24 and Jersey 15 by Sarah
+          Cadigan-Fried, IM Fell English by Igino Marini, under the SIL Open Font License.
+        </p>
+      </div>
+
+      {confirming && (
+        <Confirm
+          title="Erase all progress?"
+          message="Your level, items, feats and quests will be gone for good. This can't be undone."
+          action="Erase"
+          destructive
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => {
+            setConfirming(false);
+            reset();
+            onClose();
+          }}
+        />
+      )}
+    </Sheet>
   );
 }
