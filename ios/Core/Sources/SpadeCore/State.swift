@@ -117,6 +117,10 @@ func markQuest(_ save: Save, _ cadence: Cadence, key: String, now: Date, clock: 
     next.boards[cadence] = board
     if !done { return Outcome(save: next) }
 
+    if quest.family != nil {
+        next = recordFamilyQuestDone(next, quest, now: now, &events)
+        return Outcome(save: next, events: events)
+    }
     next.counts.quests += 1
     next.counts[cadence] += 1
     if quest.custom { next.counts.customDone += 1 }
@@ -132,7 +136,7 @@ func markQuest(_ save: Save, _ cadence: Cadence, key: String, now: Date, clock: 
             next.counts.bestStreak = max(next.counts.bestStreak, count)
         }
         // All of today's dailies done: pay the clear bonus once.
-        if !next.boards.daily.cleared && next.boards.daily.quests.allSatisfy({ $0.done }) {
+        if !next.boards.daily.cleared && next.boards.daily.quests.filter({ $0.family == nil }).allSatisfy({ $0.done }) {
             next.boards.daily.cleared = true
             next.counts.dailyClears += 1
             events.append(.clear)
@@ -280,4 +284,39 @@ func exportSave(_ save: Save) -> Data {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
     return (try? encoder.encode(save)) ?? Data()
+}
+
+/// Only a confirmed guardian decision can pay a new family completion.
+func rewardApprovedFamilyQuest(_ save: Save, claim: Claim, xp: Int, now: Date) -> Save {
+    var events: [GameEvent] = []
+    var next = save
+    next.counts.quests += 1
+    next.counts[claim.cadence ?? .daily] += 1
+    next = addXp(next, min(1000, max(5, xp)), .quest, &events)
+    var rng = rngFor(next.seed, "loot", claim.key)
+    if let loot = rollLoot(claim.cadence ?? .daily, &rng, owned: next.inventory) {
+        next = giveItem(next, loot.item.id, .quest, &events)
+    }
+    return settleFeats(next, now: now, &events)
+}
+
+struct ChamberQuest: Identifiable {
+    let id: String
+    let title: String
+    let xp: Int
+    let item: String?
+}
+let chamberQuests = [
+    ChamberQuest(id: "dogger", title: "A friend beyond the finish", xp: 500_000, item: "dogger"),
+    ChamberQuest(id: "icon_spade", title: "Back to the beginning", xp: 1_000_000, item: "icon_spade"),
+    ChamberQuest(id: "spade_green", title: "The colour of completion", xp: 2_500_000, item: nil)
+]
+func claimChamber(_ save: Save, id: String) -> Outcome {
+    guard let index = chamberQuests.firstIndex(where: { $0.id == id }), save.xp >= chamberQuests[index].xp,
+          !(save.chamber ?? []).contains(id), chamberQuests.prefix(index).allSatisfy({ (save.chamber ?? []).contains($0.id) }) else { return Outcome(save: save) }
+    var next = save
+    next.chamber = (save.chamber ?? []) + [id]
+    var events: [GameEvent] = []
+    if let item = chamberQuests[index].item { next = giveItem(next, item, .feat, &events) }
+    return Outcome(save: next, events: events)
 }

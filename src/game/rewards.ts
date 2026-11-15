@@ -52,6 +52,7 @@ export const RANKS: [number, string][] = [
   [25, 'Barrow Warden'],
   [30, 'Moonwarden'],
   [40, 'Legend of the Loam'],
+  [100, 'Mythic Marl'],
 ];
 
 export function rankFor(level: number): string {

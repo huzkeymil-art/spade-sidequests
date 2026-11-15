@@ -82,7 +82,9 @@ struct MeshBuffer {
         while k + 2 < mesh.i.count {
             let a = mesh.i[k], b = mesh.i[k + 1], c = mesh.i[k + 2]
             // A triangle glows if its first corner does (parts are all-or-nothing).
-            if mesh.e[Int(a)] >= 0.5 {
+            let chosen = color(Int(a))
+            let spadeGreen = abs(chosen.x - 57.0 / 255.0) < 0.02 && chosen.y > 0.98 && chosen.z < 0.09
+            if mesh.e[Int(a)] >= 0.5 || spadeGreen {
                 glowIndices.append(contentsOf: [base + a, base + b, base + c])
             } else {
                 litIndices.append(contentsOf: [base + a, base + b, base + c])

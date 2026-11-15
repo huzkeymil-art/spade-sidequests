@@ -94,7 +94,11 @@ final class GameStore: ObservableObject {
     // MARK: - Actions
 
     /// Stores a new save. `fromCloud` marks changes that came out of a sync, which don't need another one.
-    private func commit(_ next: Save, fromCloud: Bool = false) {
+    private func commit(_ value: Save, fromCloud: Bool = false, fromGuardianHub: Bool = false) {
+        var next = value
+        if !fromGuardianHub, save.guardianHub != nil, let before = save.household, let after = next.household, before.familyId == after.familyId, before != after {
+            next.guardianPending = (next.guardianPending ?? []) + [GuardianChange(before: before, after: after)]
+        }
         guard next != save else { return }
         let familyChanged = next.household != save.household || next.family != save.family || next.role != save.role
         save = next
@@ -223,7 +227,12 @@ final class GameStore: ObservableObject {
     private var invite: CKShare.Metadata?
 
     /// An invite was tapped. (iOS hands it over once the person has agreed to open it in Spade.)
+    @Published var guardianInvitation = false
+    private var guardianMetadata: CKShare.Metadata?
     func inviteArrived(_ metadata: CKShare.Metadata) {
+        if CloudFamily.guardianPlace(metadata) != nil {
+            guardianMetadata = metadata; guardianInvitation = true; return
+        }
         // The same invite, handed over twice: the sheet for it is already up.
         if incoming != nil, let waiting = invite, waiting.share.recordID == metadata.share.recordID { return }
         invite = metadata
@@ -391,7 +400,7 @@ final class GameStore: ObservableObject {
     /// Whether this Spade has anything in iCloud to keep in step with.
     private var usesCloud: Bool {
         switch save.role {
-        case .parent: return save.household?.children.contains { $0.shared == true } ?? false
+        case .parent: return save.guardianHub != nil || (save.household?.children.contains { $0.shared == true } ?? false)
         case .child: return save.family?.cloud != nil
         case .solo: return false
         }
@@ -464,7 +473,9 @@ final class GameStore: ObservableObject {
 
     /// The parent's phone: store its page for each invited child if iCloud is behind, then read theirs.
     private func syncAsParent(_ cloudKit: CloudFamily) async throws {
-        await cloudKit.listen(asParent: true)
+        await cloudKit.listen(asParent: save.guardianHub?.cloud == nil)
+        try await syncGuardianHub(cloudKit)
+        if save.guardianHub?.cloud != nil { return }
         var firstError: Error?
         let invited = (save.household?.children ?? []).filter { $0.shared == true }.map { $0.id }
         for kidId in invited {
@@ -488,6 +499,7 @@ final class GameStore: ObservableObject {
                 firstError = firstError ?? error
             }
         }
+        try await syncGuardianHub(cloudKit)
         if let firstError { throw firstError }
     }
 
@@ -534,7 +546,7 @@ final class GameStore: ObservableObject {
     private func announce(_ summary: ParentNoteSummary, from parent: String) {
         func count(_ n: Int, _ one: String, _ many: String) -> String { n == 1 ? "1 \(one)" : "\(n) \(many)" }
         if summary.newQuests > 0 { toast(count(summary.newQuests, "new quest", "new quests"), "From \(parent)") }
-        if summary.approved > 0 { toast(count(summary.approved, "quest approved", "quests approved"), "\(parent) owes you for \(summary.approved == 1 ? "it" : "them")") }
+        if summary.approved > 0 { toast(count(summary.approved, "quest approved", "quests approved"), "Your approved rewards have been added") }
         if summary.paid > 0 { toast(count(summary.paid, "quest paid", "quests paid"), "From \(parent)") }
         if summary.declined > 0 { toast(count(summary.declined, "quest not approved", "quests not approved"), "Ask \(parent) why") }
     }
@@ -542,6 +554,7 @@ final class GameStore: ObservableObject {
     /// Gets this child's invite ready in iCloud, then opens Apple's sharing sheet to send it.
     /// For a child who is already invited, the same sheet shows who has joined and can take the invite back.
     func invite(_ kidId: String) {
+        guard save.guardianHub?.cloud == nil else { cloudNotice = "The family owner sends child invites. Ask them to open Spade."; return }
         guard preparingInvite == nil, let note = noteFor(save, kidId: kidId), let cloudKit = cloudFamily() else { return }
         preparingInvite = kidId
         Task {
@@ -578,6 +591,7 @@ final class GameStore: ObservableObject {
     /// Clears out of iCloud whatever the last change left behind: the share of a family
     /// this Spade has left, and the pages of children who are no longer in the family.
     private func tidyCloud(after before: Save) {
+        if before.guardianHub?.cloud != nil { return }
         if let old = before.family, let link = old.cloud, save.family?.cloud != link, let cloudKit = cloudFamily() {
             pageTags["parent"] = nil
             Task { try? await cloudKit.leave(link: link, kidId: old.childId) }
@@ -588,6 +602,80 @@ final class GameStore: ObservableObject {
             pageTags[kid.id] = nil
             Task { try? await cloudKit.withdraw(kidId: kid.id) }
         }
+    }
+
+    // Developer tools are a testing convenience, never an account/security password.
+    var developerToolsAvailable: Bool {
+        #if DEBUG
+        return true
+        #else
+        return Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
+        #endif
+    }
+    @Published private(set) var developerUnlocked = false
+    func unlockDeveloper(_ password: String) -> Bool {
+        guard developerToolsAvailable, password == "marlin-digs" else { return false }
+        developerUnlocked = true; return true
+    }
+    func testChamberReward(_ id: String) {
+        guard developerToolsAvailable, developerUnlocked, let index = chamberQuests.firstIndex(where: { $0.id == id }) else { return }
+        var next = save
+        for quest in chamberQuests.prefix(index + 1) {
+            if !(next.chamber ?? []).contains(quest.id) { next.chamber = (next.chamber ?? []) + [quest.id] }
+            if let item = quest.item, !next.inventory.contains(item) { next.inventory.append(item) }
+        }
+        commit(next)
+    }
+    func chamberClaim(_ id: String) { apply(claimChamber(save, id: id)) }
+    func requestDay(questId: String, weekday: Int, permanent: Bool) {
+        commit(requestFamilyDay(save, questId: questId, weekday: weekday, permanent: permanent))
+    }
+    func judgeDay(kidId: String, requestId: String, approve: Bool) {
+        commit(decideFamilyDay(save, kidId: kidId, requestId: requestId, approve: approve))
+    }
+
+    func inviteGuardian() {
+        guard save.guardianHub?.cloud == nil, let house = save.household, let cloud = cloudFamily() else { return }
+        Task {
+            do {
+                try await syncGuardianHub(cloud)
+                let share = try await cloud.prepareGuardianShare(save.household ?? house)
+                var next = save; next.guardianHub = GuardianHub(record: "g-" + house.familyId)
+                commit(next)
+                InviteSheet.present(share: share, container: cloud.container, title: "Spade guardians", stopped: { [weak self] in
+                    guard let self else { return }; var next = self.save; next.guardianHub = nil; next.guardianPending = nil; self.commit(next, fromGuardianHub: true)
+                }, failed: { [weak self] in self?.cloudNotice = CloudFamily.describe($0) })
+            } catch { cloudNotice = CloudFamily.describe(error) }
+        }
+    }
+    func acceptGuardian() {
+        guard let metadata = guardianMetadata, let cloud = cloudFamily() else { return }
+        guard save.family == nil, save.household?.children.isEmpty != false else {
+            cloudNotice = "Leave your current family in Settings before joining another as a guardian."; return
+        }
+        Task {
+            do {
+                let (hub, document) = try await cloud.joinGuardian(metadata)
+                var next = save; next.role = .parent; next.family = nil
+                next.household = document.household; next.guardianHub = hub; next.guardianPending = []
+                commit(next, fromGuardianHub: true); syncFamily()
+            } catch { cloudNotice = CloudFamily.describe(error) }
+        }
+    }
+    private func syncGuardianHub(_ cloud: CloudFamily) async throws {
+        guard let hub = save.guardianHub else { return }
+        let sent = save.guardianPending ?? []
+        let document = try await cloud.syncGuardians(hub, changes: sent)
+        guard save.guardianHub == hub else { return }
+        let sentIds = Set(sent.map { $0.id })
+        let remaining = (save.guardianPending ?? []).filter { !sentIds.contains($0.id) }
+        var current = document
+        for change in remaining { current = mergeGuardianChange(change, into: current) }
+        let before = save
+        var next = save; next.household = current.household; next.guardianPending = remaining
+        commit(next, fromCloud: true, fromGuardianHub: true)
+        // Only the owner revokes the separate child shares when another guardian removes a child.
+        tidyCloud(after: before)
     }
 
     // MARK: - Backups

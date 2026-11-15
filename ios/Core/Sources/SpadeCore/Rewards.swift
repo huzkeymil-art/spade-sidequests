@@ -50,6 +50,7 @@ let ranks: [(level: Int, name: String)] = [
     (25, "Barrow Warden"),
     (30, "Moonwarden"),
     (40, "Legend of the Loam"),
+    (100, "Mythic Marl"),
 ]
 
 func rankFor(_ level: Int) -> String {

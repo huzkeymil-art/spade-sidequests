@@ -41,6 +41,22 @@ function spade(blade: string, shaft: string, extra: Part[] = []): Part[] {
 }
 
 export const ITEM_MODELS: Record<string, ItemModel> = {
+  icon_spade: { slot: 'hand', parts: spade('#39ff14', '#187d24').map((part, i) => ({ ...part, ...(i < 3 ? { emit: 1 } : {}) })) },
+  dogger: { slot: 'charm', parts: [
+    { s: 'ball', r: [0.12, 0.12, 0.21], at: [0, 0.18, 0], c: '#201e22', seg: [8, 6] },
+    { s: 'ball', r: [0.13, 0.13, 0.1], at: [0, 0.31, 0.17], c: '#201e22', seg: [8, 6] },
+    { s: 'box', size: [0.065, 0.21, 0.018], at: [0, 0.31, 0.263], c: '#fff5df' },
+    { s: 'ball', r: [0.095, 0.055, 0.045], at: [0, 0.26, 0.28], c: '#fff5df', seg: [6, 4] },
+    { s: 'ball', r: [0.025, 0.018, 0.018], at: [0, 0.28, 0.321], c: '#17151a', seg: [5, 4] },
+    { s: 'box', size: [0.075, 0.14, 0.05], taper: [0.05, 1], at: [-0.08, 0.44, 0.16], c: '#201e22' },
+    { s: 'box', size: [0.075, 0.14, 0.05], taper: [0.05, 1], at: [0.08, 0.44, 0.16], c: '#201e22' },
+    { s: 'box', size: [0.12, 0.16, 0.025], at: [0, 0.16, 0.19], c: '#fff5df' },
+    ...[-0.075, 0.075].flatMap((x): Part[] => [
+      { s: 'box', size: [0.05, 0.12, 0.065], at: [x, 0.06, 0.12], c: '#fff5df' },
+      { s: 'box', size: [0.05, 0.12, 0.065], at: [x, 0.06, -0.12], c: '#201e22' },
+      { s: 'ball', r: 0.016, at: [x * 0.8, 0.33, 0.26], c: '#111015', emit: 0.2, seg: [5, 4] }
+    ])
+  ] },
   // ---- Hand -------------------------------------------------------------
   rusty_spade: { slot: 'hand', parts: spade(RUST, WOOD) },
   oak_staff: {

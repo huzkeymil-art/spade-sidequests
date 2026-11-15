@@ -1,6 +1,37 @@
 {
-  "skin": ["#f1c9a5", "#e0ac84", "#c68a5f", "#a36b45", "#7a4b2e", "#4f2f1e"],
-  "hair": ["#1b1714", "#3d2817", "#6e4424", "#a8662c", "#c9a35a", "#b9b6ae", "#5fb39a"],
-  "scarf": ["#b5472f", "#c98f2a", "#4f9483", "#5a6fa8", "#7d4f8f", "#d6cfb8"],
-  "hairStyles": ["crop", "tuft", "long", "knot", "none"]
+  "skin": [
+    "#f1c9a5",
+    "#e0ac84",
+    "#c68a5f",
+    "#a36b45",
+    "#7a4b2e",
+    "#4f2f1e",
+    "#39ff14"
+  ],
+  "hair": [
+    "#1b1714",
+    "#3d2817",
+    "#6e4424",
+    "#a8662c",
+    "#c9a35a",
+    "#b9b6ae",
+    "#5fb39a",
+    "#39ff14"
+  ],
+  "scarf": [
+    "#b5472f",
+    "#c98f2a",
+    "#4f9483",
+    "#5a6fa8",
+    "#7d4f8f",
+    "#d6cfb8",
+    "#39ff14"
+  ],
+  "hairStyles": [
+    "crop",
+    "tuft",
+    "long",
+    "knot",
+    "none"
+  ]
 }

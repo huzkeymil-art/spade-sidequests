@@ -22,6 +22,7 @@ enum CloudProblem: Error {
     case notShared
     /// The invite doesn't say where its pages are.
     case badInvite
+    case familyTooLarge
 }
 
 /// A page as iCloud holds it: its text, and a tag that changes whenever the page does.
@@ -302,6 +303,7 @@ final class CloudFamily {
         if let problem = error as? CloudProblem {
             switch problem {
             case .notShared: return "These quests aren't shared through iCloud any more. A new invite will fix that."
+            case .familyTooLarge: return "This family has too much history to sync. Contact support before making more changes."
             case .badInvite: return "This invite doesn't look like one from Spade."
             }
         }
@@ -395,5 +397,67 @@ enum InviteSheet {
             let stopped = stopped
             Task { @MainActor in stopped() }
         }
+    }
+}
+
+extension CloudFamily {
+    static func guardianPlace(_ invite: CKShare.Metadata) -> GuardianHub? {
+        guard let root = invite.hierarchicalRootRecordID, root.recordName.hasPrefix("g-") else { return nil }
+        let owner = root.zoneID.ownerName == CKCurrentUserDefaultName ? (invite.ownerIdentity.userRecordID?.recordName ?? root.zoneID.ownerName) : root.zoneID.ownerName
+        return GuardianHub(record: root.recordName, cloud: CloudLink(zone: root.zoneID.zoneName, owner: owner))
+    }
+
+    func prepareGuardianShare(_ house: Household) async throws -> CKShare {
+        _ = try await home.save(CKRecordZone(zoneID: homeZone))
+        let id = CKRecord.ID(recordName: "g-" + house.familyId, zoneID: homeZone)
+        let root: CKRecord
+        if let found = try await find(id, in: home) { root = found }
+        else {
+            root = CKRecord(recordType: Self.recordType, recordID: id)
+            root[Self.bodyKey] = String(decoding: try JSONEncoder().encode(GuardianDocument(household: house)), as: UTF8.self)
+        }
+        let share: CKShare
+        if let reference = root.share, let existing = try await find(reference.recordID, in: home) as? CKShare { share = existing }
+        else { share = CKShare(rootRecord: root); share.publicPermission = .none }
+        share[CKShare.SystemFieldKey.title] = "Spade guardians"
+        let result = try await home.modifyRecords(saving: [root, share], deleting: [])
+        for item in result.saveResults.values { _ = try item.get() }
+        return (try result.saveResults[share.recordID]?.get() as? CKShare) ?? share
+    }
+
+    func joinGuardian(_ invite: CKShare.Metadata) async throws -> (GuardianHub, GuardianDocument) {
+        guard let hub = Self.guardianPlace(invite) else { throw CloudProblem.badInvite }
+        if invite.participantStatus != .accepted { _ = try await container.accept(invite) }
+        for attempt in 0..<6 {
+            if attempt > 0 { try await Task.sleep(for: .seconds(1.5)) }
+            do { return (hub, try await syncGuardians(hub, changes: [])) }
+            catch { if attempt == 5 { throw error } }
+        }
+        throw CloudProblem.notShared
+    }
+
+    func syncGuardians(_ hub: GuardianHub, changes: [GuardianChange]) async throws -> GuardianDocument {
+        let database = hub.cloud == nil ? home : shared
+        let zone = hub.cloud.map(sharedZone) ?? homeZone
+        let id = CKRecord.ID(recordName: hub.record, zoneID: zone)
+        for attempt in 0..<5 {
+            guard let record = try await find(id, in: database), let body = record[Self.bodyKey] as? String else { throw CloudProblem.notShared }
+            var document = try JSONDecoder().decode(GuardianDocument.self, from: Data(body.utf8))
+            if changes.isEmpty { return document }
+            for change in changes { document = mergeGuardianChange(change, into: document) }
+            let data = try JSONEncoder().encode(document)
+            guard data.count < 900_000 else { throw CloudProblem.familyTooLarge }
+            record[Self.bodyKey] = String(decoding: data, as: UTF8.self)
+            do {
+                let result = try await database.modifyRecords(saving: [record], deleting: [], savePolicy: .ifServerRecordUnchanged)
+                for item in result.saveResults.values { _ = try item.get() }
+                return document
+            } catch {
+                let ck = error as? CKError
+                let conflict = ck?.code == .serverRecordChanged || ck?.partialErrorsByItemID?.values.contains(where: { ($0 as? CKError)?.code == .serverRecordChanged }) == true
+                if !conflict || attempt == 4 { throw error }
+            }
+        }
+        throw CloudProblem.notShared
     }
 }

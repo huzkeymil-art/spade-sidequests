@@ -153,7 +153,7 @@ final class FamilyTests: XCTestCase {
             }
             XCTAssertEqual(unsentClaims(child).count, 2)
             let xpEarned = child.xp - xpBefore
-            XCTAssertGreaterThanOrEqual(xpEarned, 120, "60 XP for each of the two quests")
+            XCTAssertEqual(xpEarned, 0, "Family XP waits for approval")
 
             // Meanwhile the parent raises one quest's allowance and deletes the other.
             let quests = try XCTUnwrap(parent.household?.children.first?.quests)
@@ -189,6 +189,7 @@ final class FamilyTests: XCTestCase {
             XCTAssertEqual(claims.first { $0.questId == shedId }?.allowance, 400)
             XCTAssertEqual(claims.first { $0.questId == shedId }?.title, "Tidy the shed")
             XCTAssertEqual(claims.total(.waiting), 600)
+            parent = syncParent(parent, kidId, &cloud)
             XCTAssertFalse(try XCTUnwrap(parent.household?.children.first).needsUpdate)
         }
     }
@@ -363,7 +364,7 @@ final class FamilyTests: XCTestCase {
         // The child does it: XP now, allowance waits for the parent.
         let done = markQuest(child, .daily, key: entry.key, now: now, clock: clock)
         child = done.save
-        XCTAssertEqual(done.events.first, .xp(amount: 60, reason: .quest))
+        XCTAssertFalse(done.events.contains(.xp(amount: 60, reason: .quest)))
         XCTAssertTrue(done.events.contains(.allowance(amount: 150)))
         XCTAssertEqual(child.family?.claims.map { $0.status }, [.waiting])
         XCTAssertEqual(unsentClaims(child).count, 1)
@@ -428,7 +429,7 @@ final class FamilyTests: XCTestCase {
         // The child's phone recorded all four, with when each was done.
         let mine = try XCTUnwrap(child.family?.claims)
         XCTAssertEqual(mine.count, 4)
-        XCTAssertEqual(mine.filter { $0.title == "Read for 20 minutes" }.map { $0.status }, [.done, .done])
+        XCTAssertEqual(mine.filter { $0.title == "Read for 20 minutes" }.map { $0.status }, [.waiting, .waiting])
         XCTAssertEqual(mine.filter { $0.title == "Take out the bins" }.map { $0.status }, [.waiting, .waiting])
         XCTAssertEqual(mine.map { $0.doneAt }, [millis(day1), millis(day1), millis(day2), millis(day2)])
         XCTAssertEqual(unsentClaims(child).count, 4, "XP-only quests are reported too")
@@ -440,14 +441,14 @@ final class FamilyTests: XCTestCase {
         child = markReported(child, keys: unsentClaims(child).map { $0.key })
         XCTAssertTrue(unsentClaims(child).isEmpty)
         var claims = try XCTUnwrap(parent.household?.children.first?.claims)
-        XCTAssertEqual(claims.filter { $0.status == .waiting }.count, 2)
-        XCTAssertEqual(claims.filter { $0.status == .done }.map { $0.doneAt }, [millis(day1), millis(day2)])
+        XCTAssertEqual(claims.filter { $0.status == .waiting }.count, 4)
+        XCTAssertTrue(claims.filter { $0.status == .done }.isEmpty)
 
         // Earnings, quest by quest: one approved, one turned down.
         let bins = try XCTUnwrap(parent.household?.children.first?.quests.first { $0.title == "Take out the bins" })
         let readId = try XCTUnwrap(parent.household?.children.first?.quests.first { $0.title == "Read for 20 minutes" }?.id)
         XCTAssertEqual(claims.earnings(for: bins.id), QuestEarnings(times: 2, earned: 0, waiting: 300))
-        let waitingKeys = claims.filter { $0.status == .waiting }.map { $0.key }
+        let waitingKeys = claims.filter { $0.status == .waiting && $0.allowance > 0 }.map { $0.key }
         parent = decideClaim(parent, kidId: kidId, key: waitingKeys[0], approve: true)
         parent = decideClaim(parent, kidId: kidId, key: waitingKeys[1], approve: false)
         claims = try XCTUnwrap(parent.household?.children.first?.claims)

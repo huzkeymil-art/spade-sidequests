@@ -24,7 +24,7 @@
 
   { "id": "full_pockets", "name": "Full Pockets", "desc": "Own 5 items.", "stat": "items", "goal": 5, "xp": 60 },
   { "id": "hoard", "name": "Hoard", "desc": "Own 15 items.", "stat": "items", "goal": 15, "xp": 200 },
-  { "id": "museum_piece", "name": "Museum Piece", "desc": "Own every item.", "stat": "items", "goal": 33, "xp": 1000 },
+  { "id": "museum_piece", "name": "Museum Piece", "desc": "Own every item.", "stat": "items", "goal": 35, "xp": 1000 },
   { "id": "dressed_for_it", "name": "Dressed for It", "desc": "Wear something in all five slots.", "stat": "slotsFilled", "goal": 5, "xp": 100 },
   { "id": "old_light", "name": "Old Light", "desc": "Unearth a mythic item.", "stat": "mythics", "goal": 1, "xp": 250 },
 
