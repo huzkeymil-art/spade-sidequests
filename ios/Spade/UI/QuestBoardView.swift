@@ -175,7 +175,7 @@ struct QuestRow: View {
                 } else if let tag = quest.family {
                     HStack(spacing: 6) {
                         PropIcon(name: "home", size: 18, res: 18)
-                        if quest.done, tag.allowance > 0, let status = claimStatus {
+                        if quest.done, let status = claimStatus {
                             let words = claimWords(status, parent: tag.parent)
                             Text(words.text).caps(words.color)
                         } else {

@@ -150,11 +150,6 @@ func markQuest(_ save: Save, _ cadence: Cadence, key: String, now: Date, clock: 
         next = giveItem(next, loot.item.id, .quest, &events)
     }
 
-    // A quest from a parent: note it down, and queue any allowance for them to check.
-    if quest.family != nil {
-        next = recordFamilyQuestDone(next, quest, now: now, &events)
-    }
-
     next = settleFeats(next, now: now, &events)
     return Outcome(save: next, events: events)
 }
@@ -292,6 +287,18 @@ func rewardApprovedFamilyQuest(_ save: Save, claim: Claim, xp: Int, now: Date) -
     var next = save
     next.counts.quests += 1
     next.counts[claim.cadence ?? .daily] += 1
+    if (claim.cadence ?? .daily) == .daily {
+        let clock = GameClock.device
+        let finishedDay = clock.dayKey(Date(timeIntervalSince1970: claim.doneAt / 1000))
+        next.activeDays = Array(Set(next.activeDays + [finishedDay])).sorted().suffix(60).map { $0 }
+        if let last = next.activeDays.last, last <= clock.dayKey(now) {
+            let days = Set(next.activeDays)
+            var count = 1
+            while days.contains(clock.shiftDay(last, -count)) { count += 1 }
+            next.counts.bestStreak = max(next.counts.bestStreak, count)
+            if last >= clock.shiftDay(clock.dayKey(now), -1) { next.streak = Streak(count: count, lastDay: last) }
+        }
+    }
     next = addXp(next, min(1000, max(5, xp)), .quest, &events)
     var rng = rngFor(next.seed, "loot", claim.key)
     if let loot = rollLoot(claim.cadence ?? .daily, &rng, owned: next.inventory) {

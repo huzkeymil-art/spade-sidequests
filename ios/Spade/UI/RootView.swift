@@ -61,7 +61,7 @@ struct RootView: View {
         let demo = DemoMode.requested ?? ""
         let start = AppTab(rawValue: demo) ?? (
             demo == "item" ? .satchel
-                : demo == "picker" ? .hero
+                : demo == "picker" || demo == "chamberhero" ? .hero
                 : demo == "familyquest" || demo == "invite" ? .family
                 : .quests
         )
@@ -363,7 +363,7 @@ struct RootView: View {
             Feedback.prepare()
         }
         switch DemoMode.requested {
-        case "settings", "sync": settingsOpen = true
+        case "settings", "sync", "chamber": settingsOpen = true
         case "guide": guideOpen = true
         default: break
         }

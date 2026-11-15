@@ -143,6 +143,9 @@ final class GameStore: ObservableObject {
     func mark(_ cadence: Cadence, key: String) -> [GameEvent] {
         let outcome = markQuest(save, cadence, key: key, now: Date(), clock: clock)
         apply(outcome)
+        if let claim = outcome.save.family?.claims.first(where: { $0.key == key }), claim.status == .waiting {
+            toast("Waiting for approval", "A guardian must approve before you earn XP")
+        }
         return outcome.events
     }
 
@@ -591,6 +594,9 @@ final class GameStore: ObservableObject {
     /// Clears out of iCloud whatever the last change left behind: the share of a family
     /// this Spade has left, and the pages of children who are no longer in the family.
     private func tidyCloud(after before: Save) {
+        if let hub = before.guardianHub, save.guardianHub != hub, let cloud = cloudFamily() {
+            Task { try? await cloud.leaveGuardians(hub) }
+        }
         if before.guardianHub?.cloud != nil { return }
         if let old = before.family, let link = old.cloud, save.family?.cloud != link, let cloudKit = cloudFamily() {
             pageTags["parent"] = nil
@@ -644,6 +650,7 @@ final class GameStore: ObservableObject {
                 commit(next)
                 InviteSheet.present(share: share, container: cloud.container, title: "Spade guardians", stopped: { [weak self] in
                     guard let self else { return }; var next = self.save; next.guardianHub = nil; next.guardianPending = nil; self.commit(next, fromGuardianHub: true)
+                    Task { try? await cloud.leaveGuardians(GuardianHub(record: "g-" + house.familyId)) }
                 }, failed: { [weak self] in self?.cloudNotice = CloudFamily.describe($0) })
             } catch { cloudNotice = CloudFamily.describe(error) }
         }
@@ -733,6 +740,12 @@ enum DemoMode {
             return GameStore(preview: newSave(seed: 7, now: Date()))
         case "family", "familyquest":
             return GameStore(preview: parentGame())
+        case "chamber", "chamberhero":
+            var save = midGame(); save.xp = 2_500_000
+            for quest in chamberQuests { save = claimChamber(save, id: quest.id).save }
+            save.equipped["charm"] = "dogger"; save.equipped["hand"] = "icon_spade"
+            save.hero.scarf = Catalog.looks.scarf.count - 1
+            return GameStore(preview: save)
         case "invite":
             // A parent with one child still to invite, and one who hasn't opened their invite yet.
             var save = parentGame()
@@ -806,6 +819,10 @@ enum DemoMode {
             Claim(key: "\(yesterday):fq_reading", questId: "fq_reading", title: "Read for 30 minutes", allowance: 0, doneAt: ms - 86_400_000 + 1_800_000, status: .done),
             Claim(key: "\(clock.weekKey(now)):fq_lawn", questId: "fq_lawn", title: "Mow the front lawn", allowance: 500, doneAt: ms - 7_200_000, status: .waiting, photo: true),
         ]
+        tess.quests[2].weekday = 5
+        tess.requests = [ScheduleRequest(questId: "fq_lawn", weekday: 6, permanent: false, week: clock.weekKey(now))]
+        appendActivity(&tess, "Requested Sunday this week: Mow the front lawn", actor: "Tess")
+        appendActivity(&tess, "Approved: Do the dishes after dinner", actor: "Sam")
         tess.revision = 6
         tess.sentRevision = 6
         tess.shared = true

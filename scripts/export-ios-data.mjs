@@ -4,6 +4,10 @@ import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+// Parity fixtures use calendar dates and timestamp-derived quest IDs in UTC.
+// Pin this before loading the game rules, including when exporting on Windows.
+process.env.TZ = 'UTC';
+
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const server = await createServer({ root, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error', plugins: [] });
 try {

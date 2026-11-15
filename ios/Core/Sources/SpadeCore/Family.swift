@@ -63,7 +63,7 @@ struct FamilyTag: Codable, Equatable {
 }
 
 enum ClaimStatus: String, Codable {
-    /// Done. It pays no allowance, so there is nothing for the parent to check.
+    /// Legacy completion whose XP was already awarded by an older version.
     case done
     /// Done, and waiting for the parent to check it.
     case waiting
@@ -76,7 +76,7 @@ enum ClaimStatus: String, Codable {
 }
 
 /// One finished quest from a parent: when it was done, and what it earned.
-/// Quests with an allowance go through the parent's check; the rest are simply recorded.
+/// Every new completion waits for guardian approval, even with no allowance.
 struct Claim: Codable, Equatable, Identifiable {
     /// The board key, for example "2026-11-14:fq_abc". One per quest per day, week or month.
     var key: String
@@ -482,7 +482,7 @@ func receiveChildNote(_ save: Save, _ note: ChildNote) -> (save: Save, result: C
             title: quest.title,
             allowance: quest.allowance,
             doneAt: claim.doneAt,
-            // Quests with an allowance wait for the parent's check; the rest are just recorded.
+            // Old versions already awarded XP; new completions always await approval.
             status: claim.xpGranted == false || quest.allowance > 0 ? .waiting : .done,
             photo: claim.photo == true ? true : nil,
             xp: claim.xpGranted == false ? quest.xp : nil,
@@ -585,6 +585,7 @@ func receiveParentNote(_ save: Save, _ note: ParentNote, now: Date) -> (save: Sa
         tidy.xp = min(familyXpRange.upperBound, max(familyXpRange.lowerBound, quest.xp))
         tidy.allowance = min(familyAllowanceLimit, max(0, quest.allowance))
         tidy.title = String(quest.title.prefix(80))
+        tidy.weekday = quest.weekday.flatMap { (0...6).contains($0) ? $0 : nil }
         return tidy
     }
     next.role = .child
@@ -718,8 +719,7 @@ func recordFamilyQuestDone(_ save: Save, _ quest: ActiveQuest, now: Date, _ even
     if !tag.repeats && !family.finished.contains(quest.defId) {
         family.finished.append(quest.defId)
     }
-    // Every quest from a parent is recorded with when it was done. Allowance quests then wait
-    // for the parent to check them; the rest have nothing to check.
+    // Every new family completion waits for a guardian before it earns rewards.
     if !family.claims.contains(where: { $0.key == quest.key }) {
         family.claims.append(Claim(
             key: quest.key,
@@ -755,23 +755,28 @@ func repairFamily(_ save: Save) -> Save {
         out.title = String(quest.title.prefix(80))
         out.xp = min(familyXpRange.upperBound, max(familyXpRange.lowerBound, quest.xp))
         out.allowance = min(familyAllowanceLimit, max(0, quest.allowance))
+        out.weekday = quest.weekday.flatMap { (0...6).contains($0) ? $0 : nil }
         return out
     }
     if var family = next.family {
         family.quests = family.quests.filter { !$0.title.isEmpty }.map(tidy)
         family.claims = Array(family.claims.suffix(300))
+        family.requests = family.requests?.filter { (0...6).contains($0.weekday) }
+        if family.activity == nil { family.activity = legacyActivity(family.claims, actor: family.childName) }
         next.family = family
     }
     if var house = next.household {
         for i in house.children.indices {
             house.children[i].quests = house.children[i].quests.filter { !$0.title.isEmpty }.map(tidy)
             house.children[i].claims = Array(house.children[i].claims.suffix(300))
+            house.children[i].requests = house.children[i].requests?.filter { (0...6).contains($0.weekday) }
+            if house.children[i].activity == nil { house.children[i].activity = legacyActivity(house.children[i].claims, actor: house.children[i].name) }
         }
         next.household = house
     }
     // A role without its records falls back to an ordinary player.
     if next.role == .parent && next.household == nil { next.role = .solo }
-    if next.role != .parent { next.household = nil }
+    if next.role != .parent { next.household = nil; next.guardianHub = nil; next.guardianPending = nil }
     if next.role != .child { next.family = nil }
     return next
 }
@@ -781,6 +786,8 @@ struct FamilyActivity: Codable, Equatable, Identifiable {
     var at: Double
     var actor: String
     var text: String
+    var subject: String?
+    var result: ClaimStatus?
 }
 
 struct ScheduleRequest: Codable, Equatable, Identifiable {
@@ -794,21 +801,26 @@ struct ScheduleRequest: Codable, Equatable, Identifiable {
 
 let familyWeekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-func appendActivity(_ kid: inout Kid, _ text: String, actor: String, at: Double = millis(Date())) {
-    kid.activity = Array(((kid.activity ?? []) + [FamilyActivity(at: at, actor: actor, text: text)]).suffix(300))
+private func legacyActivity(_ claims: [Claim], actor: String) -> [FamilyActivity] {
+    claims.map { FamilyActivity(id: "legacy-" + $0.key, at: $0.doneAt, actor: actor,
+        text: "Completed: " + $0.title + " · " + $0.status.rawValue, subject: $0.key) }
+}
+
+func appendActivity(_ kid: inout Kid, _ text: String, actor: String, at: Double = millis(Date()), subject: String? = nil, result: ClaimStatus? = nil) {
+    kid.activity = Array(((kid.activity ?? []) + [FamilyActivity(at: at, actor: actor, text: text, subject: subject, result: result)]).suffix(300))
 }
 
 func recordFamilyChanges(before: Kid, after: inout Kid, actor: String) {
     for quest in after.quests {
         let old = before.quests.first { $0.id == quest.id }
-        if old != quest { appendActivity(&after, (old == nil ? "Added: " : "Updated: ") + quest.title, actor: actor) }
+        if old != quest { appendActivity(&after, (old == nil ? "Added: " : "Updated: ") + quest.title, actor: actor, subject: quest.id) }
     }
     for quest in before.quests where !after.quests.contains(where: { $0.id == quest.id }) {
         appendActivity(&after, "Removed: " + quest.title, actor: actor)
     }
     for claim in after.claims {
         if let old = before.claims.first(where: { $0.key == claim.key }), old.status != claim.status {
-            appendActivity(&after, claim.status.rawValue.capitalized + ": " + claim.title, actor: actor)
+            appendActivity(&after, claim.status.rawValue.capitalized + ": " + claim.title, actor: actor, subject: claim.key, result: claim.status)
         }
     }
 }
@@ -834,7 +846,7 @@ func decideFamilyDay(_ save: Save, kidId: String, requestId: String, approve: Bo
         let request = requests[index]
         guard let q = kid.quests.firstIndex(where: { $0.id == request.questId }) else { return }
         // A one-time request belongs to its original week. Never move a past occurrence into a new week.
-        let valid = request.permanent || request.week == GameClock.device.weekKey(now)
+        let valid = request.permanent || (request.week == GameClock.device.weekKey(now) && request.weekday >= GameClock.device.weekdayIndex(now))
         requests[index].status = approve && valid ? .approved : .declined
         if approve && valid {
             if request.permanent { kid.quests[q].weekday = request.weekday }
@@ -846,7 +858,7 @@ func decideFamilyDay(_ save: Save, kidId: String, requestId: String, approve: Bo
         }
         kid.requests = requests
         kid.revision += 1
-        appendActivity(&kid, "Schedule request " + requests[index].status.rawValue + ": " + kid.quests[q].title + " → " + familyWeekdays[request.weekday] + (request.permanent ? " permanently" : " this week"), actor: save.hero.name)
+        appendActivity(&kid, "Schedule request " + requests[index].status.rawValue + ": " + kid.quests[q].title + " → " + familyWeekdays[request.weekday] + (request.permanent ? " permanently" : " this week"), actor: save.hero.name, subject: request.id, result: requests[index].status)
     }
 }
 
@@ -891,10 +903,20 @@ func mergeGuardianChange(_ change: GuardianChange, into document: GuardianDocume
         if old.shared != local.shared { kid.shared = local.shared }
         if old.joined != local.joined { kid.joined = local.joined }
         if old.sentRevision != local.sentRevision { kid.sentRevision = max(kid.sentRevision, local.sentRevision) }
+        // A schedule decision and the resulting weekday edit are one transaction.
+        // If another guardian already decided that request, ignore the losing edit.
+        let conflictingRequests = (local.requests ?? []).filter { request in
+            guard let original = (old.requests ?? []).first(where: { $0.id == request.id }), original.status == .waiting,
+                  request.status != .waiting,
+                  let stored = (kid.requests ?? []).first(where: { $0.id == request.id }) else { return false }
+            return stored.status != .waiting
+        }
+        let conflictedQuests = Set(conflictingRequests.map { $0.questId })
         for quest in old.quests where !local.quests.contains(where: { $0.id == quest.id }) {
             kid.quests.removeAll { $0.id == quest.id }
         }
         for quest in local.quests where old.quests.first(where: { $0.id == quest.id }) != quest {
+            if conflictedQuests.contains(quest.id) { continue }
             if let q = kid.quests.firstIndex(where: { $0.id == quest.id }) { kid.quests[q] = quest }
             else if !old.quests.contains(where: { $0.id == quest.id }) { kid.quests.append(quest) }
         }
@@ -913,6 +935,11 @@ func mergeGuardianChange(_ change: GuardianChange, into document: GuardianDocume
             kid.requests = requests
         }
         for entry in local.activity ?? [] where !(kid.activity ?? []).contains(where: { $0.id == entry.id }) {
+            if let subject = entry.subject, conflictedQuests.contains(subject) { continue }
+            if let subject = entry.subject, let result = entry.result {
+                if let claim = kid.claims.first(where: { $0.key == subject }), claim.status != result { continue }
+                if let request = (kid.requests ?? []).first(where: { $0.id == subject }), request.status != result { continue }
+            }
             kid.activity = (kid.activity ?? []) + [entry]
         }
         if old.quests != local.quests || old.claims != local.claims || old.requests != local.requests || old.name != local.name || old.activity != local.activity {

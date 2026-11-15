@@ -195,7 +195,7 @@ struct SettingsSheet: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .spadeSheet()
-        .onAppear { backup = store.backupFile() }
+        .onAppear { backup = store.backupFile(); if DemoMode.requested == "chamber" { chamberOpen = true } }
         .onChange(of: store.save) { _, _ in backup = store.backupFile() }
         .sheet(isPresented: $guideOpen) { GuideSheet() }
         .sheet(isPresented: $chamberOpen) { ChamberSheet() }

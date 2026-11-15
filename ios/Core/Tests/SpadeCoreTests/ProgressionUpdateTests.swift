@@ -134,5 +134,34 @@ final class ProgressionUpdateTests: XCTestCase {
         let no = GuardianChange(before: original, after: try XCTUnwrap(decideClaim(parent, kidId: id, key: entry.key, approve: false).household))
         let doc = mergeGuardianChange(no, into: mergeGuardianChange(yes, into: GuardianDocument(household: original)))
         XCTAssertEqual(doc.household.children[0].claims[0].status, .approved)
+        XCTAssertFalse((doc.household.children[0].activity ?? []).contains { $0.result == .declined })
+    }
+
+    func testLosingScheduleDecisionDoesNotChangeTheQuest() throws {
+        var (parent, child, id) = try pair(weekday: 0)
+        child = requestFamilyDay(child, questId: try XCTUnwrap(child.family?.quests.first?.id), weekday: 4, permanent: true)
+        parent = receiveChildNote(parent, try XCTUnwrap(childNote(child))).save
+        let original = try XCTUnwrap(parent.household)
+        let request = try XCTUnwrap(child.family?.requests?.first?.id)
+        let yes = GuardianChange(before: original, after: try XCTUnwrap(decideFamilyDay(parent, kidId: id, requestId: request, approve: true, now: monday).household))
+        let no = GuardianChange(before: original, after: try XCTUnwrap(decideFamilyDay(parent, kidId: id, requestId: request, approve: false, now: monday).household))
+        let doc = mergeGuardianChange(yes, into: mergeGuardianChange(no, into: GuardianDocument(household: original)))
+        XCTAssertEqual(doc.household.children[0].quests[0].weekday, 0)
+        XCTAssertEqual(doc.household.children[0].requests?.first?.status, .declined)
+        XCTAssertFalse((doc.household.children[0].activity ?? []).contains { $0.result == .approved })
+    }
+
+    func testMovingCompletedOccurrenceDoesNotCreateAnotherCompletion() throws {
+        var (parent, child, id) = try pair(weekday: 0)
+        let entry = try XCTUnwrap(child.boards.weekly.quests.first { $0.family != nil })
+        child = markQuest(child, .weekly, key: entry.key, now: monday, clock: clock).save
+        child = requestFamilyDay(child, questId: entry.defId, weekday: 2, permanent: false)
+        parent = receiveChildNote(parent, try XCTUnwrap(childNote(child))).save
+        parent = decideFamilyDay(parent, kidId: id, requestId: try XCTUnwrap(child.family?.requests?.first?.id), approve: true, now: monday)
+        child = receiveParentNote(child, try XCTUnwrap(noteFor(parent, kidId: id)), now: monday).save
+        child = syncPeriods(child, now: monday.addingTimeInterval(2 * 86400), clock: clock)
+        XCTAssertEqual(child.boards.weekly.quests.filter { $0.family != nil }.count, 1)
+        XCTAssertTrue(try XCTUnwrap(child.boards.weekly.quests.first { $0.family != nil }).done)
+        XCTAssertEqual(markQuest(child, .weekly, key: entry.key, now: monday, clock: clock).save.family?.claims.count, 1)
     }
 }

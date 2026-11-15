@@ -63,6 +63,7 @@ private func when(_ millis: Double) -> String {
 }
 
 private func schedule(_ quest: FamilyQuest) -> String {
+    if quest.repeats, let day = quest.weekday, (0...6).contains(day) { return "Every " + familyWeekdays[day] }
     let every: [Cadence: String] = [.daily: "Every day", .weekly: "Every week", .monthly: "Every month"]
     let once: [Cadence: String] = [.daily: "Once, on the daily board", .weekly: "Once, on the weekly board", .monthly: "Once, on the monthly board"]
     return (quest.repeats ? every : once)[quest.cadence] ?? ""
@@ -110,7 +111,7 @@ private struct HistoryRow: View {
                     .foregroundStyle(claim.status == .declined ? Ink.faint : Ink.lantern)
                     .strikethrough(claim.status == .declined)
             } else {
-                Text("No allowance").caps(Ink.faint, size: 14)
+                Text(claim.xp.map { "\($0) XP" } ?? "No allowance").caps(Ink.faint, size: 14)
             }
         }
         .padding(.horizontal, 14)
@@ -276,9 +277,10 @@ private struct KidCard: View {
                         HStack(alignment: .firstTextBaseline) {
                             Text(claim.title).font(Typeface.text()).foregroundStyle(Ink.bone)
                             Spacer(minLength: 8)
-                            Text(Money.format(claim.allowance, currency)).font(Typeface.label(22)).foregroundStyle(Ink.lantern)
+                            if claim.allowance > 0 { Text(Money.format(claim.allowance, currency)).font(Typeface.label(22)).foregroundStyle(Ink.lantern) }
                         }
                         Text("Done \(when(claim.doneAt))").caps(Ink.faint)
+                        if let xp = claim.xp { Text("Approve to award \(xp) XP").caps(Ink.verdigris) }
                         if claim.photo == true {
                             Label("\(kid.name) took a photo. Ask to see it", systemImage: "camera")
                                 .font(Typeface.label())
@@ -1033,16 +1035,18 @@ struct IncomingSheet: View {
 
 private struct FamilyActivityList: View {
     let entries: [FamilyActivity]
+    @State private var expanded = false
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionLabel("Family changelog")
             if entries.isEmpty { Text("Changes will appear here.").font(Typeface.italic()).foregroundStyle(Ink.dim) }
-            ForEach(entries.sorted { $0.at > $1.at }) { entry in
+            ForEach(Array(entries.sorted { $0.at > $1.at }.prefix(expanded ? entries.count : 8))) { entry in
                 VStack(alignment: .leading, spacing: 3) {
                     Text(entry.text).font(Typeface.text()).foregroundStyle(Ink.bone)
                     Text("\(entry.actor) · \(when(entry.at))").caps(Ink.faint)
                 }.padding(.vertical, 4)
             }
+            if entries.count > 8 { Button(expanded ? "Show fewer changes" : "Show all \(entries.count) changes") { expanded.toggle() }.buttonStyle(PlateButtonStyle()) }
         }
     }
 }
@@ -1064,12 +1068,13 @@ private struct ScheduleRequestSheet: View {
                 Text("Once (this week)").tag(false)
                 Text("Permanently").tag(true)
             }.pickerStyle(.segmented)
-            Text("Your guardian must approve the change. A one-time change keeps the regular schedule for following weeks.")
+            Text("Your guardian must approve the change. A one-time change keeps the regular schedule for following weeks. A day that has already passed cannot be approved for this week.")
                 .font(Typeface.text()).foregroundStyle(Ink.dim)
             Button("Send request") {
                 store.requestDay(questId: quest.id, weekday: weekday, permanent: permanent)
                 dismiss()
             }.buttonStyle(PlateButtonStyle(kind: .primary, block: true))
+                .disabled(!permanent && weekday < GameClock.device.weekdayIndex(Date()))
             Spacer()
         }.padding(.horizontal, 20).spadeSheet().onAppear { weekday = quest.weekday ?? 0 }
     }

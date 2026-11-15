@@ -425,6 +425,15 @@ extension CloudFamily {
         return (try result.saveResults[share.recordID]?.get() as? CKShare) ?? share
     }
 
+    func leaveGuardians(_ hub: GuardianHub) async throws {
+        let database = hub.cloud == nil ? home : shared
+        let zone = hub.cloud.map(sharedZone) ?? homeZone
+        let id = CKRecord.ID(recordName: hub.record, zoneID: zone)
+        guard let root = try await find(id, in: database) else { return }
+        if let share = root.share { _ = try await database.deleteRecord(withID: share.recordID) }
+        if hub.cloud == nil { _ = try await home.deleteRecord(withID: id) }
+    }
+
     func joinGuardian(_ invite: CKShare.Metadata) async throws -> (GuardianHub, GuardianDocument) {
         guard let hub = Self.guardianPlace(invite) else { throw CloudProblem.badInvite }
         if invite.participantStatus != .accepted { _ = try await container.accept(invite) }
