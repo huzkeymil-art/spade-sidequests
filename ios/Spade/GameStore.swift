@@ -645,6 +645,15 @@ enum DemoMode {
             return GameStore(preview: newSave(seed: 7, now: Date()))
         case "family", "familyquest":
             return GameStore(preview: parentGame())
+        case "invite":
+            // A parent with one child still to invite, and one who hasn't opened their invite yet.
+            var save = parentGame()
+            var robin = Kid(id: "kid_robin", name: "Robin")
+            robin.quests = [FamilyQuest(id: "fq_bed", title: "Make your bed", cadence: .daily, category: .home, xp: 20, allowance: 25, repeats: true)]
+            var june = Kid(id: "kid_june", name: "June")
+            june.shared = true
+            save.household?.children = [robin, june]
+            return GameStore(preview: save)
         case "sync":
             // The parent's Settings, with iCloud keeping the family in step.
             let store = GameStore(preview: parentGame())
