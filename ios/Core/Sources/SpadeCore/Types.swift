@@ -62,6 +62,8 @@ struct ActiveQuest: Codable, Equatable, Identifiable {
     var done: Bool
     var custom: Bool
     var pinned: Bool
+    /// Set on quests a parent set for this child. The web version never has these.
+    var family: FamilyTag?
 
     var id: String { key }
 }
@@ -272,6 +274,12 @@ struct Save: Codable, Equatable {
     var feats: [String: Double] = [:]
     var custom: [CustomQuest] = []
     var settings = GameSettings()
+    /// Who this Spade is for. Only the iPhone app has families; the web version ignores these.
+    var role: Role = .solo
+    /// On a child's Spade: their family, and the quests and allowance from their parent.
+    var family: Membership?
+    /// On a parent's Spade: their children, the quests set for them, and what is owed.
+    var household: Household?
 
     init(seed: Int, createdAt: Double) {
         self.seed = seed
@@ -302,6 +310,9 @@ struct Save: Codable, Equatable {
         feats = (try? c.decode([String: Double].self, forKey: .feats)) ?? [:]
         custom = (try? c.decode([CustomQuest].self, forKey: .custom)) ?? []
         settings = (try? c.decode(GameSettings.self, forKey: .settings)) ?? GameSettings()
+        role = (try? c.decode(Role.self, forKey: .role)) ?? .solo
+        family = try? c.decode(Membership.self, forKey: .family)
+        household = try? c.decode(Household.self, forKey: .household)
     }
 
     private enum BoardKeys: String, CodingKey {
@@ -320,6 +331,8 @@ enum GameEvent: Equatable {
     case item(itemId: String, fresh: Bool, echoXp: Int, from: ItemOrigin)
     case level(level: Int, rank: String?)
     case feat(id: String)
+    /// A parent's allowance quest was finished, and now waits for them to check it.
+    case allowance(amount: Int)
 }
 
 enum XpReason: String {

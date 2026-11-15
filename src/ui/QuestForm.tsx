@@ -125,7 +125,7 @@ export function QuestForm({ cadence: startCadence, onClose }: { cadence: Cadence
         <div className="group plate">
           <ToggleRow
             label={`Show it every ${EVERY[cadence]}`}
-            note={pinned ? 'Always on the board' : 'Shuffled into the deck'}
+            note={pinned ? 'Always on the board' : 'On the board now, then mixed in'}
             checked={pinned}
             onChange={setPinned}
           />

@@ -28,10 +28,12 @@ jobs:
 
   app:
     runs-on: macos-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
     env:
-      SCREENS: launch quests hero satchel feats settings guide form dig level item picker smooth
-      SMALL_SCREENS: launch quests hero dig
+      SCREENS: >-
+        launch quests hero satchel feats settings guide form dig level item picker smooth
+        roles family familyquest childboard allowance join report openlink
+      SMALL_SCREENS: launch roles quests hero dig family childboard
     steps:
       - uses: actions/checkout@v4
       - name: Show tools
@@ -51,7 +53,7 @@ jobs:
           grep -E ": warning: " build.log | sed "s|$PWD/||" | awk '!seen[$0]++' | cut -c1-300 | head -40 || true
           echo "BUILD OK"
       - name: Run in the simulator and take screenshots
-        timeout-minutes: 24
+        timeout-minutes: 32
         run: bash ios/ci/screenshots.sh
       # The same kind of build Codemagic makes for TestFlight, minus the signing.
       - name: Check the App Store build

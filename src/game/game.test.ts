@@ -135,6 +135,26 @@ describe('dealing', () => {
     expect(board.quests.every((q) => q.category !== 'body' && q.category !== 'home')).toBe(true);
   });
 
+  it('saves one place in every deal for your own shuffled-in quests', () => {
+    const custom = [1, 2, 3].map((n) => ({
+      id: `own${n}`, cadence: 'daily' as const, category: 'mind' as const, difficulty: 1 as const, title: `Mine ${n}`, pinned: false,
+    }));
+    const seen = new Set<string>();
+    let recent: string[] = [];
+    for (let day = 1; day <= 12; day++) {
+      const board = dealBoard('daily', `2026-11-${day}`, { ...ctx, custom, recent });
+      expect(board.quests).toHaveLength(3);
+      const own = board.quests.filter((q) => q.custom);
+      expect(own.length).toBeGreaterThanOrEqual(1);
+      expect(new Set(board.quests.map((q) => q.defId)).size).toBe(3);
+      // The reserved place goes to one not dealt last time.
+      expect(recent).not.toContain(board.quests[0].defId);
+      own.forEach((q) => seen.add(q.defId));
+      recent = board.quests.map((q) => q.defId);
+    }
+    expect(seen.size).toBe(3);
+  });
+
   it('always shows pinned custom quests, and still leaves room for a surprise', () => {
     const custom = [1, 2, 3, 4].map((n) => ({
       id: `c${n}`, cadence: 'daily' as const, category: 'mind' as const, difficulty: 1 as const, title: `Mine ${n}`, pinned: true,
@@ -330,11 +350,14 @@ describe('playing', () => {
     const pinned = addCustomQuest(save, { title: '  Feed the cat ', cadence: 'daily', category: 'home', difficulty: 1, pinned: true }, now);
     expect(pinned.save.boards.daily.quests[0]).toMatchObject({ title: 'Feed the cat', custom: true, pinned: true, xp: 20 });
     expect(pinned.events.some((e) => e.type === 'feat' && e.id === 'own_path')).toBe(true);
+    // Unpinned ones go on the board straight away too, not only in a later deal.
     const loose = addCustomQuest(pinned.save, { title: 'Juggle', cadence: 'daily', category: 'craft', difficulty: 3, pinned: false }, now);
-    expect(loose.save.boards.daily.quests).toHaveLength(4); // unpinned ones wait for a future deal
+    expect(loose.save.boards.daily.quests).toHaveLength(5);
+    expect(loose.save.boards.daily.quests[0]).toMatchObject({ title: 'Juggle', custom: true, pinned: false, xp: 45 });
     const removed = removeCustomQuest(loose.save, pinned.save.custom[0].id);
     expect(removed.custom).toHaveLength(1);
-    expect(removed.boards.daily.quests).toHaveLength(3);
+    expect(removed.boards.daily.quests).toHaveLength(4);
+    expect(removeCustomQuest(removed, loose.save.custom[1].id).boards.daily.quests).toHaveLength(3);
     expect(addCustomQuest(save, { title: '   ', cadence: 'daily', category: 'home', difficulty: 1, pinned: false }, now).save).toBe(save);
   });
 

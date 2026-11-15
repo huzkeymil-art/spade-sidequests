@@ -39,9 +39,9 @@ private func activate(_ def: QuestDef, period: String, custom: Bool, pinned: Boo
     )
 }
 
-/// Makes the board entry for a pinned custom quest.
-func activatePinned(_ quest: CustomQuest, period: String) -> ActiveQuest {
-    activate(quest.asDef, period: period, custom: true, pinned: true)
+/// The board entry for one of the player's own quests.
+func activateCustom(_ quest: CustomQuest, period: String) -> ActiveQuest {
+    activate(quest.asDef, period: period, custom: true, pinned: quest.pinned)
 }
 
 /// Every quest that could be dealt for this cadence: built-in ones in enabled kinds, plus unpinned custom ones.
@@ -74,15 +74,31 @@ private func draw(_ cadence: Cadence, _ ctx: DealContext, count: Int, exclude: [
     return picked
 }
 
+/// Picks one of the player's own shuffled-in quests for this period, preferring
+/// one that wasn't dealt last time. Returns nil if they have none.
+private func pickOwn(_ cadence: Cadence, period: String, _ ctx: DealContext) -> CustomQuest? {
+    let own = ctx.custom.filter { $0.cadence == cadence && !$0.pinned }
+    if own.isEmpty { return nil }
+    let fresh = own.filter { !ctx.recent.contains($0.id) }
+    var rng = rngFor(ctx.seed, cadence.rawValue, "\(period):own")
+    return shuffled(fresh.isEmpty ? own : fresh, &rng).first
+}
+
 /// Deals a fresh board for the given day, week or month.
 func dealBoard(_ cadence: Cadence, period: String, _ ctx: DealContext) -> Board {
     let pinned = ctx.custom.filter { $0.cadence == cadence && $0.pinned }
-    // Pinned quests take up places, but at least one place is always left for a surprise.
-    let fromDeck = max(1, dealCount(cadence) - pinned.count)
-    let drawn = draw(cadence, ctx, count: fromDeck, exclude: ctx.recent, label: period)
+    // Pinned quests take up places, but at least one place is always left over.
+    let places = max(1, dealCount(cadence) - pinned.count)
+    // One of those places always goes to one of the player's own shuffled-in quests,
+    // if they have any. Otherwise a quest they wrote could take weeks to turn up.
+    let own = pickOwn(cadence, period: period, ctx)
+    var rest = ctx
+    if let own { rest.custom = ctx.custom.filter { $0.id != own.id } }
+    let drawn = draw(cadence, rest, count: places - (own == nil ? 0 : 1), exclude: ctx.recent, label: period)
     var board = Board()
     board.period = period
-    board.quests = pinned.map { activatePinned($0, period: period) }
+    board.quests = pinned.map { activateCustom($0, period: period) }
+        + (own.map { [activateCustom($0, period: period)] } ?? [])
         + drawn.map { activate($0.def, period: period, custom: $0.custom, pinned: false) }
     return board
 }
