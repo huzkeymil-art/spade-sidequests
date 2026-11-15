@@ -14,6 +14,11 @@ struct SettingsSheet: View {
     @State private var reminderNote = ""
     @State private var confirming = false
     @State private var backup: URL?
+    @State private var pendingRole: Role?
+    @State private var allowanceOpen = false
+    @State private var linkPasting = false
+    @State private var linkText = ""
+    @State private var linkNote = ""
 
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -26,6 +31,10 @@ struct SettingsSheet: View {
             SheetHeader(title: "Settings") { dismiss() }
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
+                    SectionLabel("Who this Spade is for")
+                    RolePicker(role: save.role, choose: requestRole)
+                    familyRows(save)
+
                     SectionLabel("Display and feel")
                     RowGroup {
                         ToggleRow(title: "Retro pixels", note: "Chunky, dithered 3D", isOn: setting(\.retro))
@@ -195,6 +204,16 @@ struct SettingsSheet: View {
                 Feedback.warn()
             }
         }
+        .sheet(isPresented: $allowanceOpen) { AllowanceSheet() }
+        .alert(leaveTitle, isPresented: Binding(get: { pendingRole != nil }, set: { if !$0 { pendingRole = nil } })) {
+            Button("Change", role: .destructive) {
+                if let role = pendingRole { store.chooseRole(role) }
+                pendingRole = nil
+            }
+            Button("Cancel", role: .cancel) { pendingRole = nil }
+        } message: {
+            Text(leaveMessage)
+        }
         .alert("Erase all progress?", isPresented: $confirming) {
             Button("Erase", role: .destructive) {
                 store.reset()
@@ -204,6 +223,114 @@ struct SettingsSheet: View {
         } message: {
             Text("Your level, items, feats and quests will be gone for good. This can't be undone.")
         }
+    }
+
+    // MARK: - Family
+
+    @ViewBuilder
+    private func familyRows(_ save: Save) -> some View {
+        switch save.role {
+        case .solo:
+            EmptyView()
+        case .child:
+            if let family = save.family {
+                footnote("In \(family.parentName)'s family. Their quests show up on your board.")
+                RowGroup {
+                    Button {
+                        Feedback.tap()
+                        allowanceOpen = true
+                    } label: {
+                        rowLabel("Allowance", note: "\(Money.format(family.claims.total(.approved), family.currency)) owed to you")
+                    }
+                    .buttonStyle(RowButtonStyle())
+                    Hairline()
+                    pasteLinkRow()
+                }
+                .padding(.top, 10)
+            } else {
+                footnote("Ask your parent to send you a link from their Spade. Tap it, and their quests join your board.")
+                RowGroup { pasteLinkRow() }
+                    .padding(.top, 10)
+            }
+            pasteLinkBox()
+        case .parent:
+            footnote("Set quests and allowance for your children in the Family tab.")
+            RowGroup { pasteLinkRow() }
+                .padding(.top, 10)
+            pasteLinkBox()
+        }
+    }
+
+    private func pasteLinkRow() -> some View {
+        Button {
+            Feedback.tap()
+            linkPasting.toggle()
+            linkNote = ""
+        } label: {
+            rowLabel("Paste a family link", note: "If tapping the link didn't open Spade", turned: linkPasting)
+        }
+        .buttonStyle(RowButtonStyle())
+    }
+
+    @ViewBuilder
+    private func pasteLinkBox() -> some View {
+        if linkPasting {
+            TextEditor(text: $linkText)
+                .font(.system(size: 13, design: .monospaced))
+                .foregroundStyle(Ink.bone)
+                .tint(Ink.lantern)
+                .scrollContentBackground(.hidden)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .padding(8)
+                .frame(height: 96)
+                .plate(fill: Ink.ink, edge: Ink.moss2, notch: 6)
+                .padding(.top, 10)
+                .accessibilityLabel("Family link")
+            Button("Open link", action: openLink)
+                .buttonStyle(PlateButtonStyle(block: true))
+                .disabled(linkText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .padding(.top, 10)
+            if !linkNote.isEmpty { footnote(linkNote) }
+        }
+    }
+
+    private func openLink() {
+        let text = linkText
+        guard FamilyLinks.read(text) != nil else {
+            linkNote = "That isn't a Spade family link. Copy the whole link and try again."
+            Feedback.warn()
+            return
+        }
+        linkText = ""
+        linkPasting = false
+        // Close Settings first: what the link brings opens on the main screen.
+        dismiss()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            store.receive(text)
+        }
+    }
+
+    /// Changing role clears what belonged to the old one, so that asks first.
+    private func requestRole(_ role: Role) {
+        let save = store.save
+        guard role != save.role else { return }
+        let hasKids = !(save.household?.children.isEmpty ?? true)
+        if (save.role == .parent && hasKids) || (save.role == .child && save.family != nil) {
+            pendingRole = role
+        } else {
+            store.chooseRole(role)
+        }
+    }
+
+    private var leaveTitle: String {
+        store.save.role == .parent ? "Stop being a parent here?" : "Leave \(store.save.family?.parentName ?? "your parent")'s family?"
+    }
+
+    private var leaveMessage: String {
+        store.save.role == .parent
+            ? "Your children, their quests and the allowance records on this phone will be deleted."
+            : "Their quests come off your board, and your allowance records go. Everything you've earned stays."
     }
 
     // MARK: - Pieces

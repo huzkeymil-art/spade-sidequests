@@ -49,3 +49,13 @@ enum Money {
         Locale.current.currency?.identifier ?? "USD"
     }
 }
+
+extension Money {
+    /// "$" for US dollars, "£" for pounds.
+    static func symbol(_ currency: String) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = currency
+        return f.currencySymbol ?? currency
+    }
+}

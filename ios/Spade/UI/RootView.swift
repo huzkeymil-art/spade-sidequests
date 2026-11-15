@@ -3,7 +3,7 @@ import UIKit
 
 /// The four sections of the app, shown in the floating tab bar.
 enum AppTab: String, CaseIterable, Identifiable {
-    case quests, hero, satchel, feats
+    case quests, hero, satchel, feats, family
 
     var id: String { rawValue }
     var title: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
@@ -15,7 +15,13 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .hero: return ""
         case .satchel: return "satchel"
         case .feats: return "feat"
+        case .family: return "home"
         }
+    }
+
+    /// The tabs a player with this role sees. Only parents have the Family tab.
+    static func shown(for role: Role) -> [AppTab] {
+        role == .parent ? allCases : [.quests, .hero, .satchel, .feats]
     }
 
     var shot: StageShot {
@@ -24,6 +30,7 @@ enum AppTab: String, CaseIterable, Identifiable {
         case .hero: return .hero
         case .satchel: return .satchel
         case .feats: return .feats
+        case .family: return .feats
         }
     }
 }
@@ -50,7 +57,12 @@ struct RootView: View {
     init() {
         // The demo screens (used for automated screenshots) can open on a particular tab.
         let demo = DemoMode.requested ?? ""
-        let start = AppTab(rawValue: demo) ?? (demo == "item" ? .satchel : demo == "picker" ? .hero : .quests)
+        let start = AppTab(rawValue: demo) ?? (
+            demo == "item" ? .satchel
+                : demo == "picker" ? .hero
+                : demo == "familyquest" || demo == "openlink" ? .family
+                : .quests
+        )
         _tab = State(initialValue: start)
         _opened = State(initialValue: [start])
     }
@@ -99,6 +111,16 @@ struct RootView: View {
         .dynamicTypeSize(.xSmall ... .xxxLarge)
         .sheet(isPresented: $settingsOpen) { SettingsSheet() }
         .sheet(isPresented: $guideOpen, onDismiss: markGuideSeen) { GuideSheet() }
+        // A family link that arrived. It waits until the player has started.
+        .sheet(item: Binding(
+            get: { store.save.onboarded ? store.incoming : nil },
+            set: { if $0 == nil { store.closeIncoming() } }
+        )) { arrival in
+            IncomingSheet(arrival: arrival) { pick(.family) }
+        }
+        .onChange(of: store.save.role) { _, role in
+            if !AppTab.shown(for: role).contains(tab) { tab = .quests }
+        }
         .onAppear(perform: start)
         .onChange(of: shot) { _, next in stage.setShot(next) }
         .onChange(of: progress) { _, next in stage.setProgress(next) }
@@ -241,6 +263,7 @@ struct RootView: View {
                 screen(.hero) { HeroScreenView() }
                 screen(.satchel) { SatchelView() }
                 screen(.feats) { FeatsView() }
+                screen(.family) { FamilyView() }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -280,7 +303,7 @@ struct RootView: View {
 
     private var dock: some View {
         HStack(spacing: 2) {
-            ForEach(AppTab.allCases) { option in
+            ForEach(AppTab.shown(for: store.save.role)) { option in
                 let selected = option == tab
                 Button {
                     pick(option)
@@ -295,7 +318,7 @@ struct RootView: View {
                         }
                         .saturation(selected ? 1 : 0.3)
                         .opacity(selected ? 1 : 0.62)
-                        Text(option.title).caps(selected ? Ink.bone : Ink.faint)
+                        Text(option.title).caps(selected ? Ink.bone : Ink.faint).lineLimit(1).minimumScaleFactor(0.7)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .plate(fill: selected ? Ink.ink : .clear, edge: selected ? Ink.moss : .clear, notch: 9)
@@ -355,6 +378,7 @@ struct RootView: View {
 
     private func pick(_ next: AppTab) {
         Feedback.select()
+        guard AppTab.shown(for: store.save.role).contains(next) else { return }
         if next == tab {
             tops[next, default: 0] += 1
             return

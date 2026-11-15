@@ -18,6 +18,8 @@ struct SpadeApp: App {
                 .environmentObject(store)
                 .environmentObject(stage)
                 .preferredColorScheme(.dark)
+                // Family links: spade://family#... (handed on by the link page on the web site).
+                .onOpenURL { url in store.receive(url.absoluteString) }
         }
     }
 }

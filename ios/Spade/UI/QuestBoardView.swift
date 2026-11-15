@@ -40,6 +40,7 @@ struct QuestBoardView: View {
 
             ScreenScroll {
                 VStack(spacing: 0) {
+                    FamilyBanner()
                     ForEach(board.quests) { quest in
                         QuestRow(quest: quest, canSwap: cadence == .daily && swaps > 0 && !quest.pinned)
                     }
@@ -149,6 +150,10 @@ struct QuestRow: View {
 
     private let holdSeconds = 0.65
     private var counted: Bool { quest.target > 1 }
+    /// For a parent's allowance quest that is done: what the parent decided.
+    private var claimStatus: ClaimStatus? {
+        store.save.family?.claims.first { $0.key == quest.key }?.status
+    }
     private var lastStep: Bool { quest.progress + 1 >= quest.target }
 
     var body: some View {
@@ -163,6 +168,16 @@ struct QuestRow: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if hint {
                     Text("Press and hold to \(counted && !lastStep ? "count it" : "seal it")").caps(Ink.lantern)
+                } else if let tag = quest.family {
+                    HStack(spacing: 6) {
+                        PropIcon(name: "home", size: 18, res: 18)
+                        if quest.done, tag.allowance > 0, let status = claimStatus {
+                            let words = claimWords(status, parent: tag.parent)
+                            Text(words.text).caps(words.color)
+                        } else {
+                            Text("from \(tag.parent)").caps(Ink.faint)
+                        }
+                    }
                 } else {
                     HStack(spacing: 6) {
                         PropIcon(name: quest.category.rawValue, size: 18, res: 18)
@@ -176,6 +191,10 @@ struct QuestRow: View {
                 Text("+\(quest.xp)")
                     .font(Typeface.label(22))
                     .foregroundStyle(quest.done ? Ink.faint : Ink.verdigris)
+                if let tag = quest.family, tag.allowance > 0 {
+                    Text(Money.format(tag.allowance, store.save.family?.currency ?? Money.local))
+                        .caps(quest.done ? Ink.faint : Ink.lantern)
+                }
                 if canSwap && !quest.done {
                     Button {
                         Feedback.tap()
@@ -214,10 +233,27 @@ struct QuestRow: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(quest.title)
-        .accessibilityValue(quest.done ? "Sealed" : counted ? "\(quest.progress) of \(quest.target), \(quest.xp) XP" : "\(quest.xp) XP")
+        .accessibilityValue(accessibleValue)
         .accessibilityHint(quest.done ? "" : "Double tap and hold to \(lastStep ? "seal" : "count")")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { seal() }
+    }
+
+    private var accessibleValue: String {
+        var parts: [String] = []
+        if let tag = quest.family {
+            parts.append("from \(tag.parent)")
+            if tag.allowance > 0 {
+                parts.append(Money.format(tag.allowance, store.save.family?.currency ?? Money.local))
+                if quest.done, let status = claimStatus { parts.append(claimWords(status, parent: tag.parent).text) }
+            }
+        }
+        if quest.done {
+            parts.insert("Sealed", at: 0)
+        } else {
+            parts.insert(counted ? "\(quest.progress) of \(quest.target), \(quest.xp) XP" : "\(quest.xp) XP", at: 0)
+        }
+        return parts.joined(separator: ", ")
     }
 
     private var socket: some View {
@@ -347,7 +383,7 @@ struct QuestFormSheet: View {
                     RowGroup {
                         ToggleRow(
                             title: "Show it every \(every[cadence] ?? "day")",
-                            note: pinned ? "Always on the board" : "Shuffled into the deck",
+                            note: pinned ? "Always on the board" : "On the board now, then mixed in",
                             isOn: $pinned
                         )
                     }
