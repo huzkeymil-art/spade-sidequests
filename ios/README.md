@@ -18,7 +18,7 @@ ios/
   Spade/
     Scene/          The 3D scene: hero, scenery, the dig-up, and the icon camera.
     UI/             The screens.
-    Platform/       Sound, haptics and reminders.
+    Platform/       Sound, haptics, reminders, and the iCloud calls for families.
     Resources/      Fonts, plus the models and textures exported from the web app.
   ci/               The script that screenshots the app in the iPhone Simulator.
 ```
@@ -44,52 +44,70 @@ The first screen (and Settings) asks who the Spade is for: **just me**,
 **parent or guardian**, or **child**. Only the iPhone app has this; the web
 version stays a single-player game.
 
-There are no accounts and no server. The two phones pass notes to each other
-as links, sent by Messages, AirDrop or anything else, like passing a notebook
-back and forth:
+A parent and a child connect once, and after that the two phones keep each
+other up to date through iCloud:
 
 1. **The parent** opens the **Family** tab, adds a child, and sets quests: which
    board, whether it repeats, the XP (5 to 1,000) and, if they like, an allowance.
-2. They tap **Send update to …** and send the link.
-3. **The child** taps the link. The first time, Spade asks whether to join the
-   family. The quests then appear at the top of their board.
-4. When the child finishes an allowance quest they get the XP straight away, and
-   the money waits to be checked. They open **Allowance** (top of the quest
-   board) and tap **Send … to …**.
-5. The parent taps that link, then in **Family** taps **It's done** or
-   **Not done**, and **Paid** once they've paid in real life. The next update
-   they send tells the child.
+2. They tap **Invite …**. Apple's sharing sheet opens (the same one Notes and
+   Reminders use), and they send the invite, for example by Messages.
+3. **The child** taps the invite and chooses to open it in Spade, then taps
+   **Join**. The quests appear at the top of their board.
+4. From then on nothing has to be sent. New and changed quests reach the child's
+   Spade by themselves, and the parent's Family tab shows each quest the child
+   finishes, with the date and time.
+5. For a quest with an allowance, the parent taps **It's done** or **Not done**,
+   and **Paid** once they've paid in real life. The child's Spade shows that too.
 
-A parent can also turn on **Ask for a photo** for a quest. The child then takes
-or picks a photo before that quest counts. The photo stays on the child's phone
-(it is far too big to fit in a link) and goes along with their **Send to …**
-message, with a numbered list of which photo is for which quest. On the
-parent's phone, the quest to check says whether a photo came with the message.
-The share sheet only counts something as sent if it really was.
+Updates usually arrive within about 15 seconds while Spade is open, and when it
+is next opened otherwise.
 
-Both phones keep a history of every parent's quest that was done, with the date
-and time, including quests that pay no allowance. Each quest also shows how many
-times it has been done and how much it has earned so far (approved or paid), and
-anything still waiting to be checked.
+### How it works
 
-The parent's phone is the record of what is owed. A note from a child only says
-which quests were done; the amounts always come from the parent's copy, so an
-edited link can't ask for more. Spade never moves real money.
+Think of a notebook with two pages for each child, kept in the parent's iCloud
+and shared with that child only:
 
-How a link travels: it points at `family.html` on the web site, and the note
-itself sits after the `#`, which browsers never send to a server. The page
-hands it straight to the app through the `spade://` link scheme. If that ever
-fails, **Settings → Paste a family link** takes the link by hand.
+- **The parent's page** holds the quest list and the parent's decisions. Only
+  the parent's phone writes on it.
+- **The child's page** holds which quests were finished, and when. Only the
+  child's phone writes on it.
 
-Some apps turn a shared link into a preview card and drop everything after the
-`#` on the way. So Spade shares a short message instead of a bare link: the link,
-then the same code again on a line of its own (`Family code: …`). Pasting the
-whole message works even if the link was cut short, and **Copy link** puts the
-same message on the clipboard for apps where the share sheet misbehaves.
+Each phone writes its own page and reads the other one. Because a page has one
+writer, the phones can never overwrite each other. That also makes offline use
+simple: a change is saved on the phone first and goes up when it is back
+online, and a page that arrives late or twice does no harm (an older parent's
+page is ignored, and a finished quest that is already recorded is skipped).
+
+| Situation | What happens |
+| --- | --- |
+| The child finishes a quest offline, and the parent deleted it meanwhile | The child keeps the XP. The parent still sees it, and decides on any allowance. |
+| The parent changed the XP or allowance meanwhile | The child keeps the XP their phone showed. The allowance uses the parent's current amount. |
+| The parent approves while the child is offline | The child sees it at the next sync. |
+| The child leaves the family, or the parent removes them | Sharing stops. |
+
+The parent's phone is the record of what is owed. The child's page only says
+which quests were done; the amounts always come from the parent's copy. Spade
+never moves real money.
+
+There is no server of ours in this. The pages live in the parent's own iCloud
+(Apple's CloudKit, in the app's private container), and Apple delivers them to
+the one iCloud account that was invited. One phone per person: two phones on
+the same Apple ID don't merge.
+
+**Photo proof.** A parent can turn on **Ask for a photo** for a quest. The child
+then takes or picks a photo before that quest counts. The photo stays on the
+child's phone; the parent's Family tab says that one was taken, and the child
+can send it from **Allowance** through the share sheet. (Photos are not part of
+what iCloud keeps in step yet.)
+
+**If something goes wrong.** Settings has an **iCloud sync** line, under "Who
+this Spade is for". It shows when the last sync worked, or the reason it
+didn't, including Apple's own error text. Tapping it checks again.
 
 The rules live in `Core/Sources/SpadeCore/Family.swift`, with tests in
-`Core/Tests/SpadeCoreTests/FamilyTests.swift`; the screens are in
-`Spade/UI/FamilyView.swift`.
+`Core/Tests/SpadeCoreTests/FamilyTests.swift` that play two phones against a
+pretend iCloud. The iCloud calls are in `Spade/Platform/CloudFamily.swift`, and
+the screens in `Spade/UI/FamilyView.swift`.
 
 ## Checking it without a Mac
 
@@ -101,6 +119,10 @@ Every pull request that touches `ios/` runs `.github/workflows/ios.yml`:
   scene comes out blank on any screen that shows it. Then it makes the same
   release build Codemagic makes, without signing it. The screenshots and build
   logs are under the run's **Artifacts**.
+
+iCloud itself can't be checked there: the test Macs have no Apple ID. The family
+rules are tested against a pretend iCloud; the real thing has to be tried on
+two iPhones (see "Trying families on two iPhones" below).
 
 With a Mac: open `ios/Spade.xcodeproj` in Xcode 16 or newer and press Run.
 The rule tests run anywhere Swift is installed: `swift test --package-path ios/Core`.
@@ -127,7 +149,8 @@ guardian has to own the account and do the Apple steps with you.
 2. Open **Identifiers** and press **+**.
 3. Choose **App IDs**, then **App**.
 4. Description: `Spade`. Bundle ID: **Explicit**, `com.huzkeymil.spade`.
-5. Leave every capability unticked. Press **Continue**, then **Register**.
+5. Press **Continue**, then **Register**. (The two capabilities Spade needs are
+   added in "Turning on iCloud" below.)
 
 > The bundle ID is the app's permanent name inside Apple's systems. To use a
 > different one, change it in three places: `PRODUCT_BUNDLE_IDENTIFIER` (twice) in
@@ -181,6 +204,50 @@ This key is what lets Codemagic talk to Apple for you. Treat it like a password.
 7. Tick `Spade App Store`, give it the reference name `spade-app-store`, and press **Download selected**.
    A green tick in the **Certificate** column means it found its matching certificate.
 
+### Turning on iCloud (for families)
+
+Families sync through iCloud, which needs two capabilities on the App ID and
+one small piece of setup in Apple's CloudKit Console. The app's signing files
+have to match, so do steps 1 to 4 in one sitting: between steps 2 and 4,
+Codemagic builds fail.
+
+**At <https://developer.apple.com/account> → Certificates, IDs & Profiles**
+
+1. **Identifiers** → **+** → **iCloud Containers** → Continue.
+   Description: `Spade`. Identifier: `iCloud.com.huzkeymil.spade`. Register.
+   This name is permanent: Apple doesn't let containers be deleted.
+2. **Identifiers** → `com.huzkeymil.spade`.
+   - Tick **iCloud**, choose the option that includes **CloudKit**, press
+     **Configure** (or **Edit**), tick `iCloud.com.huzkeymil.spade`, and save.
+   - Tick **Push Notifications**. (This is how iCloud tells the phones that
+     something changed. Spade shows no notifications because of it.)
+   - Press **Save** and confirm.
+3. **Profiles** → `Spade App Store` → **Edit** → **Save** (or Generate).
+   Changing capabilities makes the old profile invalid, so it has to be made again.
+
+**In Codemagic**
+
+4. **Code signing identities → iOS provisioning profiles**: delete
+   `spade-app-store`, press **Fetch profiles**, tick `Spade App Store`, and give
+   it the same reference name, `spade-app-store`. The certificate and the API
+   key stay as they are.
+
+**In the CloudKit Console**, at <https://icloud.developer.apple.com>
+
+5. Open **CloudKit Database** and choose the container `iCloud.com.huzkeymil.spade`.
+6. Make sure **Development** is selected at the top. Open **Schema → Record Types**.
+7. Press **+**, name the new type `FamilyPage` (exactly that), and save.
+8. In `FamilyPage`, add one field: name `body`, type **String**. Save.
+9. Press **Deploy Schema Changes…** and deploy to **Production**.
+
+Step 9 matters: TestFlight and App Store builds only talk to Production, and
+Production refuses record types it hasn't been told about. Fields can be added
+there later but never removed, which is why Spade uses a single small type.
+
+> To use a different container name, change it in two places:
+> `ios/Config/Spade.entitlements` and `containerId` in
+> `ios/Spade/Platform/CloudFamily.swift`.
+
 ### 7. Build
 
 1. In Codemagic, open the app and press **Start new build**.
@@ -201,6 +268,34 @@ Internal testers (people on your App Store Connect team) need no review.
 To invite people outside the team, fill in **Test Information** in TestFlight,
 make an external group, and Apple will review the first build, usually within a day.
 
+### Trying families on two iPhones
+
+Before starting:
+
+- Each phone is signed in to iCloud with a **different** Apple ID, with iCloud
+  Drive switched on. (A share can't be sent to the account that made it.)
+- Both phones have the same TestFlight build. A second Apple ID that isn't on
+  the App Store Connect team needs an external-tester invite, and Apple reviews
+  the first external build (about a day).
+
+Then:
+
+1. **Parent's phone:** choose Parent or guardian, add a child, add two quests,
+   tap **Invite …**, and send the invite to the child's iMessage address.
+2. **Child's phone:** tap the invite, open it in Spade, tap **Join**. Both
+   quests should be on the board, and the parent's card should say **Connected**.
+3. **Parent:** add a third quest. It should reach the child's phone within about
+   15 seconds.
+4. **Child:** finish a quest. The parent's Family tab should show it.
+5. **Offline:** put the child's phone in Airplane Mode and finish a quest. On the
+   parent's phone, edit one quest and delete another. Turn Airplane Mode off and
+   compare with the table in "How it works".
+6. **Signed out:** sign out of iCloud on one phone. Settings → iCloud sync in
+   Spade should say why it can't sync.
+
+If a step fails, open Spade's Settings on that phone and send a screenshot of
+the **iCloud sync** line and the text under it.
+
 ### Later builds
 
 Start a new build in Codemagic. Nothing else is needed: each build stamps itself
@@ -217,12 +312,23 @@ To change the version people see (1.0, 1.1, ...), edit `MARKETING_VERSION` in
 | `No suitable application records were found` | The app record from step 3 does not exist yet, or uses a different bundle ID. |
 | `You already have a current Distribution certificate` | Apple allows three distribution certificates. Remove an old one at developer.apple.com, or fetch the existing one into Codemagic. |
 | `The bundle version must be higher than the previously uploaded version` | A build with a later date was already uploaded. Start the build again. |
+| `Provisioning profile ... doesn't include the com.apple.developer.icloud-...` or `aps-environment` entitlement | iCloud or Push Notifications isn't ticked on the App ID, or the profile wasn't made again and re-fetched afterwards ("Turning on iCloud", steps 2 to 4). |
+
+And if the app builds but families don't sync, Spade's Settings → **iCloud sync** says why:
+
+| It says | What it means |
+| --- | --- |
+| `Cannot create new type FamilyPage in production schema` (or similar) | The record type wasn't deployed to Production ("Turning on iCloud", steps 5 to 9). |
+| This iPhone isn't signed in to iCloud | Sign in from the Settings app, and switch iCloud Drive on. |
+| This build of Spade isn't set up for iCloud | The build was signed without the iCloud capability. Redo steps 2 to 4 and build again. |
 
 ## Sending it to the App Store
 
 TestFlight builds and App Store builds are the same file. When the app is ready:
 in App Store Connect, open the **Distribution** tab, fill in the listing
 (screenshots, description, age rating, privacy answers), choose a build, and
-press **Add for Review**. Spade collects no data and has no accounts (family
-links go straight from one phone to another), so the privacy answer is
-"Data Not Collected".
+press **Add for Review**. Spade has no accounts and no server of its own.
+Family quests are stored in the parent's own iCloud and shared only with the
+child they invite; the developer can't read them. Check Apple's current
+wording when answering the privacy questions, and mention iCloud in the review
+notes.

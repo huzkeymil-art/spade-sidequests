@@ -129,6 +129,9 @@ struct TitlePanel: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: choosing)
+        .onChange(of: store.incoming?.id) { _, arrived in
+            if arrived != nil { role = .child }
+        }
         .onAppear {
             // Opened by tapping a parent's invite: this is a child's Spade.
             if store.incoming != nil { role = .child }

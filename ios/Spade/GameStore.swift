@@ -448,7 +448,13 @@ final class GameStore: ObservableObject {
             case .child: try await syncAsChild(cloudKit)
             case .solo: break
             }
-            cloudState = usesCloud ? .upToDate(Date()) : .idle
+            if !usesCloud {
+                cloudState = .idle
+            } else if case .upToDate(let at) = cloudState, Date().timeIntervalSince(at) < 50 {
+                // Still true, and the time shown is only to the minute: no need to redraw the screens.
+            } else {
+                cloudState = .upToDate(Date())
+            }
         } catch {
             cloudState = .failed(CloudFamily.describe(error))
         }
