@@ -64,10 +64,11 @@ struct MeshBuffer {
             return
         }
         let bottom = chunk.flat ? top : shade(top)
-        add(chunk.mesh) { i in bottom + (top - bottom) * t[i] }
+        let glowing = simd_distance(top, rgb("#39ff14")) < 0.001
+        add(chunk.mesh, forceGlow: glowing) { i in bottom + (top - bottom) * t[i] }
     }
 
-    private mutating func add(_ mesh: MeshData, color: (Int) -> RGB) {
+    private mutating func add(_ mesh: MeshData, forceGlow: Bool = false, color: (Int) -> RGB) {
         let base = UInt32(positions.count)
         let count = mesh.p.count / 3
         for i in 0..<count {
@@ -82,7 +83,7 @@ struct MeshBuffer {
         while k + 2 < mesh.i.count {
             let a = mesh.i[k], b = mesh.i[k + 1], c = mesh.i[k + 2]
             // A triangle glows if its first corner does (parts are all-or-nothing).
-            if mesh.e[Int(a)] >= 0.5 {
+            if mesh.e[Int(a)] >= 0.5 || forceGlow {
                 glowIndices.append(contentsOf: [base + a, base + b, base + c])
             } else {
                 litIndices.append(contentsOf: [base + a, base + b, base + c])

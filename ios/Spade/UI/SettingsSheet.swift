@@ -7,6 +7,7 @@ struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var guideOpen = false
+    @State private var chamberOpen = false
     @State private var importing = false
     @State private var pasting = false
     @State private var pasted = ""
@@ -31,6 +32,13 @@ struct SettingsSheet: View {
                     SectionLabel("Who this Spade is for")
                     RolePicker(role: save.role) { requestRole($0) }
                     familyRows(save)
+
+                    SectionLabel("Beyond the journey")
+                    Button {
+                        chamberOpen = true
+                    } label: {
+                        rowLabel(save.xp >= 500_000 || store.developerUnlocked ? "Chamber of Completion" : "Locked: Chamber of Completion", note: "Three promises beyond the final rank")
+                    }.buttonStyle(RowButtonStyle())
 
                     SectionLabel("Display and feel")
                     RowGroup {
@@ -187,9 +195,10 @@ struct SettingsSheet: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .spadeSheet()
-        .onAppear { backup = store.backupFile() }
+        .onAppear { backup = store.backupFile(); if DemoMode.requested == "chamber" { chamberOpen = true } }
         .onChange(of: store.save) { _, _ in backup = store.backupFile() }
         .sheet(isPresented: $guideOpen) { GuideSheet() }
+        .sheet(isPresented: $chamberOpen) { ChamberSheet() }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json, .plainText, .data]) { result in
             guard case .success(let url) = result else { return }
             let scoped = url.startAccessingSecurityScopedResource()
@@ -425,5 +434,57 @@ struct GuideSheet: View {
             .padding(.vertical, 12)
         }
         .spadeSheet()
+    }
+}
+
+struct ChamberSheet: View {
+    @EnvironmentObject private var store: GameStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var password = ""
+    @State private var message = ""
+    var body: some View {
+        VStack(spacing: 0) {
+            SheetHeader(title: "Chamber of Completion") { dismiss() }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("The journey keeps growing. Claim these rewards in order.")
+                        .font(Typeface.italic()).foregroundStyle(Ink.dim)
+                    Text("\(store.save.xp.formatted()) lifetime XP").caps(Ink.verdigris)
+                    ForEach(Array(chamberQuests.enumerated()), id: \.element.id) { index, quest in
+                        let claimed = (store.save.chamber ?? []).contains(quest.id)
+                        let previous = chamberQuests.prefix(index).allSatisfy { (store.save.chamber ?? []).contains($0.id) }
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(quest.title).font(Typeface.display(28)).foregroundStyle(Ink.bone)
+                            HStack {
+                                if let item = quest.item { ItemIcon(id: item, size: 64) }
+                                Text(quest.id == "dogger" ? "Dogger · Boston terrier companion" : quest.id == "icon_spade" ? "The Spade · glowing green shovel" : "Spade Green · glowing Hero colours")
+                                    .font(Typeface.text()).foregroundStyle(Ink.bone)
+                            }
+                            Text("Reach \(quest.xp.formatted()) XP").caps(Ink.dim)
+                            ProgressView(value: Double(min(store.save.xp, quest.xp)), total: Double(quest.xp)).tint(Ink.verdigris)
+                            Button(claimed ? "Claimed" : previous ? "Claim reward" : "Claim the previous reward first") { store.chamberClaim(quest.id) }
+                                .buttonStyle(PlateButtonStyle(block: true))
+                                .disabled(claimed || !previous || store.save.xp < quest.xp)
+                            if store.developerUnlocked {
+                                Button("Test unlock this reward") { store.testChamberReward(quest.id) }
+                                    .buttonStyle(PlateButtonStyle(block: true))
+                            }
+                        }.padding(14).plate(fill: Ink.loam, edge: Ink.moss, notch: 9)
+                    }
+                    Text("Equip Dogger in Hero → Charm. Equip The Spade in Hero → Hand. Spade Green appears among Hero's colour choices.")
+                        .font(Typeface.text()).foregroundStyle(Ink.dim)
+                    if store.developerToolsAvailable {
+                        SectionLabel("Developer testing")
+                        Text("Debug and TestFlight only. Test unlocks are saved; lifetime XP stays unchanged.").font(Typeface.text()).foregroundStyle(Ink.dim)
+                        if !store.developerUnlocked {
+                            SecureField("Developer password", text: $password).textInputAutocapitalization(.never).autocorrectionDisabled().foregroundStyle(Ink.bone)
+                            Button("Unlock testing") { message = store.unlockDeveloper(password) ? "Testing unlocked" : "Incorrect password"; password = "" }
+                                .buttonStyle(PlateButtonStyle(block: true))
+                            Text(message).font(Typeface.text()).foregroundStyle(Ink.dim)
+                        }
+                    }
+                }.padding(20)
+            }
+        }.spadeSheet()
     }
 }

@@ -56,11 +56,13 @@ other up to date through iCloud:
 4. From then on nothing has to be sent. New and changed quests reach the child's
    Spade by themselves, and the parent's Family tab shows each quest the child
    finishes, with the date and time.
-5. For a quest with an allowance, the parent taps **It's done** or **Not done**,
+5. For every new family completion, a guardian taps **It's done** or **Not done** before XP is earned,
    and **Paid** once they've paid in real life. The child's Spade shows that too.
 
 Updates usually arrive within about 15 seconds while Spade is open, and when it
 is next opened otherwise.
+
+See [the update and testing guide](../docs/progression-update-testing.md) for additional guardians, repeat-day requests, the changelog and Chamber rewards. Additional guardians share a separate private record; the family owner must open Spade to relay updates to and from children.
 
 ### How it works
 
@@ -80,8 +82,8 @@ page is ignored, and a finished quest that is already recorded is skipped).
 
 | Situation | What happens |
 | --- | --- |
-| The child finishes a quest offline, and the parent deleted it meanwhile | The child keeps the XP. The parent still sees it, and decides on any allowance. |
-| The parent changed the XP or allowance meanwhile | The child keeps the XP their phone showed. The allowance uses the parent's current amount. |
+| The child finishes a quest offline, and the parent deleted it meanwhile | No XP yet. The parent sees the completion using the archived quest, then approves or declines it. |
+| The parent changed the XP or allowance meanwhile | The guardian's amounts when the completion is first received determine XP and allowance. XP is paid only after approval. |
 | The parent approves while the child is offline | The child sees it at the next sync. |
 | The child leaves the family, or the parent removes them | Sharing stops. |
 
@@ -238,7 +240,7 @@ Codemagic builds fail.
 6. Make sure **Development** is selected at the top. Open **Schema → Record Types**.
 7. Press **+**, name the new type `FamilyPage` (exactly that), and save.
 8. In `FamilyPage`, add one field: name `body`, type **String**. Save.
-9. Press **Deploy Schema Changes…** and deploy to **Production**.
+9. Enable sharing in Development so Apple creates the system `cloudkit.share` type, then press **Deploy Schema Changes…** and deploy to **Production**. If that type is missing, use a temporary private setup zone in the Console, configure zone-wide sharing there, and deploy the schema. Do not switch the app's `SpadeFamily` zone to zone-wide sharing: it uses separate per-child shares.
 
 Step 9 matters: TestFlight and App Store builds only talk to Production, and
 Production refuses record types it hasn't been told about. Fields can be added
@@ -329,6 +331,6 @@ in App Store Connect, open the **Distribution** tab, fill in the listing
 (screenshots, description, age rating, privacy answers), choose a build, and
 press **Add for Review**. Spade has no accounts and no server of its own.
 Family quests are stored in the parent's own iCloud and shared only with the
-child they invite; the developer can't read them. Check Apple's current
+child they invite, with a separate family record shared with invited guardians; the developer can't read them. Check Apple's current
 wording when answering the privacy questions, and mention iCloud in the review
 notes.

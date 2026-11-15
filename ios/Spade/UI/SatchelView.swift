@@ -2,6 +2,9 @@ import SwiftUI
 
 /// Where an item comes from, in words, for items not found yet.
 private func whereFrom(_ item: ItemDef) -> String {
+    if let reward = chamberQuests.first(where: { $0.item == item.id }) {
+        return "Chamber of Completion · \(reward.xp.formatted()) lifetime XP. Open Settings to claim."
+    }
     if item.source == .milestone { return "Waiting at level \(item.level ?? 0)." }
     if item.source == .feat { return "A reward for a feat." }
     switch item.rarity {

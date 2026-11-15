@@ -72,8 +72,8 @@ struct HeroScreenView: View {
 
                     SectionLabel("Skin")
                     FlowLayout {
-                        ForEach(looks.skin.indices, id: \.self) { i in
-                            Swatch(color: Color(hex: hexValue(looks.skin[i])), selected: save.hero.skin == i, label: "Skin tone \(i + 1)") {
+                        ForEach(looks.skin.indices.filter { looks.skin[$0] != "#39ff14" || (save.chamber ?? []).contains("spade_green") }, id: \.self) { i in
+                            Swatch(color: Color(hex: hexValue(looks.skin[i])), selected: save.hero.skin == i, label: looks.skin[i] == "#39ff14" ? "Spade Green" : "Skin tone \(i + 1)") {
                                 Feedback.select()
                                 store.setHero { $0.skin = i }
                             }
@@ -91,18 +91,19 @@ struct HeroScreenView: View {
                     }
                     .padding(.bottom, 10)
                     FlowLayout {
-                        ForEach(looks.hair.indices, id: \.self) { i in
-                            Swatch(color: Color(hex: hexValue(looks.hair[i])), selected: save.hero.hair == i, label: "Hair colour \(i + 1)") {
+                        ForEach(looks.hair.indices.filter { looks.hair[$0] != "#39ff14" || (save.chamber ?? []).contains("spade_green") }, id: \.self) { i in
+                            Swatch(color: Color(hex: hexValue(looks.hair[i])), selected: save.hero.hair == i, label: looks.hair[i] == "#39ff14" ? "Spade Green" : "Hair colour \(i + 1)") {
                                 Feedback.select()
                                 store.setHero { $0.hair = i }
                             }
                         }
                     }
 
+                    if (save.chamber ?? []).contains("spade_green") { Text("Spade Green unlocked").caps(Ink.verdigris) }
                     SectionLabel("Scarf")
                     FlowLayout {
-                        ForEach(looks.scarf.indices, id: \.self) { i in
-                            Swatch(color: Color(hex: hexValue(looks.scarf[i])), selected: save.hero.scarf == i, label: "Scarf colour \(i + 1)") {
+                        ForEach(looks.scarf.indices.filter { looks.scarf[$0] != "#39ff14" || (save.chamber ?? []).contains("spade_green") }, id: \.self) { i in
+                            Swatch(color: Color(hex: hexValue(looks.scarf[i])), selected: save.hero.scarf == i, label: looks.scarf[i] == "#39ff14" ? "Spade Green" : "Scarf colour \(i + 1)") {
                                 Feedback.select()
                                 store.setHero { $0.scarf = i }
                             }

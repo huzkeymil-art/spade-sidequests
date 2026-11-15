@@ -95,7 +95,7 @@ export function HeroScreen() {
         <div className="section">
           <span className="label">Skin</span>
           <div className="swatches">
-            {LOOKS.skin.map((color, i) => (
+            {LOOKS.skin.filter(c => c !== '#39ff14').map((color, i) => (
               <button
                 key={color}
                 className="swatch plate"
@@ -129,7 +129,7 @@ export function HeroScreen() {
             ))}
           </div>
           <div className="swatches">
-            {LOOKS.hair.map((color, i) => (
+            {LOOKS.hair.filter(c => c !== '#39ff14').map((color, i) => (
               <button
                 key={color}
                 className="swatch plate"
@@ -148,7 +148,7 @@ export function HeroScreen() {
         <div className="section">
           <span className="label">Scarf</span>
           <div className="swatches">
-            {LOOKS.scarf.map((color, i) => (
+            {LOOKS.scarf.filter(c => c !== '#39ff14').map((color, i) => (
               <button
                 key={color}
                 className="swatch plate"

@@ -8,6 +8,8 @@ import { Icon } from './stage';
 
 /** Where an item comes from, in words, for items not found yet. */
 function whereFrom(item: ItemDef): string {
+  if (item.id === 'dogger') return 'Chamber of Completion: 500,000 XP in the iPhone app.';
+  if (item.id === 'icon_spade') return 'Chamber of Completion: 1,000,000 XP in the iPhone app.';
   if (item.source === 'milestone') return `Waiting at level ${item.level}.`;
   if (item.source === 'feat') return 'A reward for a feat.';
   if (item.rarity === 'common') return 'Turns up on daily and weekly quests.';

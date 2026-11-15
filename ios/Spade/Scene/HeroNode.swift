@@ -38,6 +38,7 @@ final class HeroNode {
     private let faceMaterial: SCNMaterial
     private var charmGlow: SCNNode?
     private var hasCharm = false
+    private var dogger: SCNNode?
 
     // Resting arm angles (turn around X, turn around Z), which depend on what is held.
     private var armR: (x: Float, z: Float) = (-10 * deg, -13 * deg)
@@ -124,6 +125,7 @@ final class HeroNode {
         built = []
         charmPivot.childNodes.forEach { $0.removeFromParentNode() }
         charmGlow = nil
+        dogger?.removeFromParentNode(); dogger = nil
 
         let library = ModelLibrary.shared
         let model = library.hero
@@ -179,8 +181,12 @@ final class HeroNode {
         armR = tool != nil ? (-62 * deg, -20 * deg) : (-10 * deg, -13 * deg)
         armL = shield != nil ? (-34 * deg, 22 * deg) : (-10 * deg, 13 * deg)
 
-        hasCharm = charm != nil
-        if let charm, let mesh = charm.mesh {
+        if gear["charm"] == "dogger", let mesh = charm?.mesh {
+            let pet = meshNode(mesh); pet.position = SCNVector3(-0.52, 0, 0.2)
+            root.addChildNode(pet); dogger = pet
+        }
+        hasCharm = charm != nil && dogger == nil
+        if dogger == nil, let charm, let mesh = charm.mesh {
             charmPivot.addChildNode(meshNode(mesh))
             if let glow = charm.glow {
                 let sprite = makeGlow(color: UIColor(rgb(glow)), size: 0.5)
@@ -197,6 +203,8 @@ final class HeroNode {
 
     func update(time: Double) {
         let t = Float(time)
+        dogger?.eulerAngles.y = sin(t * 0.8) * 0.12
+        dogger?.position.y = max(0, sin(t * 2)) * 0.008
         let breathe = sin(t * 1.9)
 
         // Hop: a quick squash, a jump, and a landing.

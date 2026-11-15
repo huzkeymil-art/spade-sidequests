@@ -61,7 +61,7 @@ struct RootView: View {
         let demo = DemoMode.requested ?? ""
         let start = AppTab(rawValue: demo) ?? (
             demo == "item" ? .satchel
-                : demo == "picker" ? .hero
+                : demo == "picker" || demo == "chamberhero" ? .hero
                 : demo == "familyquest" || demo == "invite" ? .family
                 : .quests
         )
@@ -119,6 +119,12 @@ struct RootView: View {
             set: { if $0 == nil { store.closeIncoming() } }
         )) { arrival in
             IncomingSheet(arrival: arrival)
+        }
+        .alert("Join as a guardian?", isPresented: $store.guardianInvitation) {
+            Button("Join family") { store.acceptGuardian() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("You will be able to manage the family's quests, approve completions and review its history. The family owner's phone relays updates to children when Spade is open.")
         }
         .onChange(of: store.save.role) { _, role in
             if !AppTab.shown(for: role).contains(tab) { tab = .quests }
@@ -357,7 +363,7 @@ struct RootView: View {
             Feedback.prepare()
         }
         switch DemoMode.requested {
-        case "settings", "sync": settingsOpen = true
+        case "settings", "sync", "chamber": settingsOpen = true
         case "guide": guideOpen = true
         default: break
         }

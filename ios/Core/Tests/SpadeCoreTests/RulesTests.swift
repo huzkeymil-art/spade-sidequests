@@ -18,7 +18,7 @@ final class RulesTests: XCTestCase {
     }
 
     func testContentIsComplete() {
-        XCTAssertEqual(Catalog.items.count, 33)
+        XCTAssertEqual(Catalog.items.count, 35)
         XCTAssertEqual(Catalog.feats.count, 25)
         XCTAssertEqual(Set(Catalog.quests.map { $0.id }).count, Catalog.quests.count, "quest ids are unique")
         for cadence in Cadence.allCases {

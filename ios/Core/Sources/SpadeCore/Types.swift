@@ -280,6 +280,9 @@ struct Save: Codable, Equatable {
     var family: Membership?
     /// On a parent's Spade: their children, the quests set for them, and what is owed.
     var household: Household?
+    var chamber: [String]?
+    var guardianHub: GuardianHub?
+    var guardianPending: [GuardianChange]?
 
     init(seed: Int, createdAt: Double) {
         self.seed = seed
@@ -313,6 +316,9 @@ struct Save: Codable, Equatable {
         role = (try? c.decode(Role.self, forKey: .role)) ?? .solo
         family = try? c.decode(Membership.self, forKey: .family)
         household = try? c.decode(Household.self, forKey: .household)
+        chamber = try? c.decode([String].self, forKey: .chamber)
+        guardianHub = try? c.decode(GuardianHub.self, forKey: .guardianHub)
+        guardianPending = try? c.decode([GuardianChange].self, forKey: .guardianPending)
     }
 
     private enum BoardKeys: String, CodingKey {
