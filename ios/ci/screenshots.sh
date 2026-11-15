@@ -77,7 +77,8 @@ for t in sorted(names, key=lambda t: t["name"], reverse=True):
 # A family link from Tess, as her phone would send it to the demo parent ("-demo openlink").
 # Opening it checks that spade:// links are registered to the app: iOS asks
 # "Open in Spade?" first, which is the screenshot. ("-demo report" shows what
-# the app does with the link once it is opened.)
+# the app does with the link once it is opened.) That prompt stays up after the
+# app closes, so "openlink" should be the last screen in the list.
 openlink_payload() {
   python3 -c '
 import base64, json
