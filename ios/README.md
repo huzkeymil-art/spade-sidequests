@@ -60,6 +60,11 @@ back and forth:
    **Not done**, and **Paid** once they've paid in real life. The next update
    they send tells the child.
 
+Both phones keep a history of every parent's quest that was done, with the date
+and time, including quests that pay no allowance. Each quest also shows how many
+times it has been done and how much it has earned so far (approved or paid), and
+anything still waiting to be checked.
+
 The parent's phone is the record of what is owed. A note from a child only says
 which quests were done; the amounts always come from the parent's copy, so an
 edited link can't ask for more. Spade never moves real money.

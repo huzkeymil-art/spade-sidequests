@@ -161,6 +161,66 @@ final class FamilyTests: XCTestCase {
         XCTAssertEqual(told.save.family?.claims.map { $0.status }, [.paid])
     }
 
+    /// Both phones can see when each quest was done, including quests that pay no allowance,
+    /// and how much each quest has earned.
+    func testEveryFamilyQuestIsRecordedWithItsEarnings() throws {
+        let day1 = at(2026, 11, 14)
+        let day2 = at(2026, 11, 15)
+        var (parent, kidId) = try parentWithKid(day1)
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, chores(), now: day1)
+        var reading = chores()
+        reading.title = "Read for 20 minutes"
+        reading.allowance = 0
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, reading, now: day1)
+        var child = receiveParentNote(player(3, "Tess", day1), try XCTUnwrap(noteFor(parent, kidId: kidId)), now: day1).save
+
+        // Two days of both quests.
+        for day in [day1, day2] {
+            child = syncPeriods(child, now: day, clock: clock)
+            for entry in child.boards.daily.quests where entry.family != nil && !entry.done {
+                let out = markQuest(child, .daily, key: entry.key, now: day, clock: clock)
+                child = out.save
+                // Only the allowance quest raises the "send it to your parent" notice.
+                XCTAssertEqual(out.events.contains(.allowance(amount: 150)), entry.title == "Take out the bins")
+            }
+        }
+
+        // The child's phone recorded all four, with when each was done.
+        let mine = try XCTUnwrap(child.family?.claims)
+        XCTAssertEqual(mine.count, 4)
+        XCTAssertEqual(mine.filter { $0.title == "Read for 20 minutes" }.map { $0.status }, [.done, .done])
+        XCTAssertEqual(mine.filter { $0.title == "Take out the bins" }.map { $0.status }, [.waiting, .waiting])
+        XCTAssertEqual(mine.map { $0.doneAt }, [millis(day1), millis(day1), millis(day2), millis(day2)])
+        XCTAssertEqual(unsentClaims(child).count, 4, "XP-only quests are reported too")
+
+        // The parent hears about all four; only the allowance ones need checking.
+        let heard = receiveChildNote(parent, try XCTUnwrap(childNote(child)))
+        parent = heard.save
+        XCTAssertEqual(heard.result, .added(kidId: kidId, count: 4))
+        child = markReported(child)
+        XCTAssertTrue(unsentClaims(child).isEmpty)
+        var claims = try XCTUnwrap(parent.household?.children.first?.claims)
+        XCTAssertEqual(claims.filter { $0.status == .waiting }.count, 2)
+        XCTAssertEqual(claims.filter { $0.status == .done }.map { $0.doneAt }, [millis(day1), millis(day2)])
+
+        // Earnings, quest by quest: one approved, one turned down.
+        let bins = try XCTUnwrap(parent.household?.children.first?.quests.first { $0.title == "Take out the bins" })
+        let readId = try XCTUnwrap(parent.household?.children.first?.quests.first { $0.title == "Read for 20 minutes" }?.id)
+        XCTAssertEqual(claims.earnings(for: bins.id), QuestEarnings(times: 2, earned: 0, waiting: 300))
+        let waitingKeys = claims.filter { $0.status == .waiting }.map { $0.key }
+        parent = decideClaim(parent, kidId: kidId, key: waitingKeys[0], approve: true)
+        parent = decideClaim(parent, kidId: kidId, key: waitingKeys[1], approve: false)
+        claims = try XCTUnwrap(parent.household?.children.first?.claims)
+        XCTAssertEqual(claims.earnings(for: bins.id), QuestEarnings(times: 1, earned: 150, waiting: 0))
+        XCTAssertEqual(claims.earnings(for: readId), QuestEarnings(times: 2, earned: 0, waiting: 0))
+
+        // The child sees the same once the parent's next note arrives.
+        child = receiveParentNote(child, try XCTUnwrap(noteFor(parent, kidId: kidId)), now: day2).save
+        let theirs = try XCTUnwrap(child.family?.claims)
+        XCTAssertEqual(theirs.earnings(for: bins.id), QuestEarnings(times: 1, earned: 150, waiting: 0))
+        XCTAssertEqual(theirs.earnings(for: readId).times, 2)
+    }
+
     func testDeclinedQuestsPayNothing() throws {
         let now = at(2026, 11, 14)
         var (parent, kidId) = try parentWithKid(now)

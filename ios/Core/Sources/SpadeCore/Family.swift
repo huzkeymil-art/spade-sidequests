@@ -49,6 +49,8 @@ struct FamilyTag: Codable, Equatable {
 }
 
 enum ClaimStatus: String, Codable {
+    /// Done. It pays no allowance, so there is nothing for the parent to check.
+    case done
     /// Done, and waiting for the parent to check it.
     case waiting
     /// The parent agreed it was done: the money is owed.
@@ -59,7 +61,8 @@ enum ClaimStatus: String, Codable {
     case paid
 }
 
-/// One finished quest that earns allowance.
+/// One finished quest from a parent: when it was done, and what it earned.
+/// Quests with an allowance go through the parent's check; the rest are simply recorded.
 struct Claim: Codable, Equatable, Identifiable {
     /// The board key, for example "2026-11-14:fq_abc". One per quest per day, week or month.
     var key: String
@@ -78,6 +81,34 @@ extension Array where Element == Claim {
     func total(_ status: ClaimStatus) -> Int {
         filter { $0.status == status }.reduce(0) { $0 + $1.allowance }
     }
+
+    /// What one quest has earned so far.
+    func earnings(for questId: String) -> QuestEarnings {
+        var out = QuestEarnings()
+        for claim in self where claim.questId == questId {
+            switch claim.status {
+            case .done:
+                out.times += 1
+            case .waiting:
+                out.times += 1
+                out.waiting += claim.allowance
+            case .approved, .paid:
+                out.times += 1
+                out.earned += claim.allowance
+            case .declined:
+                break
+            }
+        }
+        return out
+    }
+}
+
+/// How one quest has done: how many times it was finished (not counting any the parent
+/// turned down), the money approved or paid for it, and the money still waiting to be checked.
+struct QuestEarnings: Equatable {
+    var times = 0
+    var earned = 0
+    var waiting = 0
 }
 
 /// On a child's Spade: the family it belongs to.
@@ -403,7 +434,7 @@ func noteFor(_ save: Save, kidId: String) -> ParentNote? {
           let kid = house.children.first(where: { $0.id == kidId })
     else { return nil }
     var decisions: [String: ClaimStatus] = [:]
-    for claim in kid.claims.suffix(120) where claim.status != .waiting {
+    for claim in kid.claims.suffix(120) where claim.status != .waiting && claim.status != .done {
         decisions[claim.key] = claim.status
     }
     return ParentNote(
@@ -446,14 +477,15 @@ func receiveChildNote(_ save: Save, _ note: ChildNote) -> (save: Save, result: C
     for claim in note.done {
         if kid.claims.contains(where: { $0.key == claim.key }) { continue }
         // Only quests this parent actually set count, at the amount the parent set.
-        guard let quest = (kid.quests + kid.past).first(where: { $0.id == claim.questId }), quest.allowance > 0 else { continue }
+        guard let quest = (kid.quests + kid.past).first(where: { $0.id == claim.questId }) else { continue }
         kid.claims.append(Claim(
             key: claim.key,
             questId: quest.id,
             title: quest.title,
             allowance: quest.allowance,
             doneAt: claim.doneAt,
-            status: .waiting
+            // Quests with an allowance wait for the parent's check; the rest are just recorded.
+            status: quest.allowance > 0 ? .waiting : .done
         ))
         added += 1
     }
@@ -516,7 +548,7 @@ func receiveParentNote(_ save: Save, _ note: ParentNote, now: Date) -> (save: Sa
         case .approved: summary.approved += 1
         case .declined: summary.declined += 1
         case .paid: summary.paid += 1
-        case .waiting: break
+        case .waiting, .done: break
         }
         family.claims[i].status = decision
     }
@@ -541,26 +573,32 @@ func receiveParentNote(_ save: Save, _ note: ParentNote, now: Date) -> (save: Sa
 /// Allowance quests done here that the parent hasn't been sent yet.
 func unsentClaims(_ save: Save) -> [Claim] {
     guard let family = save.family else { return [] }
-    return family.claims.filter { $0.status == .waiting && !family.reported.contains($0.key) }
+    return family.claims.filter { toReport($0) && !family.reported.contains($0.key) }
 }
 
-/// The note to send the parent: every allowance quest still waiting to be checked.
+/// Finished quests the parent should hear about: allowance quests still to be checked,
+/// and quests without an allowance, so the parent can see when they were done too.
+private func toReport(_ claim: Claim) -> Bool {
+    claim.status == .waiting || claim.status == .done
+}
+
+/// The note to send the parent: the quests finished here that they should hear about.
 func childNote(_ save: Save) -> ChildNote? {
     guard save.role == .child, let family = save.family else { return nil }
-    let waiting = family.claims.filter { $0.status == .waiting }
-    if waiting.isEmpty { return nil }
+    let done = family.claims.filter(toReport)
+    if done.isEmpty { return nil }
     return ChildNote(
         familyId: family.familyId,
         childId: family.childId,
         childName: family.childName,
-        done: Array(waiting.suffix(60))
+        done: Array(done.suffix(60))
     )
 }
 
-/// Remembers that the waiting claims have been sent to the parent.
+/// Remembers that the finished quests have been sent to the parent.
 func markReported(_ save: Save) -> Save {
     guard var family = save.family else { return save }
-    let waiting = family.claims.filter { $0.status == .waiting }.map { $0.key }
+    let waiting = family.claims.filter(toReport).map { $0.key }
     let all = Array(Set(family.reported + waiting)).sorted()
     family.reported = Array(all.suffix(300))
     var next = save
@@ -629,17 +667,19 @@ func recordFamilyQuestDone(_ save: Save, _ quest: ActiveQuest, now: Date, _ even
     if !tag.repeats && !family.finished.contains(quest.defId) {
         family.finished.append(quest.defId)
     }
-    if tag.allowance > 0 && !family.claims.contains(where: { $0.key == quest.key }) {
+    // Every quest from a parent is recorded with when it was done. Allowance quests then wait
+    // for the parent to check them; the rest have nothing to check.
+    if !family.claims.contains(where: { $0.key == quest.key }) {
         family.claims.append(Claim(
             key: quest.key,
             questId: quest.defId,
             title: quest.title,
             allowance: tag.allowance,
             doneAt: millis(now),
-            status: .waiting
+            status: tag.allowance > 0 ? .waiting : .done
         ))
         family.claims = Array(family.claims.suffix(300))
-        events.append(.allowance(amount: tag.allowance))
+        if tag.allowance > 0 { events.append(.allowance(amount: tag.allowance)) }
     }
     var next = save
     next.family = family

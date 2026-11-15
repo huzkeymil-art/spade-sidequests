@@ -403,7 +403,9 @@ enum DemoMode {
         tess.quests = demoQuests
         tess.claims = [
             Claim(key: "\(clock.shiftDay(today, -2)):fq_dishes", questId: "fq_dishes", title: "Do the dishes after dinner", allowance: 100, doneAt: ms - 2 * 86_400_000, status: .paid),
+            Claim(key: "\(clock.shiftDay(today, -2)):fq_reading", questId: "fq_reading", title: "Read for 30 minutes", allowance: 0, doneAt: ms - 2 * 86_400_000 + 3_600_000, status: .done),
             Claim(key: "\(yesterday):fq_dishes", questId: "fq_dishes", title: "Do the dishes after dinner", allowance: 100, doneAt: ms - 86_400_000, status: .approved),
+            Claim(key: "\(yesterday):fq_reading", questId: "fq_reading", title: "Read for 30 minutes", allowance: 0, doneAt: ms - 86_400_000 + 1_800_000, status: .done),
             Claim(key: "\(clock.weekKey(now)):fq_lawn", questId: "fq_lawn", title: "Mow the front lawn", allowance: 500, doneAt: ms - 7_200_000, status: .waiting),
         ]
         tess.revision = 6
@@ -433,6 +435,7 @@ enum DemoMode {
         let older = [
             Claim(key: "\(clock.shiftDay(today, -9)):fq_lawn", questId: "fq_lawn", title: "Mow the front lawn", allowance: 500, doneAt: ms - 9 * 86_400_000, status: .paid),
             Claim(key: "\(clock.shiftDay(today, -2)):fq_dishes", questId: "fq_dishes", title: "Do the dishes after dinner", allowance: 100, doneAt: ms - 2 * 86_400_000, status: .paid),
+            Claim(key: "\(clock.shiftDay(today, -1)):fq_reading", questId: "fq_reading", title: "Read for 30 minutes", allowance: 0, doneAt: ms - 86_400_000 - 3_600_000, status: .done),
             Claim(key: "\(clock.shiftDay(today, -1)):fq_dishes", questId: "fq_dishes", title: "Do the dishes after dinner", allowance: 100, doneAt: ms - 86_400_000, status: .approved),
         ]
         save.family?.claims.insert(contentsOf: older, at: 0)
