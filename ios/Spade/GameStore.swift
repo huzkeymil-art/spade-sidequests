@@ -108,7 +108,7 @@ final class GameStore: ObservableObject {
     }
 
     /// Stores the new save and queues up anything worth celebrating.
-    private func apply(_ outcome: Outcome) {
+    private func apply(_ outcome: Outcome, fromCloud: Bool = false) {
         for event in outcome.events {
             serial += 1
             switch event {
@@ -126,7 +126,7 @@ final class GameStore: ObservableObject {
                 break
             }
         }
-        commit(outcome.save)
+        commit(outcome.save, fromCloud: fromCloud)
     }
 
     /// Brings the boards up to date with the clock.
@@ -269,7 +269,7 @@ final class GameStore: ObservableObject {
                 guard let out = readParentPage(save, found.body, cloud: found.link, now: Date()) else {
                     throw CloudProblem.badInvite
                 }
-                commit(out.save)
+                apply(Outcome(save: out.save, events: out.events))
                 switch out.result {
                 case .applied(let summary):
                     step = .joined(summary, quests: save.family?.quests ?? [], currency: save.family?.currency ?? Money.local)
@@ -524,7 +524,7 @@ final class GameStore: ObservableObject {
         guard stillIn() else { return }
         if page.tag == nil || pageTags["parent"] != page.tag {
             if let out = readParentPage(save, page.body, cloud: link, now: Date()) {
-                commit(out.save, fromCloud: true)
+                apply(Outcome(save: out.save, events: out.events), fromCloud: true)
                 if case .applied(let summary) = out.result { announce(summary, from: family.parentName) }
             }
             pageTags["parent"] = page.tag

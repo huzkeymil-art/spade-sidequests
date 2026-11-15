@@ -531,13 +531,14 @@ enum ParentNoteResult: Equatable {
 }
 
 /// Reads a parent's note on the child's Spade, joining the family if needed.
-func receiveParentNote(_ save: Save, _ note: ParentNote, now: Date) -> (save: Save, result: ParentNoteResult) {
-    if save.role == .parent { return (save, .isParent) }
+func receiveParentNote(_ save: Save, _ note: ParentNote, now: Date) -> (save: Save, result: ParentNoteResult, events: [GameEvent]) {
+    if save.role == .parent { return (save, .isParent, []) }
     var next = save
+    var events: [GameEvent] = []
     var summary = ParentNoteSummary()
     var family: Membership
     if let current = save.family, current.familyId == note.familyId, current.childId == note.childId {
-        if note.revision <= current.revision { return (save, .stale) }
+        if note.revision <= current.revision { return (save, .stale, []) }
         family = current
     } else {
         // A first note, or one from a different family: start afresh with it.
@@ -568,7 +569,7 @@ func receiveParentNote(_ save: Save, _ note: ParentNote, now: Date) -> (save: Sa
         if (decision == .approved || decision == .paid), family.claims[i].xpGranted == false,
            let amount = note.approvedXp?[family.claims[i].key] {
             let claim = family.claims[i]
-            next = rewardApprovedFamilyQuest(next, claim: claim, xp: amount, now: now)
+            next = rewardApprovedFamilyQuest(next, claim: claim, xp: amount, now: now, events: &events)
             family.claims[i].xpGranted = true
         }
     }
@@ -591,12 +592,12 @@ func receiveParentNote(_ save: Save, _ note: ParentNote, now: Date) -> (save: Sa
     next.role = .child
     next.household = nil
     next.family = family
-    return (placeFamilyQuests(next), .applied(summary))
+    return (placeFamilyQuests(next), .applied(summary), events)
 }
 
 /// Reads the parent's page on the child's Spade, joining the family if needed, and
 /// remembers where in iCloud the family's pages are kept.
-func readParentPage(_ save: Save, _ body: String, cloud: CloudLink, now: Date) -> (save: Save, result: ParentNoteResult)? {
+func readParentPage(_ save: Save, _ body: String, cloud: CloudLink, now: Date) -> (save: Save, result: ParentNoteResult, events: [GameEvent])? {
     guard case .fromParent(let note)? = FamilyPages.read(body) else { return nil }
     var out = receiveParentNote(save, note, now: now)
     // Even when the page itself is old news, this is still where the family lives.

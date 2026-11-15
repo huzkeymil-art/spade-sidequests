@@ -35,7 +35,9 @@ final class ProgressionUpdateTests: XCTestCase {
         XCTAssertEqual(child.family?.claims.first?.status, .waiting)
         parent = receiveChildNote(parent, try XCTUnwrap(childNote(child))).save
         parent = decideClaim(parent, kidId: id, key: entry.key, approve: true)
-        child = receiveParentNote(child, try XCTUnwrap(noteFor(parent, kidId: id)), now: monday).save
+        let awarded = receiveParentNote(child, try XCTUnwrap(noteFor(parent, kidId: id)), now: monday)
+        child = awarded.save
+        XCTAssertTrue(awarded.events.contains(.xp(amount: 60, reason: .quest)))
         XCTAssertGreaterThanOrEqual(child.xp - before.xp, 60)
         XCTAssertEqual(child.counts.quests - before.counts.quests, 1)
         XCTAssertEqual(child.family?.claims.first?.xpGranted, true)
@@ -44,6 +46,7 @@ final class ProgressionUpdateTests: XCTestCase {
         child = receiveParentNote(child, try XCTUnwrap(noteFor(parent, kidId: id)), now: monday).save
         XCTAssertEqual(child.xp, paid)
         XCTAssertEqual(receiveParentNote(child, try XCTUnwrap(noteFor(parent, kidId: id)), now: monday).save.xp, paid)
+        XCTAssertTrue(receiveParentNote(child, try XCTUnwrap(noteFor(parent, kidId: id)), now: monday).events.isEmpty)
     }
 
     func testDeclineNeverAwardsXPAndLegacyApprovalDoesNotPayAgain() throws {

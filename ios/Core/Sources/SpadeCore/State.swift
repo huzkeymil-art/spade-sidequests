@@ -282,8 +282,7 @@ func exportSave(_ save: Save) -> Data {
 }
 
 /// Only a confirmed guardian decision can pay a new family completion.
-func rewardApprovedFamilyQuest(_ save: Save, claim: Claim, xp: Int, now: Date) -> Save {
-    var events: [GameEvent] = []
+func rewardApprovedFamilyQuest(_ save: Save, claim: Claim, xp: Int, now: Date, events: inout [GameEvent]) -> Save {
     var next = save
     next.counts.quests += 1
     next.counts[claim.cadence ?? .daily] += 1
