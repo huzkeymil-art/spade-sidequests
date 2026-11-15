@@ -224,6 +224,8 @@ final class GameStore: ObservableObject {
 
     /// An invite was tapped. (iOS hands it over once the person has agreed to open it in Spade.)
     func inviteArrived(_ metadata: CKShare.Metadata) {
+        // The same invite, handed over twice: the sheet for it is already up.
+        if incoming != nil, let waiting = invite, waiting.share.recordID == metadata.share.recordID { return }
         invite = metadata
         let from = CloudFamily.sender(of: metadata)
         if metadata.participantRole == .owner {

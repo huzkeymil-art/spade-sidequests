@@ -77,6 +77,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         return configuration
     }
 
+    /// Invites normally arrive through the window's delegate (below). This is the older route,
+    /// kept in case iOS uses it.
+    func application(_ application: UIApplication, userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShare.Metadata) {
+        CloudDoor.invite(cloudKitShareMetadata)
+    }
+
     func application(
         _ application: UIApplication,
         didReceiveRemoteNotification userInfo: [AnyHashable: Any],

@@ -156,6 +156,7 @@ final class CloudFamily {
             share.publicPermission = .none
         }
         share[CKShare.SystemFieldKey.title] = title
+        if let icon = Self.iconData { share[CKShare.SystemFieldKey.thumbnailImageData] = icon }
         saving.append(share)
 
         let results = try await home.modifyRecords(saving: saving, deleting: [])
@@ -166,6 +167,17 @@ final class CloudFamily {
             return saved
         }
         return share
+    }
+
+    /// The app's icon, to show on the invite.
+    static var iconData: Data? {
+        guard let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
+              let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
+              let files = primary["CFBundleIconFiles"] as? [String],
+              let name = files.last,
+              let image = UIImage(named: name)
+        else { return nil }
+        return image.pngData()
     }
 
     /// Puts the parent's page for this child in iCloud.
@@ -368,6 +380,10 @@ enum InviteSheet {
 
         func itemTitle(for csc: UICloudSharingController) -> String? {
             title
+        }
+
+        func itemThumbnailData(for csc: UICloudSharingController) -> Data? {
+            CloudFamily.iconData
         }
 
         func cloudSharingController(_ csc: UICloudSharingController, failedToSaveShareWithError error: Error) {
