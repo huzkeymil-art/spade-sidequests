@@ -60,7 +60,7 @@ struct RootView: View {
         let start = AppTab(rawValue: demo) ?? (
             demo == "item" ? .satchel
                 : demo == "picker" ? .hero
-                : demo == "familyquest" || demo == "openlink" ? .family
+                : demo == "familyquest" || demo == "openlink" || demo == "report" ? .family
                 : .quests
         )
         _tab = State(initialValue: start)

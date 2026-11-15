@@ -32,6 +32,8 @@ extension Role {
 /// Three chips: just me, parent or guardian, child.
 struct RolePicker: View {
     let role: Role
+    /// Shows a one-line description of the chosen role under the chips.
+    var showsBlurb = true
     let choose: (Role) -> Void
 
     var body: some View {
@@ -44,7 +46,9 @@ struct RolePicker: View {
                     }
                 }
             }
-            Text(role.blurb).caps(Ink.faint)
+            if showsBlurb {
+                Text(role.blurb).caps(Ink.faint)
+            }
         }
     }
 }

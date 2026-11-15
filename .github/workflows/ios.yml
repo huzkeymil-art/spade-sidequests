@@ -34,8 +34,8 @@ jobs:
     env:
       SCREENS: >-
         launch quests hero satchel feats settings guide form dig level item picker smooth
-        family familyquest childboard allowance join openlink
-      SMALL_SCREENS: launch quests hero dig family childboard
+        roles family familyquest childboard allowance join openlink report
+      SMALL_SCREENS: launch roles quests hero dig family childboard
     steps:
       - uses: actions/checkout@v4
       - name: Show tools

@@ -65,59 +65,92 @@ struct TitleLogo: View {
     }
 }
 
-/// First launch: a name to choose, who this Spade is for, and a button to begin.
+/// First launch, in two short steps: a name to choose, then who this Spade is for.
 struct TitlePanel: View {
     @EnvironmentObject private var store: GameStore
     @State private var name = ""
     @State private var role: Role = .solo
+    @State private var choosing = false
     @FocusState private var typing: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // On short phones this part scrolls, so the button below always stays in view.
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Real quests, every day, week and month. Dig a little. See what turns up.")
-                        .font(Typeface.italic(19))
-                        .foregroundStyle(Ink.dim)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.bottom, 16)
-                    Text("Name your digger").caps(Ink.faint).padding(.bottom, 9)
-                    TextField("", text: $name, prompt: Text("Digger").foregroundStyle(Ink.faint))
-                        .font(Typeface.text(19))
-                        .foregroundStyle(Ink.bone)
-                        .tint(Ink.lantern)
-                        .focused($typing)
-                        .submitLabel(.go)
-                        .textInputAutocapitalization(.words)
-                        .autocorrectionDisabled()
-                        .onSubmit(begin)
-                        .onChange(of: name) { _, new in
-                            if new.count > 16 { name = String(new.prefix(16)) }
-                        }
-                        .padding(.horizontal, 13)
-                        .frame(minHeight: 50)
-                        .plate(fill: Ink.ink, edge: Ink.moss2, notch: 6)
-                        .accessibilityLabel("Name your digger")
-                    Text("Who is this Spade for?").caps(Ink.faint).padding(.top, 16).padding(.bottom, 9)
-                    RolePicker(role: role) { role = $0 }
+            if choosing {
+                // Only this part scrolls, and only if very large text needs it.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Who is this Spade for?").caps(Ink.faint).padding(.bottom, 12)
+                        RolePicker(role: role, showsBlurb: false) { role = $0 }
+                        Text(detail)
+                            .font(Typeface.italic(17))
+                            .foregroundStyle(Ink.dim)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 14)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.bottom, 12)
+                .scrollBounceBehavior(.basedOnSize)
+                HStack(spacing: 10) {
+                    Button("Back") {
+                        Feedback.tap()
+                        choosing = false
+                    }
+                    .buttonStyle(PlateButtonStyle())
+                    Button("Break ground", action: begin)
+                        .buttonStyle(PlateButtonStyle(kind: .primary, block: true))
+                }
+                .padding(.top, 12)
+            } else {
+                Text("Real quests, every day, week and month. Dig a little. See what turns up.")
+                    .font(Typeface.italic(19))
+                    .foregroundStyle(Ink.dim)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, 18)
+                Text("Name your digger").caps(Ink.faint).padding(.bottom, 9)
+                TextField("", text: $name, prompt: Text("Digger").foregroundStyle(Ink.faint))
+                    .font(Typeface.text(19))
+                    .foregroundStyle(Ink.bone)
+                    .tint(Ink.lantern)
+                    .focused($typing)
+                    .submitLabel(.next)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                    .onSubmit(next)
+                    .onChange(of: name) { _, new in
+                        if new.count > 16 { name = String(new.prefix(16)) }
+                    }
+                    .padding(.horizontal, 13)
+                    .frame(minHeight: 50)
+                    .plate(fill: Ink.ink, edge: Ink.moss2, notch: 6)
+                    .accessibilityLabel("Name your digger")
+                Spacer(minLength: 12)
+                Button("Next", action: next)
+                    .buttonStyle(PlateButtonStyle(kind: .primary, block: true))
             }
-            .scrollBounceBehavior(.basedOnSize)
-            .scrollDismissesKeyboard(.interactively)
-            Button("Break ground", action: begin)
-                .buttonStyle(PlateButtonStyle(kind: .primary, block: true))
         }
+        .animation(.easeOut(duration: 0.2), value: choosing)
         .onAppear {
             // Opened from a parent's link: this is a child's Spade.
             if case .fromParent(_)? = store.incoming?.link { role = .child }
+            if DemoMode.requested == "roles" { choosing = true }
         }
     }
 
-    private func begin() {
-        // Put the keyboard away first, so the dig isn't hidden behind it.
+    private var detail: String {
+        switch role {
+        case .solo: return "Spade deals you quests, and you can write your own."
+        case .parent: return "You get a Family tab to set quests, XP and allowance for your kids."
+        case .child: return "Your parent can send you quests, sometimes with allowance."
+        }
+    }
+
+    private func next() {
+        Feedback.tap()
         typing = false
+        choosing = true
+    }
+
+    private func begin() {
         Feedback.dig()
         store.begin(name: name)
         if role != .solo { store.chooseRole(role) }

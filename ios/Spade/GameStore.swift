@@ -347,10 +347,20 @@ enum DemoMode {
     static func makeStore() -> GameStore {
         guard let name = requested else { return GameStore() }
         switch name {
-        case "launch", "title":
+        case "launch", "title", "roles":
             return GameStore(preview: newSave(seed: 7, now: Date()))
         case "family", "familyquest", "openlink":
             return GameStore(preview: parentGame())
+        case "report":
+            // The parent's Spade, just after Tess's "I've done these" link was opened.
+            let store = GameStore(preview: parentGame())
+            let done = Claim(
+                key: "2026-01-01:fq_dishes", questId: "fq_dishes", title: "Do the dishes after dinner",
+                allowance: 100, doneAt: millis(Date()), status: .waiting
+            )
+            let note = ChildNote(familyId: "fam_demo", childId: "kid_tess", childName: "Tess", done: [done])
+            store.receive(FamilyLinks.webLink(.fromChild(note)))
+            return store
         case "allowance", "childboard":
             return GameStore(preview: childGame())
         case "join":

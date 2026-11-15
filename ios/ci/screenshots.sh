@@ -17,7 +17,7 @@ SMALL_SCREENS=${SMALL_SCREENS:-}
 WAIT=${WAIT:-7}
 HERE=$(cd "$(dirname "$0")" && pwd)
 # The screens where the scene is in full view (the others have a sheet over it).
-SCENE_SCREENS=" launch quests hero satchel feats dig level smooth family childboard "
+SCENE_SCREENS=" launch roles quests hero satchel feats dig level smooth family childboard "
 FAILED=0
 
 APP=$(find build/Build/Products -maxdepth 2 -name "Spade.app" | head -1)
@@ -75,7 +75,9 @@ for t in sorted(names, key=lambda t: t["name"], reverse=True):
 }
 
 # A family link from Tess, as her phone would send it to the demo parent ("-demo openlink").
-# Opening it checks that the app's spade:// links really reach it.
+# Opening it checks that spade:// links are registered to the app: iOS asks
+# "Open in Spade?" first, which is the screenshot. ("-demo report" shows what
+# the app does with the link once it is opened.)
 openlink_payload() {
   python3 -c '
 import base64, json
