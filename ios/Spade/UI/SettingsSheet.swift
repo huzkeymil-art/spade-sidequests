@@ -267,7 +267,7 @@ struct SettingsSheet: View {
             linkPasting.toggle()
             linkNote = ""
         } label: {
-            rowLabel("Paste a family link", note: "If tapping the link didn't open Spade", turned: linkPasting)
+            rowLabel("Paste a family link", note: "Or the whole message it came in", turned: linkPasting)
         }
         .buttonStyle(RowButtonStyle())
     }
@@ -298,7 +298,9 @@ struct SettingsSheet: View {
     private func openLink() {
         let text = linkText
         guard FamilyLinks.read(text) != nil else {
-            linkNote = "That isn't a Spade family link. Copy the whole link and try again."
+            linkNote = FamilyLinks.missingCode(text)
+                ? "This link lost its family code on the way. Ask for it to be sent again with Copy link, or paste the whole message it came in."
+                : "That isn't a Spade family link. Copy the whole message it came in and try again."
             Feedback.warn()
             return
         }

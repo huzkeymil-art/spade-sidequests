@@ -184,16 +184,77 @@ enum FamilyLinks {
         "\(webPage)#\(payload(link))"
     }
 
-    /// Reads a note from a shared link, the app's own link, or the bare text after the "#".
-    /// Returns nil for anything that isn't a Spade family note.
+    /// What actually gets shared: a friendly line, the link, and the code again on a line of its own.
+    /// Some apps turn a link into a preview card and lose everything after the "#" on the way; the
+    /// code line is plain text, so it survives that, and pasting the whole message into Spade works.
+    static func message(_ link: FamilyLink, intro: String) -> String {
+        let code = payload(link)
+        return """
+        \(intro)
+
+        \(webPage)#\(code)
+
+        If the link doesn't open Spade, copy this whole message, then in Spade go to Settings > Paste a family link.
+
+        Family code: \(code)
+        """
+    }
+
+    /// Reads a note from anything that might hold one: a shared link, the app's own link, a whole
+    /// shared message, or the bare code. Returns nil if none of it is a Spade family note.
     static func read(_ text: String) -> FamilyLink? {
-        var body = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let hash = body.lastIndex(of: "#") {
-            body = String(body[body.index(after: hash)...])
+        guard text.count < 200_000 else { return nil }
+        for candidate in candidates(text) {
+            if let link = decode(candidate) { return link }
         }
-        body = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !body.isEmpty, body.count < 200_000 else { return nil }
-        var base64 = body
+        return nil
+    }
+
+    /// True when the text looks like a family link, but the code that belongs with it is missing or
+    /// damaged: for example, when an app dropped everything after the "#".
+    static func missingCode(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return read(text) == nil && (lower.contains("family.html") || lower.contains("\(appScheme)://"))
+    }
+
+    /// The characters a code is made of (URL-safe base64).
+    private static let codeCharacters = CharacterSet(
+        charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+    )
+
+    /// The code characters at the start of some text, stopping at the first one that isn't.
+    private static func leadingCode<S: StringProtocol>(_ text: S) -> String {
+        String(String.UnicodeScalarView(text.unicodeScalars.prefix { codeCharacters.contains($0) }))
+    }
+
+    /// The places a code might be, most likely first.
+    private static func candidates(_ text: String) -> [String] {
+        var found: [String] = []
+        // After a "#", up to the first character that can't be part of a code (a space, a bracket...).
+        var rest = Substring(text)
+        while let hash = rest.firstIndex(of: "#") {
+            rest = rest[rest.index(after: hash)...]
+            found.append(leadingCode(rest))
+        }
+        // A "d=" value, as in "?d=code".
+        for part in text.components(separatedBy: CharacterSet(charactersIn: "?&")) where part.hasPrefix("d=") {
+            found.append(leadingCode(part.dropFirst(2)))
+        }
+        // Any long run of code characters, anywhere: the "Family code:" line, or a code pasted on its own.
+        let runs = text.unicodeScalars
+            .split { !codeCharacters.contains($0) }
+            .map { String(String.UnicodeScalarView($0)) }
+            .filter { $0.count >= 40 }
+            .sorted { $0.count > $1.count }
+        found += runs
+        // And the whole text, for anything else.
+        found.append(text.trimmingCharacters(in: .whitespacesAndNewlines))
+        return found.filter { !$0.isEmpty }
+    }
+
+    /// Turns one candidate code back into a note, or nil if it isn't one.
+    private static func decode(_ code: String) -> FamilyLink? {
+        var base64 = code
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
         while base64.count % 4 != 0 { base64 += "=" }

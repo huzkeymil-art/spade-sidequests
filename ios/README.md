@@ -69,6 +69,12 @@ itself sits after the `#`, which browsers never send to a server. The page
 hands it straight to the app through the `spade://` link scheme. If that ever
 fails, **Settings → Paste a family link** takes the link by hand.
 
+Some apps turn a shared link into a preview card and drop everything after the
+`#` on the way. So Spade shares a short message instead of a bare link: the link,
+then the same code again on a line of its own (`Family code: …`). Pasting the
+whole message works even if the link was cut short, and **Copy link** puts the
+same message on the clipboard for apps where the share sheet misbehaves.
+
 The rules live in `Core/Sources/SpadeCore/Family.swift`, with tests in
 `Core/Tests/SpadeCoreTests/FamilyTests.swift`; the screens are in
 `Spade/UI/FamilyView.swift`.

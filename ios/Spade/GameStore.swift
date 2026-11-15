@@ -280,20 +280,20 @@ final class GameStore: ObservableObject {
         commit(markPaid(save, kidId: kidId))
     }
 
-    /// The link that brings a child's Spade up to date.
-    func linkForChild(_ kidId: String) -> URL? {
+    /// The message that brings a child's Spade up to date: the link, plus the code on its own line.
+    func messageForChild(_ kidId: String) -> String? {
         guard let note = noteFor(save, kidId: kidId) else { return nil }
-        return URL(string: FamilyLinks.webLink(.fromParent(note)))
+        return FamilyLinks.message(.fromParent(note), intro: "\(note.parentName) sent you quests in Spade. Tap the link to add them.")
     }
 
     func sentToChild(_ kidId: String) {
         commit(markSent(save, kidId: kidId))
     }
 
-    /// The link that tells the parent which allowance quests are done.
-    func linkForParent() -> URL? {
+    /// The message that tells the parent which allowance quests are done.
+    func messageForParent() -> String? {
         guard let note = childNote(save) else { return nil }
-        return URL(string: FamilyLinks.webLink(.fromChild(note)))
+        return FamilyLinks.message(.fromChild(note), intro: "\(note.childName) finished some quests in Spade. Tap the link to check them.")
     }
 
     func sentToParent() {

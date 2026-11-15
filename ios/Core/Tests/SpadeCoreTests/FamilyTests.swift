@@ -47,6 +47,33 @@ final class FamilyTests: XCTestCase {
         XCTAssertNil(FamilyLinks.read(""))
     }
 
+    /// Links travel through other apps, which sometimes mangle them. The code should be found
+    /// wherever it ends up, and a link that lost its code should be recognised as such.
+    func testCodesAreFoundWhereverTheyEndUp() throws {
+        let note = ChildNote(familyId: "fam_1", childId: "kid_1", childName: "Tess", done: [])
+        let link = FamilyLink.fromChild(note)
+        let code = FamilyLinks.payload(link)
+        let message = FamilyLinks.message(link, intro: "Tess finished some quests in Spade.")
+        XCTAssertTrue(message.contains("\(FamilyLinks.webPage)#\(code)"), "the message carries the full link")
+        XCTAssertTrue(message.hasSuffix("Family code: \(code)"), "and the code on its own line")
+        XCTAssertEqual(FamilyLinks.read(message), link, "the whole shared message")
+
+        // An app turned the link into a preview and dropped the part after "#": the code line still works.
+        let mangled = message.replacingOccurrences(of: "#\(code)", with: "")
+        XCTAssertFalse(mangled.contains("#"))
+        XCTAssertEqual(FamilyLinks.read(mangled), link, "the code line survives")
+
+        XCTAssertEqual(FamilyLinks.read("(\(FamilyLinks.webPage)#\(code))."), link, "punctuation after the link")
+        XCTAssertEqual(FamilyLinks.read("\(FamilyLinks.webPage)?d=\(code)&x=1"), link, "a d= value")
+        XCTAssertEqual(FamilyLinks.read("Family code: \(code)"), link, "just the code line")
+
+        XCTAssertTrue(FamilyLinks.missingCode(FamilyLinks.webPage), "the bare page")
+        XCTAssertTrue(FamilyLinks.missingCode("\(FamilyLinks.webPage)#"), "an empty code")
+        XCTAssertTrue(FamilyLinks.missingCode("spade://family"), "the app's link with no code")
+        XCTAssertFalse(FamilyLinks.missingCode(message), "a good message")
+        XCTAssertFalse(FamilyLinks.missingCode("hello"), "not a link at all")
+    }
+
     func testRolesStartPlainAndClearWhatTheyLeave() throws {
         let now = at(2026, 11, 14)
         let solo = player(2, "Sam", now)

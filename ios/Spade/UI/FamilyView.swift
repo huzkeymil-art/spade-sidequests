@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // Families, on screen.
 //
@@ -161,6 +162,7 @@ private struct KidCard: View {
     @State private var renaming = false
     @State private var removing = false
     @State private var draft = ""
+    @State private var copied = false
 
     var body: some View {
         let waiting = kid.claims.filter { $0.status == .waiting }
@@ -294,16 +296,23 @@ private struct KidCard: View {
 
             Hairline()
             VStack(alignment: .leading, spacing: 8) {
-                if let url = store.linkForChild(kid.id) {
-                    ShareLink(
-                        item: url,
-                        subject: Text("Quests from \(parent)"),
-                        message: Text("\(parent) sent you quests in Spade. Tap the link to add them.")
-                    ) {
+                if let message = store.messageForChild(kid.id) {
+                    // Shared as a message, not a bare link: some apps turn links into previews and
+                    // lose the code after the "#", but the message repeats the code as plain text.
+                    ShareLink(item: message, subject: Text("Quests from \(parent)")) {
                         Text(kid.needsUpdate ? "Send update to \(kid.name)" : "Send to \(kid.name) again")
                     }
                     .buttonStyle(PlateButtonStyle(kind: kid.needsUpdate ? .primary : .plain, block: true))
                     .simultaneousGesture(TapGesture().onEnded { store.sentToChild(kid.id) })
+                    Button(copied ? "Copied" : "Copy link") {
+                        UIPasteboard.general.string = message
+                        store.sentToChild(kid.id)
+                        Feedback.done()
+                        copied = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+                    }
+                    .buttonStyle(PlateButtonStyle(block: true))
+                    .accessibilityHint("Copies the link and family code, to paste into any app")
                 }
                 Text(kid.needsUpdate ? "\(kid.name)'s Spade doesn't have your latest changes yet." : "\(kid.name)'s Spade is up to date.")
                     .caps(kid.needsUpdate ? Ink.lantern : Ink.faint)
@@ -610,6 +619,7 @@ struct FamilyBanner: View {
 struct AllowanceSheet: View {
     @EnvironmentObject private var store: GameStore
     @Environment(\.dismiss) private var dismiss
+    @State private var copied = false
 
     var body: some View {
         let family = store.save.family
@@ -667,16 +677,23 @@ struct AllowanceSheet: View {
                 .padding(.bottom, 16)
             }
 
-            if let url = store.linkForParent() {
-                ShareLink(
-                    item: url,
-                    subject: Text("Quests done"),
-                    message: Text("I finished some quests in Spade. Tap the link to check them.")
-                ) {
-                    Text(unsent > 0 ? "Send \(unsent) to \(parent)" : "Send to \(parent) again")
+            if let message = store.messageForParent() {
+                VStack(spacing: 8) {
+                    ShareLink(item: message, subject: Text("Quests done")) {
+                        Text(unsent > 0 ? "Send \(unsent) to \(parent)" : "Send to \(parent) again")
+                    }
+                    .buttonStyle(PlateButtonStyle(kind: unsent > 0 ? .primary : .plain, block: true))
+                    .simultaneousGesture(TapGesture().onEnded { store.sentToParent() })
+                    Button(copied ? "Copied" : "Copy link") {
+                        UIPasteboard.general.string = message
+                        store.sentToParent()
+                        Feedback.done()
+                        copied = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+                    }
+                    .buttonStyle(PlateButtonStyle(block: true))
+                    .accessibilityHint("Copies the link and family code, to paste into any app")
                 }
-                .buttonStyle(PlateButtonStyle(kind: unsent > 0 ? .primary : .plain, block: true))
-                .simultaneousGesture(TapGesture().onEnded { store.sentToParent() })
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
             }
