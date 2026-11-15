@@ -39,6 +39,8 @@ struct FamilyQuest: Codable, Equatable, Identifiable {
     var allowance: Int
     /// Comes back every day, week or month. If false, it stays on the board until it is done once.
     var repeats: Bool
+    /// The child adds a photo before it counts. Missing in notes from older versions, which means no.
+    var askPhoto: Bool?
 }
 
 /// Marks a board entry that came from a parent.
@@ -46,6 +48,7 @@ struct FamilyTag: Codable, Equatable {
     var parent: String
     var allowance: Int
     var repeats: Bool
+    var askPhoto: Bool?
 }
 
 enum ClaimStatus: String, Codable {
@@ -72,6 +75,9 @@ struct Claim: Codable, Equatable, Identifiable {
     /// When it was done, in milliseconds since 1970.
     var doneAt: Double
     var status: ClaimStatus
+    /// A photo was taken for it. The photo itself stays on the child's phone and travels with
+    /// the child's message (never inside the link), so on the parent's Spade this only says one was sent.
+    var photo: Bool?
 
     var id: String { key }
 }
@@ -328,6 +334,7 @@ struct FamilyQuestInput {
     var xp: Int
     var allowance: Int
     var repeats: Bool
+    var askPhoto = false
 }
 
 /// The XP range a parent can choose from.
@@ -388,7 +395,8 @@ func saveFamilyQuest(_ save: Save, kidId: String, questId: String?, _ input: Fam
             category: input.category,
             xp: min(familyXpRange.upperBound, max(familyXpRange.lowerBound, input.xp)),
             allowance: min(familyAllowanceLimit, max(0, input.allowance)),
-            repeats: input.repeats
+            repeats: input.repeats,
+            askPhoto: input.askPhoto ? true : nil
         )
         if let at = kid.quests.firstIndex(where: { $0.id == id }) {
             kid.quests[at] = quest
@@ -485,7 +493,8 @@ func receiveChildNote(_ save: Save, _ note: ChildNote) -> (save: Save, result: C
             allowance: quest.allowance,
             doneAt: claim.doneAt,
             // Quests with an allowance wait for the parent's check; the rest are just recorded.
-            status: quest.allowance > 0 ? .waiting : .done
+            status: quest.allowance > 0 ? .waiting : .done,
+            photo: claim.photo == true ? true : nil
         ))
         added += 1
     }
@@ -622,7 +631,7 @@ private func activateFamily(_ quest: FamilyQuest, period: String, parent: String
         custom: false,
         // Parents' quests can't be swapped away.
         pinned: true,
-        family: FamilyTag(parent: parent, allowance: quest.allowance, repeats: quest.repeats)
+        family: FamilyTag(parent: parent, allowance: quest.allowance, repeats: quest.repeats, askPhoto: quest.askPhoto)
     )
 }
 
@@ -646,7 +655,9 @@ func placeFamilyQuests(_ save: Save) -> Save {
             board.quests[i].title = quest.title
             board.quests[i].category = quest.category
             board.quests[i].xp = quest.xp
-            board.quests[i].family = FamilyTag(parent: family?.parentName ?? "", allowance: quest.allowance, repeats: quest.repeats)
+            board.quests[i].family = FamilyTag(
+                parent: family?.parentName ?? "", allowance: quest.allowance, repeats: quest.repeats, askPhoto: quest.askPhoto
+            )
         }
         // And new ones go on top, as long as the board belongs to a real day, week or month.
         if !board.period.isEmpty {
@@ -681,6 +692,16 @@ func recordFamilyQuestDone(_ save: Save, _ quest: ActiveQuest, now: Date, _ even
         family.claims = Array(family.claims.suffix(300))
         if tag.allowance > 0 { events.append(.allowance(amount: tag.allowance)) }
     }
+    var next = save
+    next.family = family
+    return next
+}
+
+/// Notes that a photo was taken for a finished quest (on the child's Spade). The photo file
+/// itself is kept by the app; this flag is what travels to the parent.
+func markPhotoTaken(_ save: Save, key: String) -> Save {
+    guard var family = save.family, let at = family.claims.firstIndex(where: { $0.key == key }) else { return save }
+    family.claims[at].photo = true
     var next = save
     next.family = family
     return next

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 
 // The store: the one place the app's data lives while it is running.
 //
@@ -247,6 +248,21 @@ final class GameStore: ObservableObject {
     /// Changes who this Spade is for.
     func chooseRole(_ role: Role) {
         commit(setRole(save, role, currency: Money.local, now: Date()))
+        tidyPhotos()
+    }
+
+    /// Seals a parent's quest that asked for a photo: keeps the photo, then marks the quest.
+    @discardableResult
+    func sealWithPhoto(_ cadence: Cadence, key: String, image: UIImage) -> [GameEvent] {
+        let kept = ProofPhotos.save(image, for: key)
+        let events = mark(cadence, key: key)
+        if kept { commit(markPhotoTaken(save, key: key)) }
+        return events
+    }
+
+    /// Deletes photos for quests that are no longer on record (after leaving a family, say).
+    private func tidyPhotos() {
+        ProofPhotos.keepOnly(save.family?.claims.map { $0.key } ?? [])
     }
 
     @discardableResult
@@ -290,10 +306,44 @@ final class GameStore: ObservableObject {
         commit(markSent(save, kidId: kidId))
     }
 
-    /// The message that tells the parent which allowance quests are done.
+    /// The message that tells the parent which quests are done. It names the photos that go with it.
     func messageForParent() -> String? {
         guard let note = childNote(save) else { return nil }
-        return FamilyLinks.message(.fromChild(note), intro: "\(note.childName) finished some quests in Spade. Tap the link to check them.")
+        var intro = "\(note.childName) finished some quests in Spade. Tap the link to check them."
+        let photos = photosForParent()
+        if !photos.isEmpty {
+            intro += "\n\nPhotos with this message:"
+            for (index, photo) in photos.enumerated() {
+                intro += "\n\(index + 1). \(photo.claim.title)"
+            }
+        }
+        return FamilyLinks.message(.fromChild(note), intro: intro)
+    }
+
+    /// The photos to send along: for quests not sent yet, or, when everything was sent
+    /// before, for the ones still waiting to be checked.
+    func photosForParent() -> [(claim: Claim, url: URL)] {
+        guard let family = save.family else { return [] }
+        let unsent = unsentClaims(save)
+        let pool = unsent.isEmpty ? family.claims.filter { $0.status == .waiting } : unsent
+        return pool.compactMap { claim in
+            guard claim.photo == true, let url = ProofPhotos.url(for: claim.key) else { return nil }
+            return (claim: claim, url: url)
+        }
+    }
+
+    /// Opens the share sheet with the message to the parent, and its photos.
+    /// They count as sent only if they really were.
+    func shareWithParent() {
+        guard let message = messageForParent() else { return }
+        let items: [Any] = [message] + photosForParent().map { $0.url }
+        Share.present(items) { [weak self] in self?.sentToParent() }
+    }
+
+    /// Opens the share sheet with an update for a child.
+    func shareWithChild(_ kidId: String) {
+        guard let message = messageForChild(kidId) else { return }
+        Share.present([message]) { [weak self] in self?.sentToChild(kidId) }
     }
 
     func sentToParent() {
@@ -328,6 +378,7 @@ final class GameStore: ObservableObject {
         toasts = []
         incoming = nil
         commit(Self.freshSave())
+        tidyPhotos()
     }
 }
 
@@ -361,8 +412,13 @@ enum DemoMode {
             let note = ChildNote(familyId: "fam_demo", childId: "kid_tess", childName: "Tess", done: [done])
             store.receive(FamilyLinks.webLink(.fromChild(note)))
             return store
-        case "allowance", "childboard":
-            return GameStore(preview: childGame())
+        case "allowance", "childboard", "photoproof":
+            let save = childGame()
+            // A stand-in photo for the lawn, so the allowance sheet has one to show.
+            if let key = save.family?.claims.last(where: { $0.photo == true })?.key {
+                ProofPhotos.save(demoPhoto(), for: key)
+            }
+            return GameStore(preview: save)
         case "join":
             // A player opens a link from a parent for the first time.
             let store = GameStore(preview: midGame())
@@ -384,7 +440,8 @@ enum DemoMode {
     private static let demoQuests = [
         FamilyQuest(id: "fq_dishes", title: "Do the dishes after dinner", cadence: .daily, category: .home, xp: 40, allowance: 100, repeats: true),
         FamilyQuest(id: "fq_reading", title: "Read for 30 minutes", cadence: .daily, category: .mind, xp: 30, allowance: 0, repeats: true),
-        FamilyQuest(id: "fq_lawn", title: "Mow the front lawn", cadence: .weekly, category: .home, xp: 150, allowance: 500, repeats: true),
+        FamilyQuest(id: "fq_lawn", title: "Mow the front lawn", cadence: .weekly, category: .home, xp: 150, allowance: 500, repeats: true, askPhoto: true),
+        FamilyQuest(id: "fq_room", title: "Tidy your room", cadence: .daily, category: .home, xp: 30, allowance: 50, repeats: true, askPhoto: true),
     ]
 
     /// A parent, Sam, with two children: Tess has quests to check, Robin hasn't been sent his yet.
@@ -406,7 +463,7 @@ enum DemoMode {
             Claim(key: "\(clock.shiftDay(today, -2)):fq_reading", questId: "fq_reading", title: "Read for 30 minutes", allowance: 0, doneAt: ms - 2 * 86_400_000 + 3_600_000, status: .done),
             Claim(key: "\(yesterday):fq_dishes", questId: "fq_dishes", title: "Do the dishes after dinner", allowance: 100, doneAt: ms - 86_400_000, status: .approved),
             Claim(key: "\(yesterday):fq_reading", questId: "fq_reading", title: "Read for 30 minutes", allowance: 0, doneAt: ms - 86_400_000 + 1_800_000, status: .done),
-            Claim(key: "\(clock.weekKey(now)):fq_lawn", questId: "fq_lawn", title: "Mow the front lawn", allowance: 500, doneAt: ms - 7_200_000, status: .waiting),
+            Claim(key: "\(clock.weekKey(now)):fq_lawn", questId: "fq_lawn", title: "Mow the front lawn", allowance: 500, doneAt: ms - 7_200_000, status: .waiting, photo: true),
         ]
         tess.revision = 6
         tess.sentRevision = 6
@@ -431,6 +488,11 @@ enum DemoMode {
         if let dishes = save.boards.daily.quests.first(where: { $0.defId == "fq_dishes" }) {
             save = markQuest(save, .daily, key: dishes.key, now: now).save
         }
+        // The lawn is done too, with a photo, as its quest asks.
+        if let lawn = save.boards.weekly.quests.first(where: { $0.defId == "fq_lawn" }) {
+            save = markQuest(save, .weekly, key: lawn.key, now: now).save
+            save = markPhotoTaken(save, key: lawn.key)
+        }
         let today = clock.dayKey(now)
         let older = [
             Claim(key: "\(clock.shiftDay(today, -9)):fq_lawn", questId: "fq_lawn", title: "Mow the front lawn", allowance: 500, doneAt: ms - 9 * 86_400_000, status: .paid),
@@ -440,6 +502,23 @@ enum DemoMode {
         ]
         save.family?.claims.insert(contentsOf: older, at: 0)
         return save
+    }
+
+    /// A plain picture of a striped lawn under a sky, standing in for a real photo.
+    @MainActor
+    static func demoPhoto() -> UIImage {
+        let size = CGSize(width: 900, height: 1200)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: size, format: format).image { context in
+            UIColor(red: 0.62, green: 0.74, blue: 0.86, alpha: 1).setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 900, height: 430))
+            for stripe in 0..<8 {
+                let light = stripe % 2 == 0
+                UIColor(red: light ? 0.38 : 0.31, green: light ? 0.63 : 0.55, blue: light ? 0.30 : 0.24, alpha: 1).setFill()
+                context.fill(CGRect(x: CGFloat(stripe) * 112.5, y: 430, width: 112.5, height: 770))
+            }
+        }
     }
 
     /// A player a few weeks in: level 7, a 9-day streak, some gear.

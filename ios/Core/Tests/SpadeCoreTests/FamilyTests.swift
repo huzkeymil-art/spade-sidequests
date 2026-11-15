@@ -221,6 +221,35 @@ final class FamilyTests: XCTestCase {
         XCTAssertEqual(theirs.earnings(for: readId).times, 2)
     }
 
+    /// A parent can ask for a photo. The request reaches the child's board, the child's record
+    /// notes that a photo was taken, and the parent's copy learns that one was sent.
+    func testPhotoProofFlagsTravel() throws {
+        let now = at(2026, 11, 14)
+        var (parent, kidId) = try parentWithKid(now)
+        var lawn = chores()
+        lawn.title = "Mow the lawn"
+        lawn.askPhoto = true
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, lawn, now: now)
+        XCTAssertEqual(parent.household?.children.first?.quests.first?.askPhoto, true)
+
+        var child = receiveParentNote(player(3, "Tess", now), try XCTUnwrap(noteFor(parent, kidId: kidId)), now: now).save
+        let entry = try XCTUnwrap(child.boards.daily.quests.first)
+        XCTAssertEqual(entry.family?.askPhoto, true)
+        child = markQuest(child, .daily, key: entry.key, now: now, clock: clock).save
+        XCTAssertNil(child.family?.claims.first?.photo)
+        child = markPhotoTaken(child, key: entry.key)
+        XCTAssertEqual(child.family?.claims.first?.photo, true)
+        XCTAssertEqual(markPhotoTaken(child, key: "no-such-key"), child)
+
+        parent = receiveChildNote(parent, try XCTUnwrap(childNote(child))).save
+        XCTAssertEqual(parent.household?.children.first?.claims.first?.photo, true)
+
+        // Notes from before photos existed still read, as "no photo".
+        let old = #"{"id":"fq_1","title":"Bins","cadence":"daily","category":"home","xp":40,"allowance":100,"repeats":true}"#
+        let quest = try JSONDecoder().decode(FamilyQuest.self, from: Data(old.utf8))
+        XCTAssertNil(quest.askPhoto)
+    }
+
     func testDeclinedQuestsPayNothing() throws {
         let now = at(2026, 11, 14)
         var (parent, kidId) = try parentWithKid(now)

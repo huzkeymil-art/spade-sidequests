@@ -83,13 +83,23 @@ private struct HistoryRow: View {
     let currency: String
     /// Who checks it, for the "Waiting for …" wording.
     let checker: String
+    /// The photo itself, on the child's own phone.
+    var thumbnail: UIImage?
 
     var body: some View {
         let words = claimWords(claim.status, parent: checker)
         HStack(spacing: 10) {
+            if let thumbnail {
+                Image(uiImage: thumbnail)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 44, height: 44)
+                    .clipShape(Notched(notch: 5))
+                    .accessibilityLabel("Photo")
+            }
             VStack(alignment: .leading, spacing: 4) {
                 Text(claim.title).font(Typeface.text()).foregroundStyle(Ink.bone)
-                Text("\(when(claim.doneAt)) · \(words.text)").caps(words.color)
+                Text("\(when(claim.doneAt)) · \(words.text)\(claim.photo == true ? " · photo" : "")").caps(words.color)
             }
             Spacer(minLength: 8)
             if claim.allowance > 0 {
@@ -210,8 +220,6 @@ private struct KidCard: View {
     var body: some View {
         let waiting = kid.claims.filter { $0.status == .waiting }
         let owed = kid.claims.total(.approved)
-        let parent = store.save.hero.name
-
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 8) {
                 Text(kid.name)
@@ -253,6 +261,17 @@ private struct KidCard: View {
                             Text(Money.format(claim.allowance, currency)).font(Typeface.label(22)).foregroundStyle(Ink.lantern)
                         }
                         Text("Done \(when(claim.doneAt))").caps(Ink.faint)
+                        if claim.photo == true {
+                            Label("Photo came with \(kid.name)'s message", systemImage: "camera")
+                                .font(Typeface.label())
+                                .textCase(.uppercase)
+                                .foregroundStyle(Ink.verdigris)
+                        } else if (kid.quests + kid.past).first(where: { $0.id == claim.questId })?.askPhoto == true {
+                            Label("No photo was sent", systemImage: "camera")
+                                .font(Typeface.label())
+                                .textCase(.uppercase)
+                                .foregroundStyle(Ink.rust)
+                        }
                         HStack(spacing: 8) {
                             Button("It's done") {
                                 Feedback.done()
@@ -308,7 +327,7 @@ private struct KidCard: View {
                         PropIcon(name: quest.category.rawValue, size: 22, res: 18)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(quest.title).font(Typeface.text()).foregroundStyle(Ink.bone)
-                            Text(schedule(quest)).caps(Ink.faint)
+                            Text(quest.askPhoto == true ? "\(schedule(quest)) · photo" : schedule(quest)).caps(Ink.faint)
                             if let line = earningsLine(kid.claims.earnings(for: quest.id), allowance: quest.allowance, currency: currency) {
                                 Text(line).caps(Ink.dim)
                             }
@@ -365,11 +384,11 @@ private struct KidCard: View {
                 if let message = store.messageForChild(kid.id) {
                     // Shared as a message, not a bare link: some apps turn links into previews and
                     // lose the code after the "#", but the message repeats the code as plain text.
-                    ShareLink(item: message, subject: Text("Quests from \(parent)")) {
-                        Text(kid.needsUpdate ? "Send update to \(kid.name)" : "Send to \(kid.name) again")
+                    Button(kid.needsUpdate ? "Send update to \(kid.name)" : "Send to \(kid.name) again") {
+                        Feedback.tap()
+                        store.shareWithChild(kid.id)
                     }
                     .buttonStyle(PlateButtonStyle(kind: kid.needsUpdate ? .primary : .plain, block: true))
-                    .simultaneousGesture(TapGesture().onEnded { store.sentToChild(kid.id) })
                     Button(copied ? "Copied" : "Copy link") {
                         UIPasteboard.general.string = message
                         store.sentToChild(kid.id)
@@ -423,6 +442,7 @@ struct FamilyQuestSheet: View {
     @State private var kind: QuestKind = .home
     @State private var xp = 30
     @State private var pays = false
+    @State private var askPhoto = false
     @State private var amount = ""
     @State private var removing = false
     @FocusState private var typingAmount: Bool
@@ -510,6 +530,15 @@ struct FamilyQuestSheet: View {
                         .foregroundStyle(Ink.dim)
                         .padding(.top, 9)
 
+                    SectionLabel("Proof")
+                    RowGroup {
+                        ToggleRow(
+                            title: "Ask for a photo",
+                            note: askPhoto ? "It comes with their message to you" : "No photo needed",
+                            isOn: $askPhoto
+                        )
+                    }
+
                     SectionLabel("Allowance")
                     RowGroup {
                         ToggleRow(
@@ -558,7 +587,10 @@ struct FamilyQuestSheet: View {
                 store.saveChildQuest(
                     kidId: kidId,
                     questId: quest?.id,
-                    FamilyQuestInput(title: title, cadence: cadence, category: kind, xp: xp, allowance: pays ? (cents ?? 0) : 0, repeats: repeats)
+                    FamilyQuestInput(
+                        title: title, cadence: cadence, category: kind, xp: xp,
+                        allowance: pays ? (cents ?? 0) : 0, repeats: repeats, askPhoto: askPhoto
+                    )
                 )
                 Feedback.done()
                 dismiss()
@@ -596,6 +628,7 @@ struct FamilyQuestSheet: View {
         kind = quest.category
         xp = quest.xp
         pays = quest.allowance > 0
+        askPhoto = quest.askPhoto == true
         amount = quest.allowance > 0 ? Money.plain(quest.allowance, currency) : ""
     }
 
@@ -758,7 +791,10 @@ struct AllowanceSheet: View {
                         RowGroup {
                             ForEach(Array(claims.reversed().enumerated()), id: \.element.id) { index, claim in
                                 if index > 0 { Hairline() }
-                                HistoryRow(claim: claim, currency: currency, checker: parent)
+                                HistoryRow(
+                                    claim: claim, currency: currency, checker: parent,
+                                    thumbnail: claim.photo == true ? ProofPhotos.image(for: claim.key) : nil
+                                )
                             }
                         }
                     }
@@ -769,11 +805,18 @@ struct AllowanceSheet: View {
 
             if let message = store.messageForParent() {
                 VStack(spacing: 8) {
-                    ShareLink(item: message, subject: Text("Quests done")) {
-                        Text(unsent > 0 ? "Send \(unsent) to \(parent)" : "Send to \(parent) again")
+                    let photos = store.photosForParent().count
+                    if photos > 0 {
+                        Label(photos == 1 ? "1 photo goes with it" : "\(photos) photos go with it", systemImage: "camera")
+                            .font(Typeface.label())
+                            .textCase(.uppercase)
+                            .foregroundStyle(Ink.dim)
+                    }
+                    Button(unsent > 0 ? "Send \(unsent) to \(parent)" : "Send to \(parent) again") {
+                        Feedback.tap()
+                        store.shareWithParent()
                     }
                     .buttonStyle(PlateButtonStyle(kind: unsent > 0 ? .primary : .plain, block: true))
-                    .simultaneousGesture(TapGesture().onEnded { store.sentToParent() })
                     Button(copied ? "Copied" : "Copy link") {
                         UIPasteboard.general.string = message
                         store.sentToParent()
