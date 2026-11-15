@@ -233,7 +233,11 @@ final class GameStore: ObservableObject {
     @Published var guardianInvitation = false
     private var guardianMetadata: CKShare.Metadata?
     func inviteArrived(_ metadata: CKShare.Metadata) {
-        if CloudFamily.guardianPlace(metadata) != nil {
+        if let hub = CloudFamily.guardianPlace(metadata) {
+            if metadata.participantRole == .owner {
+                cloudNotice = "This is your guardian invitation. Send it to another guardian's iCloud account."; return
+            }
+            if save.guardianHub == hub { syncFamily(); return }
             guardianMetadata = metadata; guardianInvitation = true; return
         }
         // The same invite, handed over twice: the sheet for it is already up.
@@ -476,8 +480,10 @@ final class GameStore: ObservableObject {
 
     /// The parent's phone: store its page for each invited child if iCloud is behind, then read theirs.
     private func syncAsParent(_ cloudKit: CloudFamily) async throws {
+        let familyId = save.household?.familyId
         await cloudKit.listen(asParent: save.guardianHub?.cloud == nil)
         try await syncGuardianHub(cloudKit)
+        guard save.role == .parent, save.household?.familyId == familyId else { return }
         if save.guardianHub?.cloud != nil { return }
         var firstError: Error?
         let invited = (save.household?.children ?? []).filter { $0.shared == true }.map { $0.id }
@@ -641,11 +647,14 @@ final class GameStore: ObservableObject {
     }
 
     func inviteGuardian() {
-        guard save.guardianHub?.cloud == nil, let house = save.household, let cloud = cloudFamily() else { return }
+        guard preparingInvite == nil, save.guardianHub?.cloud == nil, let house = save.household, let cloud = cloudFamily() else { return }
+        preparingInvite = "guardians"
         Task {
+            defer { preparingInvite = nil }
             do {
                 try await syncGuardianHub(cloud)
                 let share = try await cloud.prepareGuardianShare(save.household ?? house)
+                guard save.role == .parent, save.household?.familyId == house.familyId else { return }
                 var next = save; next.guardianHub = GuardianHub(record: "g-" + house.familyId)
                 commit(next)
                 InviteSheet.present(share: share, container: cloud.container, title: "Spade guardians", stopped: { [weak self] in
@@ -660,9 +669,14 @@ final class GameStore: ObservableObject {
         guard save.family == nil, save.household?.children.isEmpty != false else {
             cloudNotice = "Leave your current family in Settings before joining another as a guardian."; return
         }
+        let previousRole = save.role
+        let previousFamily = save.household?.familyId
         Task {
             do {
                 let (hub, document) = try await cloud.joinGuardian(metadata)
+                guard save.role == previousRole, save.household?.familyId == previousFamily, save.family == nil else {
+                    try? await cloud.leaveGuardians(hub); return
+                }
                 var next = save; next.role = .parent; next.family = nil
                 next.household = document.household; next.guardianHub = hub; next.guardianPending = []
                 commit(next, fromGuardianHub: true); syncFamily()
@@ -714,6 +728,9 @@ final class GameStore: ObservableObject {
         toasts = []
         incoming = nil
         invite = nil
+        guardianMetadata = nil
+        guardianInvitation = false
+        developerUnlocked = false
         commit(Self.freshSave())
         tidyPhotos()
         tidyCloud(after: before)

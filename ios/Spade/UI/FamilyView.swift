@@ -163,6 +163,7 @@ struct FamilyView: View {
                     if store.save.guardianHub?.cloud == nil {
                         Button(store.save.guardianHub == nil ? "Invite another guardian" : "Manage guardians") { store.inviteGuardian() }
                             .buttonStyle(PlateButtonStyle(block: true))
+                            .disabled(store.preparingInvite != nil)
                     }
                     if store.save.guardianHub != nil {
                         Text("Guardians can manage quests and approve completions. Keep Spade open on the family owner's phone to relay updates between guardians and children.")
