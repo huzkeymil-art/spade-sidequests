@@ -32,7 +32,7 @@ struct SettingsSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     SectionLabel("Who this Spade is for")
-                    RolePicker(role: save.role, choose: requestRole)
+                    RolePicker(role: save.role) { requestRole($0) }
                     familyRows(save)
 
                     SectionLabel("Display and feel")

@@ -38,6 +38,41 @@ Three ideas hold it together:
 After changing quests, items, models or rules in the web app, run `npm run ios:data`
 from the repository root and commit what it changes.
 
+## Families: parents, children and allowance
+
+The first screen (and Settings) asks who the Spade is for: **just me**,
+**parent or guardian**, or **child**. Only the iPhone app has this; the web
+version stays a single-player game.
+
+There are no accounts and no server. The two phones pass notes to each other
+as links, sent by Messages, AirDrop or anything else, like passing a notebook
+back and forth:
+
+1. **The parent** opens the **Family** tab, adds a child, and sets quests: which
+   board, whether it repeats, the XP (5 to 1,000) and, if they like, an allowance.
+2. They tap **Send update to …** and send the link.
+3. **The child** taps the link. The first time, Spade asks whether to join the
+   family. The quests then appear at the top of their board.
+4. When the child finishes an allowance quest they get the XP straight away, and
+   the money waits to be checked. They open **Allowance** (top of the quest
+   board) and tap **Send … to …**.
+5. The parent taps that link, then in **Family** taps **It's done** or
+   **Not done**, and **Paid** once they've paid in real life. The next update
+   they send tells the child.
+
+The parent's phone is the record of what is owed. A note from a child only says
+which quests were done; the amounts always come from the parent's copy, so an
+edited link can't ask for more. Spade never moves real money.
+
+How a link travels: it points at `family.html` on the web site, and the note
+itself sits after the `#`, which browsers never send to a server. The page
+hands it straight to the app through the `spade://` link scheme. If that ever
+fails, **Settings → Paste a family link** takes the link by hand.
+
+The rules live in `Core/Sources/SpadeCore/Family.swift`, with tests in
+`Core/Tests/SpadeCoreTests/FamilyTests.swift`; the screens are in
+`Spade/UI/FamilyView.swift`.
+
 ## Checking it without a Mac
 
 Every pull request that touches `ios/` runs `.github/workflows/ios.yml`:
@@ -170,5 +205,6 @@ To change the version people see (1.0, 1.1, ...), edit `MARKETING_VERSION` in
 TestFlight builds and App Store builds are the same file. When the app is ready:
 in App Store Connect, open the **Distribution** tab, fill in the listing
 (screenshots, description, age rating, privacy answers), choose a build, and
-press **Add for Review**. Spade collects no data and has no accounts, so the
-privacy answer is "Data Not Collected".
+press **Add for Review**. Spade collects no data and has no accounts (family
+links go straight from one phone to another), so the privacy answer is
+"Data Not Collected".
