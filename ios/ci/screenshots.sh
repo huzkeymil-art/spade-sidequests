@@ -74,21 +74,6 @@ for t in sorted(names, key=lambda t: t["name"], reverse=True):
   done
 }
 
-# A family link from Tess, as her phone would send it to the demo parent ("-demo openlink").
-# Opening it checks that spade:// links are registered to the app: iOS asks
-# "Open in Spade?" first, which is the screenshot. ("-demo report" shows what
-# the app does with the link once it is opened.) That prompt stays up after the
-# app closes, so "openlink" should be the last screen in the list.
-openlink_payload() {
-  python3 -c '
-import base64, json
-note = {"v": 1, "child": {"familyId": "fam_demo", "childId": "kid_tess", "childName": "Tess", "done": [
-    {"key": "2026-01-01:fq_dishes", "questId": "fq_dishes", "title": "Do the dishes after dinner",
-     "allowance": 100, "doneAt": 0, "status": "waiting"}]}}
-raw = json.dumps(note, separators=(",", ":")).encode()
-print(base64.urlsafe_b64encode(raw).decode().rstrip("="))'
-}
-
 # How much of the scene area of a screenshot is drawn on, as a percentage.
 scene_drawn() {
   python3 "$HERE/lit.py" "$1" 2>/dev/null || echo 0
@@ -105,10 +90,6 @@ capture() {
     local file="shots/$prefix$name.png" note=""
     xcrun simctl terminate "$device" "$BUNDLE_ID" >/dev/null 2>&1 || true
     xcrun simctl launch "$device" "$BUNDLE_ID" -demo "$name" >/dev/null
-    if [ "$name" = openlink ]; then
-      sleep 5
-      xcrun simctl openurl "$device" "spade://family#$(openlink_payload)"
-    fi
     sleep "$WAIT"
     xcrun simctl io "$device" screenshot "$file" >/dev/null 2>&1
     if [[ "$SCENE_SCREENS" == *" $name "* ]]; then

@@ -45,7 +45,7 @@ struct PhotoProofSheet: View {
                     }
                     .padding(8)
                     .plate(fill: Ink.ink, edge: picked == nil ? Ink.moss2 : Ink.verdigris, notch: 8)
-                    Text("It stays on your iPhone. It goes to \(parent) along with your message when you tap Send in Allowance.")
+                    Text("It stays on your iPhone. You can send it to \(parent) from Allowance.")
                         .font(Typeface.italic(15))
                         .foregroundStyle(Ink.dim)
                         .fixedSize(horizontal: false, vertical: true)

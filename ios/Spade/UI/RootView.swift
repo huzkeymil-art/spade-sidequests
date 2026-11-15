@@ -52,6 +52,8 @@ struct RootView: View {
     @State private var keyboard: CGFloat = 0
 
     private let ticker = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
+    /// While Spade is open it also asks iCloud for family changes this often, in case a nudge was missed.
+    private let cloudTicker = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
     private let dockHeight: CGFloat = 62
 
     init() {
@@ -60,7 +62,7 @@ struct RootView: View {
         let start = AppTab(rawValue: demo) ?? (
             demo == "item" ? .satchel
                 : demo == "picker" ? .hero
-                : demo == "familyquest" || demo == "openlink" || demo == "report" ? .family
+                : demo == "familyquest" ? .family
                 : .quests
         )
         _tab = State(initialValue: start)
@@ -111,12 +113,12 @@ struct RootView: View {
         .dynamicTypeSize(.xSmall ... .xxxLarge)
         .sheet(isPresented: $settingsOpen) { SettingsSheet() }
         .sheet(isPresented: $guideOpen, onDismiss: markGuideSeen) { GuideSheet() }
-        // A family link that arrived. It waits until the player has started.
+        // A family invite that was opened. It waits until the player has started.
         .sheet(item: Binding(
             get: { store.save.onboarded ? store.incoming : nil },
             set: { if $0 == nil { store.closeIncoming() } }
         )) { arrival in
-            IncomingSheet(arrival: arrival) { pick(.family) }
+            IncomingSheet(arrival: arrival)
         }
         .onChange(of: store.save.role) { _, role in
             if !AppTab.shown(for: role).contains(tab) { tab = .quests }
@@ -136,10 +138,16 @@ struct RootView: View {
         .onChange(of: playing) { _, _ in offerGuide() }
         .onChange(of: scenePhase) { _, phase in
             stage.setPaused(phase != .active)
-            if phase == .active { store.sync() }
+            if phase == .active {
+                store.sync()
+                store.syncFamily()
+            }
             if phase == .background { Reminders.refresh(for: store.save) }
         }
         .onReceive(ticker) { _ in store.sync() }
+        .onReceive(cloudTicker) { _ in
+            if scenePhase == .active { store.syncFamily() }
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
             guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
             let height = max(0, UIScreen.main.bounds.height - frame.minY)
@@ -349,7 +357,7 @@ struct RootView: View {
             Feedback.prepare()
         }
         switch DemoMode.requested {
-        case "settings": settingsOpen = true
+        case "settings", "sync": settingsOpen = true
         case "guide": guideOpen = true
         default: break
         }

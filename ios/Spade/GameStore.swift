@@ -1,3 +1,4 @@
+import CloudKit
 import Foundation
 import SwiftUI
 import UIKit
@@ -28,6 +29,8 @@ struct Toast: Identifiable, Equatable {
         case clear
         /// A parent's allowance quest is done and waits for them to check it.
         case allowance(amount: Int)
+        /// News from the other phone in the family: "Tess finished 2 quests".
+        case family(title: String, note: String)
     }
 
     let id: Int
@@ -65,6 +68,10 @@ final class GameStore: ObservableObject {
             save = Self.freshSave()
         }
         sync()
+        // Family invites that were opened, and nudges from iCloud, come in through here.
+        CloudDoor.onInvite = { [weak self] invite in self?.inviteArrived(invite) }
+        CloudDoor.onNudge = { [weak self] in await self?.syncFamilyAndWait() }
+        syncFamily()
     }
 
     /// A store that starts from a given save and never touches the phone's storage.
@@ -86,11 +93,14 @@ final class GameStore: ObservableObject {
 
     // MARK: - Actions
 
-    private func commit(_ next: Save) {
+    /// Stores a new save. `fromCloud` marks changes that came out of a sync, which don't need another one.
+    private func commit(_ next: Save, fromCloud: Bool = false) {
         guard next != save else { return }
+        let familyChanged = next.household != save.household || next.family != save.family || next.role != save.role
         save = next
         guard !ephemeral else { return }
         try? exportSave(next).write(to: Self.fileURL, options: .atomic)
+        if familyChanged && !fromCloud { syncFamilySoon() }
     }
 
     /// Stores the new save and queues up anything worth celebrating.
@@ -184,71 +194,98 @@ final class GameStore: ObservableObject {
 
     // MARK: - Families
 
-    /// A family link that arrived, and what came of it.
+    /// A family invite that was opened on this iPhone, and how joining is going.
     struct Incoming: Identifiable {
         let id = UUID()
-        var link: FamilyLink
-        /// Nil while waiting for the player to say yes to joining a family.
-        var outcome: Effect?
+        /// Who it is from, as the parent's Spade named them ("Sam").
+        var from: String
+        var step: Step
 
-        enum Effect {
-            case fromParent(ParentNoteResult)
-            case fromChild(ChildNoteResult)
-            /// The link went to the wrong kind of Spade (a child's note on a child's phone, for example).
-            case wrongRole
+        enum Step: Equatable {
+            /// Waiting for the player to say yes.
+            case asking
+            case joining
+            case joined(ParentNoteSummary, quests: [FamilyQuest], currency: String)
+            /// The invite is for the family this Spade is already in.
+            case already
+            case failed(String)
+            /// It can't be used here: this is a parent's Spade, or the parent's own invite.
+            case notForYou(String)
         }
     }
 
     @Published var incoming: Incoming?
+    /// Something about iCloud the parent should read, shown as an alert.
+    @Published var cloudNotice: String?
+    /// The child whose invite is being got ready, if any.
+    @Published private(set) var preparingInvite: String?
+    /// The invite itself, kept until the player has answered.
+    private var invite: CKShare.Metadata?
 
-    /// Reads a family link (from tapping one, or pasting it). Returns false if it isn't one.
-    @discardableResult
-    func receive(_ text: String) -> Bool {
-        guard let link = FamilyLinks.read(text) else { return false }
-        var arrival = Incoming(link: link)
-        switch link {
-        case .fromParent(let note):
-            // Joining a family is a big step, so it waits for a yes. Updates from the
-            // family this Spade already belongs to go straight in.
-            if save.role == .parent {
-                arrival.outcome = .wrongRole
-            } else if save.onboarded, let family = save.family, family.familyId == note.familyId, family.childId == note.childId {
-                arrival.outcome = .fromParent(applyParentNote(note))
-            }
-        case .fromChild(let note):
-            if save.role == .parent {
-                let out = receiveChildNote(save, note)
-                commit(out.save)
-                arrival.outcome = .fromChild(out.result)
-            } else {
-                arrival.outcome = .wrongRole
-            }
+    /// An invite was tapped. (iOS hands it over once the person has agreed to open it in Spade.)
+    func inviteArrived(_ metadata: CKShare.Metadata) {
+        invite = metadata
+        let from = CloudFamily.sender(of: metadata)
+        if metadata.participantRole == .owner {
+            incoming = Incoming(from: from, step: .notForYou("This is your own invite. Send it to your child: it opens on their iPhone, not this one."))
+        } else if save.role == .parent {
+            incoming = Incoming(from: from, step: .notForYou("This invite is for a child's Spade, and this one is set up as a parent's. To join a family here, first change who this Spade is for, in Settings."))
+        } else if let place = CloudFamily.place(of: metadata), save.family?.cloud == place.link, save.family?.childId == place.kidId {
+            // Already in this family: there's nothing to ask, so just catch up.
+            incoming = Incoming(from: from, step: .joining)
+            acceptIncoming()
+        } else {
+            incoming = Incoming(from: from, step: .asking)
         }
-        incoming = arrival
-        return true
     }
 
-    /// Says yes to the waiting link.
+    /// Says yes to the waiting invite: joins through iCloud, and puts the parent's quests on the board.
     func acceptIncoming() {
-        guard var arrival = incoming, arrival.outcome == nil, case .fromParent(let note) = arrival.link else { return }
-        arrival.outcome = .fromParent(applyParentNote(note))
-        incoming = arrival
+        guard let metadata = invite, let arrival = incoming, let cloudKit = cloudFamily() else { return }
+        incoming?.step = .joining
+        Task {
+            let step: Incoming.Step
+            do {
+                let found = try await cloudKit.join(metadata)
+                let before = save
+                guard let out = readParentPage(save, found.body, cloud: found.link, now: Date()) else {
+                    throw CloudProblem.badInvite
+                }
+                commit(out.save)
+                switch out.result {
+                case .applied(let summary):
+                    step = .joined(summary, quests: save.family?.quests ?? [], currency: save.family?.currency ?? Money.local)
+                case .stale:
+                    step = .already
+                case .isParent:
+                    step = .notForYou("This invite is for a child's Spade, and this one is set up as a parent's.")
+                }
+                invite = nil
+                tidyCloud(after: before)
+                syncFamily()
+            } catch {
+                step = .failed(CloudFamily.describe(error))
+            }
+            // Only if that sheet is still the one on screen.
+            if incoming?.id == arrival.id { incoming?.step = step }
+        }
     }
 
     func closeIncoming() {
         incoming = nil
     }
 
-    private func applyParentNote(_ note: ParentNote) -> ParentNoteResult {
-        let out = receiveParentNote(save, note, now: Date())
-        commit(out.save)
-        return out.result
+    /// Puts an invite sheet on screen directly. Only the demo screens use this.
+    func showInvite(_ arrival: Incoming) {
+        incoming = arrival
     }
 
     /// Changes who this Spade is for.
     func chooseRole(_ role: Role) {
+        let before = save
         commit(setRole(save, role, currency: Money.local, now: Date()))
         tidyPhotos()
+        tidyCloud(after: before)
     }
 
     /// Seals a parent's quest that asked for a photo: keeps the photo, then marks the quest.
@@ -277,7 +314,9 @@ final class GameStore: ObservableObject {
     }
 
     func removeChild(_ kidId: String) {
+        let before = save
         commit(removeKid(save, kidId: kidId))
+        tidyCloud(after: before)
     }
 
     func saveChildQuest(kidId: String, questId: String?, _ input: FamilyQuestInput) {
@@ -296,58 +335,251 @@ final class GameStore: ObservableObject {
         commit(markPaid(save, kidId: kidId))
     }
 
-    /// The message that brings a child's Spade up to date: the link, plus the code on its own line.
-    func messageForChild(_ kidId: String) -> String? {
-        guard let note = noteFor(save, kidId: kidId) else { return nil }
-        return FamilyLinks.message(.fromParent(note), intro: "\(note.parentName) sent you quests in Spade. Tap the link to add them.")
-    }
-
-    func sentToChild(_ kidId: String) {
-        commit(markSent(save, kidId: kidId))
-    }
-
-    /// The message that tells the parent which quests are done. It names the photos that go with it.
-    func messageForParent() -> String? {
-        guard let note = childNote(save) else { return nil }
-        var intro = "\(note.childName) finished some quests in Spade. Tap the link to check them."
-        let photos = photosForParent()
-        if !photos.isEmpty {
-            intro += "\n\nPhotos with this message:"
-            for (index, photo) in photos.enumerated() {
-                intro += "\n\(index + 1). \(photo.claim.title)"
-            }
-        }
-        return FamilyLinks.message(.fromChild(note), intro: intro)
-    }
-
-    /// The photos to send along: for quests not sent yet, or, when everything was sent
-    /// before, for the ones still waiting to be checked.
+    /// The child's photos for quests the parent hasn't checked yet. Photos stay on this
+    /// iPhone; for now the child sends them through the share sheet.
     func photosForParent() -> [(claim: Claim, url: URL)] {
         guard let family = save.family else { return [] }
-        let unsent = unsentClaims(save)
-        let pool = unsent.isEmpty ? family.claims.filter { $0.status == .waiting } : unsent
-        return pool.compactMap { claim in
-            guard claim.photo == true, let url = ProofPhotos.url(for: claim.key) else { return nil }
+        return family.claims.filter { $0.status == .waiting && $0.photo == true }.compactMap { claim in
+            guard let url = ProofPhotos.url(for: claim.key) else { return nil }
             return (claim: claim, url: url)
         }
     }
 
-    /// Opens the share sheet with the message to the parent, and its photos.
-    /// They count as sent only if they really were.
-    func shareWithParent() {
-        guard let message = messageForParent() else { return }
-        let items: [Any] = [message] + photosForParent().map { $0.url }
-        Share.present(items) { [weak self] in self?.sentToParent() }
+    /// Opens the share sheet with those photos, and a line saying which quest each is for.
+    func sharePhotosWithParent() {
+        let photos = photosForParent()
+        guard !photos.isEmpty else { return }
+        var text = "Photos for my Spade quests:"
+        for (index, photo) in photos.enumerated() {
+            text += "\n\(index + 1). \(photo.claim.title)"
+        }
+        let items: [Any] = [text] + photos.map { $0.url }
+        Share.present(items)
     }
 
-    /// Opens the share sheet with an update for a child.
-    func shareWithChild(_ kidId: String) {
-        guard let message = messageForChild(kidId) else { return }
-        Share.present([message]) { [weak self] in self?.sentToChild(kidId) }
+    // MARK: - iCloud
+
+    /// How keeping in step with iCloud is going. Settings shows it.
+    enum CloudState: Equatable {
+        /// Nothing to keep in step: no invite has been made, and no family joined.
+        case idle
+        case syncing
+        case upToDate(Date)
+        /// iCloud can't be used right now (not signed in, for example).
+        case unavailable(String)
+        case failed(String)
     }
 
-    func sentToParent() {
-        commit(markReported(save))
+    @Published private(set) var cloudState: CloudState = .idle
+
+    private var cloudKit: CloudFamily?
+    private var syncing = false
+    private var syncWanted = false
+    private var syncTimer: Task<Void, Never>?
+    /// The version of each page that was read last, so an unchanged page isn't read twice.
+    private var pageTags: [String: String] = [:]
+
+    /// The iCloud connection, made the first time it is needed. Demo screens never get one.
+    private func cloudFamily() -> CloudFamily? {
+        guard !ephemeral else { return nil }
+        if cloudKit == nil { cloudKit = CloudFamily() }
+        return cloudKit
+    }
+
+    /// Whether this Spade has anything in iCloud to keep in step with.
+    private var usesCloud: Bool {
+        switch save.role {
+        case .parent: return save.household?.children.contains { $0.shared == true } ?? false
+        case .child: return save.family?.cloud != nil
+        case .solo: return false
+        }
+    }
+
+    /// Shows a sync state directly. Only the demo screens use this.
+    func showCloud(_ state: CloudState) {
+        cloudState = state
+    }
+
+    /// Brings this Spade and iCloud into step. It is fine to call this often: only one sync runs at a time.
+    func syncFamily() {
+        Task { await syncFamilyAndWait() }
+    }
+
+    /// The same, for a caller that wants to wait until it has finished.
+    func syncFamilyAndWait() async {
+        guard !ephemeral else { return }
+        guard usesCloud, let cloudKit = cloudFamily() else {
+            if cloudState != .idle { cloudState = .idle }
+            return
+        }
+        if syncing {
+            syncWanted = true
+            return
+        }
+        syncing = true
+        await runSync(cloudKit)
+        syncing = false
+        if syncWanted {
+            syncWanted = false
+            syncFamily()
+        }
+    }
+
+    /// A sync shortly after something changed, so several quick changes go up together.
+    private func syncFamilySoon() {
+        syncTimer?.cancel()
+        syncTimer = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(0.6))
+            if Task.isCancelled { return }
+            self?.syncFamily()
+        }
+    }
+
+    private func runSync(_ cloudKit: CloudFamily) async {
+        if let reason = await cloudKit.unavailableReason() {
+            cloudState = .unavailable(reason)
+            return
+        }
+        // "Up to date" stays up while it is checked again, so the line doesn't flicker.
+        if case .upToDate = cloudState {} else { cloudState = .syncing }
+        do {
+            switch save.role {
+            case .parent: try await syncAsParent(cloudKit)
+            case .child: try await syncAsChild(cloudKit)
+            case .solo: break
+            }
+            cloudState = usesCloud ? .upToDate(Date()) : .idle
+        } catch {
+            cloudState = .failed(CloudFamily.describe(error))
+        }
+    }
+
+    /// The parent's phone: store its page for each invited child if iCloud is behind, then read theirs.
+    private func syncAsParent(_ cloudKit: CloudFamily) async throws {
+        await cloudKit.listen(asParent: true)
+        var firstError: Error?
+        let invited = (save.household?.children ?? []).filter { $0.shared == true }.map { $0.id }
+        for kidId in invited {
+            do {
+                if let due = parentPageDue(save, kidId: kidId) {
+                    try await cloudKit.storeParentPage(kidId: kidId, body: due.body)
+                    commit(markSent(save, kidId: kidId, revision: due.revision), fromCloud: true)
+                }
+                guard let page = try await cloudKit.kidPage(kidId: kidId) else { continue }
+                if let tag = page.tag, pageTags[kidId] == tag { continue }
+                if let out = readKidPage(save, kidId: kidId, page.body) {
+                    commit(out.save, fromCloud: true)
+                    if case .added(_, let count) = out.result { announceFinished(kidId: kidId, count: count) }
+                }
+                pageTags[kidId] = page.tag
+            } catch CloudProblem.notShared {
+                // The pages are gone from iCloud (sharing was stopped somewhere else). Offer a fresh invite.
+                commit(markShared(save, kidId: kidId, false), fromCloud: true)
+                pageTags[kidId] = nil
+            } catch {
+                firstError = firstError ?? error
+            }
+        }
+        if let firstError { throw firstError }
+    }
+
+    /// The child's phone: read the parent's page, then store its own if iCloud is behind.
+    private func syncAsChild(_ cloudKit: CloudFamily) async throws {
+        guard let family = save.family, let link = family.cloud else { return }
+        let kidId = family.childId
+        // While waiting on iCloud the player may leave the family; then there is nothing more to do.
+        func stillIn() -> Bool { save.family?.cloud == link && save.family?.childId == kidId }
+
+        await cloudKit.listen(asParent: false)
+        guard let page = try await cloudKit.parentPage(link: link, kidId: kidId) else { throw CloudProblem.notShared }
+        guard stillIn() else { return }
+        if page.tag == nil || pageTags["parent"] != page.tag {
+            if let out = readParentPage(save, page.body, cloud: link, now: Date()) {
+                commit(out.save, fromCloud: true)
+                if case .applied(let summary) = out.result { announce(summary, from: family.parentName) }
+            }
+            pageTags["parent"] = page.tag
+        }
+        if let due = kidPageDue(save) {
+            try await cloudKit.storeKidPage(link: link, kidId: kidId, body: due.body)
+            guard stillIn() else { return }
+            commit(markReported(save, keys: due.keys), fromCloud: true)
+        }
+    }
+
+    private func toast(_ title: String, _ note: String) {
+        serial += 1
+        toasts.append(Toast(id: serial, kind: .family(title: title, note: note)))
+    }
+
+    /// Tells the parent a child finished something.
+    private func announceFinished(kidId: String, count: Int) {
+        guard let kid = save.household?.children.first(where: { $0.id == kidId }) else { return }
+        let waiting = kid.claims.filter { $0.status == .waiting }.count
+        toast(
+            "\(kid.name) finished \(count == 1 ? "a quest" : "\(count) quests")",
+            waiting > 0 ? "\(waiting) to check in Family" : "See when in Family"
+        )
+    }
+
+    /// Tells the child what their parent changed.
+    private func announce(_ summary: ParentNoteSummary, from parent: String) {
+        func count(_ n: Int, _ one: String, _ many: String) -> String { n == 1 ? "1 \(one)" : "\(n) \(many)" }
+        if summary.newQuests > 0 { toast(count(summary.newQuests, "new quest", "new quests"), "From \(parent)") }
+        if summary.approved > 0 { toast(count(summary.approved, "quest approved", "quests approved"), "\(parent) owes you for \(summary.approved == 1 ? "it" : "them")") }
+        if summary.paid > 0 { toast(count(summary.paid, "quest paid", "quests paid"), "From \(parent)") }
+        if summary.declined > 0 { toast(count(summary.declined, "quest not approved", "quests not approved"), "Ask \(parent) why") }
+    }
+
+    /// Gets this child's invite ready in iCloud, then opens Apple's sharing sheet to send it.
+    /// For a child who is already invited, the same sheet shows who has joined and can take the invite back.
+    func invite(_ kidId: String) {
+        guard preparingInvite == nil, let note = noteFor(save, kidId: kidId), let cloudKit = cloudFamily() else { return }
+        preparingInvite = kidId
+        Task {
+            defer { preparingInvite = nil }
+            if let reason = await cloudKit.unavailableReason() {
+                cloudNotice = reason
+                return
+            }
+            do {
+                let title = CloudFamily.titlePrefix + note.parentName
+                let share = try await cloudKit.prepareShare(kidId: kidId, title: title, body: FamilyPages.write(.fromParent(note)))
+                commit(markSent(markShared(save, kidId: kidId, true), kidId: kidId, revision: note.revision))
+                InviteSheet.present(
+                    share: share,
+                    container: cloudKit.container,
+                    title: title,
+                    stopped: { [weak self] in self?.sharingStopped(kidId) },
+                    failed: { [weak self] error in self?.cloudNotice = CloudFamily.describe(error) }
+                )
+            } catch {
+                cloudNotice = CloudFamily.describe(error)
+            }
+        }
+    }
+
+    /// The parent chose "Stop sharing" in Apple's sheet.
+    private func sharingStopped(_ kidId: String) {
+        commit(markShared(save, kidId: kidId, false))
+        pageTags[kidId] = nil
+        guard let cloudKit = cloudFamily() else { return }
+        Task { try? await cloudKit.withdraw(kidId: kidId) }
+    }
+
+    /// Clears out of iCloud whatever the last change left behind: the share of a family
+    /// this Spade has left, and the pages of children who are no longer in the family.
+    private func tidyCloud(after before: Save) {
+        if let old = before.family, let link = old.cloud, save.family?.cloud != link, let cloudKit = cloudFamily() {
+            pageTags["parent"] = nil
+            Task { try? await cloudKit.leave(link: link, kidId: old.childId) }
+        }
+        let still = Set((save.household?.children ?? []).map { $0.id })
+        for kid in before.household?.children ?? [] where kid.shared == true && !still.contains(kid.id) {
+            guard let cloudKit = cloudFamily() else { break }
+            pageTags[kid.id] = nil
+            Task { try? await cloudKit.withdraw(kidId: kid.id) }
+        }
     }
 
     // MARK: - Backups
@@ -374,11 +606,14 @@ final class GameStore: ObservableObject {
     }
 
     func reset() {
+        let before = save
         moments = []
         toasts = []
         incoming = nil
+        invite = nil
         commit(Self.freshSave())
         tidyPhotos()
+        tidyCloud(after: before)
     }
 }
 
@@ -400,17 +635,12 @@ enum DemoMode {
         switch name {
         case "launch", "title", "roles":
             return GameStore(preview: newSave(seed: 7, now: Date()))
-        case "family", "familyquest", "openlink":
+        case "family", "familyquest":
             return GameStore(preview: parentGame())
-        case "report":
-            // The parent's Spade, just after Tess's "I've done these" link was opened.
+        case "sync":
+            // The parent's Settings, with iCloud keeping the family in step.
             let store = GameStore(preview: parentGame())
-            let done = Claim(
-                key: "2026-01-01:fq_dishes", questId: "fq_dishes", title: "Do the dishes after dinner",
-                allowance: 100, doneAt: millis(Date()), status: .waiting
-            )
-            let note = ChildNote(familyId: "fam_demo", childId: "kid_tess", childName: "Tess", done: [done])
-            store.receive(FamilyLinks.webLink(.fromChild(note)))
+            store.showCloud(.upToDate(Date()))
             return store
         case "allowance", "childboard", "photoproof":
             let save = childGame()
@@ -420,11 +650,17 @@ enum DemoMode {
             }
             return GameStore(preview: save)
         case "join":
-            // A player opens a link from a parent for the first time.
+            // A player has just tapped a parent's invite for the first time.
             let store = GameStore(preview: midGame())
-            if let note = noteFor(parentGame(), kidId: "kid_tess") {
-                store.receive(FamilyLinks.webLink(.fromParent(note)))
-            }
+            store.showInvite(GameStore.Incoming(from: "Sam", step: .asking))
+            return store
+        case "joined":
+            // And has said yes: the parent's quests are on their board.
+            let store = GameStore(preview: childGame())
+            store.showInvite(GameStore.Incoming(
+                from: "Sam",
+                step: .joined(ParentNoteSummary(joined: true, newQuests: demoQuests.count), quests: demoQuests, currency: "USD")
+            ))
             return store
         default:
             var save = midGame()
@@ -444,7 +680,7 @@ enum DemoMode {
         FamilyQuest(id: "fq_room", title: "Tidy your room", cadence: .daily, category: .home, xp: 30, allowance: 50, repeats: true, askPhoto: true),
     ]
 
-    /// A parent, Sam, with two children: Tess has quests to check, Robin hasn't been sent his yet.
+    /// A parent, Sam, with two children: Tess has joined and has quests to check, Robin hasn't been invited yet.
     static func parentGame() -> Save {
         let now = Date()
         let clock = GameClock.device
@@ -467,6 +703,8 @@ enum DemoMode {
         ]
         tess.revision = 6
         tess.sentRevision = 6
+        tess.shared = true
+        tess.joined = true
         var robin = Kid(id: "kid_robin", name: "Robin")
         robin.quests = [FamilyQuest(id: "fq_bed", title: "Make your bed", cadence: .daily, category: .home, xp: 20, allowance: 25, repeats: true)]
         robin.revision = 2
@@ -501,6 +739,9 @@ enum DemoMode {
             Claim(key: "\(clock.shiftDay(today, -1)):fq_dishes", questId: "fq_dishes", title: "Do the dishes after dinner", allowance: 100, doneAt: ms - 86_400_000, status: .approved),
         ]
         save.family?.claims.insert(contentsOf: older, at: 0)
+        // Joined through an invite, with everything already in iCloud.
+        save.family?.cloud = CloudLink(zone: "SpadeFamily", owner: "_demo")
+        save = markReported(save, keys: save.family?.claims.map { $0.key } ?? [])
         return save
     }
 

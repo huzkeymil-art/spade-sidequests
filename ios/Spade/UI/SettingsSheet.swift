@@ -16,9 +16,6 @@ struct SettingsSheet: View {
     @State private var backup: URL?
     @State private var pendingRole: Role?
     @State private var allowanceOpen = false
-    @State private var linkPasting = false
-    @State private var linkText = ""
-    @State private var linkNote = ""
 
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -243,73 +240,58 @@ struct SettingsSheet: View {
                         rowLabel("Allowance", note: "\(Money.format(family.claims.total(.approved), family.currency)) owed to you")
                     }
                     .buttonStyle(RowButtonStyle())
-                    Hairline()
-                    pasteLinkRow()
+                    if family.cloud != nil {
+                        Hairline()
+                        cloudRow()
+                    }
                 }
                 .padding(.top, 10)
+                if family.cloud == nil {
+                    footnote("This Spade joined with an old family link, which no longer updates. Ask \(family.parentName) to invite you from their Family tab.")
+                } else {
+                    cloudTrouble()
+                }
             } else {
-                footnote("Ask your parent to send you a link from their Spade. Tap it, and their quests join your board.")
-                RowGroup { pasteLinkRow() }
-                    .padding(.top, 10)
+                footnote("Ask your parent to invite you from the Family tab of their Spade. Tap the invite they send, and their quests join your board.")
             }
-            pasteLinkBox()
         case .parent:
-            footnote("Set quests and allowance for your children in the Family tab.")
-            RowGroup { pasteLinkRow() }
+            footnote("Set quests and allowance for your children in the Family tab. Invite each child once, and iCloud keeps their Spade up to date.")
+            RowGroup { cloudRow() }
                 .padding(.top, 10)
-            pasteLinkBox()
+            cloudTrouble()
         }
     }
 
-    private func pasteLinkRow() -> some View {
+    /// How keeping in step with iCloud is going. A tap checks again straight away.
+    private func cloudRow() -> some View {
         Button {
             Feedback.tap()
-            linkPasting.toggle()
-            linkNote = ""
+            store.syncFamily()
         } label: {
-            rowLabel("Paste a family link", note: "Or the whole message it came in", turned: linkPasting)
+            rowLabel("iCloud sync", note: cloudNote)
         }
         .buttonStyle(RowButtonStyle())
+        .accessibilityHint("Checks again now")
     }
 
+    private var cloudNote: String {
+        switch store.cloudState {
+        case .idle: return store.save.role == .parent ? "Starts when you invite a child" : "Nothing to sync yet"
+        case .syncing: return "Checking…"
+        case .upToDate(let at): return "Up to date at \(at.formatted(date: .omitted, time: .shortened))"
+        case .unavailable: return "iCloud isn't available"
+        case .failed: return "Something went wrong. Tap to try again"
+        }
+    }
+
+    /// The reason, when iCloud can't be used or a sync failed. It can be selected and copied.
     @ViewBuilder
-    private func pasteLinkBox() -> some View {
-        if linkPasting {
-            TextEditor(text: $linkText)
-                .font(.system(size: 13, design: .monospaced))
-                .foregroundStyle(Ink.bone)
-                .tint(Ink.lantern)
-                .scrollContentBackground(.hidden)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .padding(8)
-                .frame(height: 96)
-                .plate(fill: Ink.ink, edge: Ink.moss2, notch: 6)
-                .padding(.top, 10)
-                .accessibilityLabel("Family link")
-            Button("Open link", action: openLink)
-                .buttonStyle(PlateButtonStyle(block: true))
-                .disabled(linkText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .padding(.top, 10)
-            if !linkNote.isEmpty { footnote(linkNote) }
-        }
-    }
-
-    private func openLink() {
-        let text = linkText
-        guard FamilyLinks.read(text) != nil else {
-            linkNote = FamilyLinks.missingCode(text)
-                ? "This link lost its family code on the way. Ask for it to be sent again with Copy link, or paste the whole message it came in."
-                : "That isn't a Spade family link. Copy the whole message it came in and try again."
-            Feedback.warn()
-            return
-        }
-        linkText = ""
-        linkPasting = false
-        // Close Settings first: what the link brings opens on the main screen.
-        dismiss()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            store.receive(text)
+    private func cloudTrouble() -> some View {
+        switch store.cloudState {
+        case .unavailable(let why), .failed(let why):
+            footnote(why).textSelection(.enabled)
+        default:
+            EmptyView()
         }
     }
 
@@ -331,7 +313,7 @@ struct SettingsSheet: View {
 
     private var leaveMessage: String {
         store.save.role == .parent
-            ? "Your children, their quests and the allowance records on this phone will be deleted."
+            ? "Your children, their quests and the allowance records on this phone will be deleted, and sharing with them stops."
             : "Their quests come off your board, and your allowance records go. Everything you've earned stays."
     }
 
