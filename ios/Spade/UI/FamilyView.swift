@@ -4,10 +4,12 @@ import UIKit
 // Families, on screen.
 //
 //   Parent: the Family tab. One card per child, with what's waiting to be
-//   checked, what's owed, their quests, and a button to send them an update.
+//   checked, what's owed, their quests, and a button to invite them.
 //   Child: an allowance row at the top of the quest board, and a sheet with
-//   what's waiting, owed and paid, plus a button to tell the parent.
-//   Both: the sheet that opens when a family link arrives.
+//   what's waiting, owed and paid.
+//   The sheet that opens when a child taps a parent's invite.
+//
+// After the invite, the two phones keep in step through iCloud by themselves.
 
 extension Role {
     /// The order the choices are shown in.
@@ -158,7 +160,7 @@ struct FamilyView: View {
             ScreenScroll {
                 VStack(alignment: .leading, spacing: 14) {
                     if kids.isEmpty {
-                        Text("Add your child, set them a few quests, then send them a link. The quests show up on their Spade, at the XP you choose, with allowance if you like.")
+                        Text("Add your child, set them a few quests, then invite them. The quests show up on their Spade, at the XP you choose, with allowance if you like.")
                             .font(Typeface.italic())
                             .foregroundStyle(Ink.dim)
                             .fixedSize(horizontal: false, vertical: true)
@@ -175,7 +177,7 @@ struct FamilyView: View {
                         }
                         .buttonStyle(PlateButtonStyle(kind: kids.isEmpty ? .primary : .plain, block: true))
                     }
-                    Text("Each child's Spade only changes when you send them an update. Allowance is a record of what you owe: Spade never moves real money.")
+                    Text("After the invite, your changes reach each child's Spade through iCloud by themselves. Allowance is a record of what you owe: Spade never moves real money.")
                         .font(Typeface.italic(15))
                         .foregroundStyle(Ink.dim)
                         .fixedSize(horizontal: false, vertical: true)
@@ -196,6 +198,11 @@ struct FamilyView: View {
         } message: {
             Text("Their name, as you'd like it to show on their Spade.")
         }
+        .alert("iCloud", isPresented: Binding(get: { store.cloudNotice != nil }, set: { if !$0 { store.cloudNotice = nil } })) {
+            Button("OK", role: .cancel) { store.cloudNotice = nil }
+        } message: {
+            Text(store.cloudNotice ?? "")
+        }
         .onAppear {
             if DemoMode.requested == "familyquest", let kid = kids.first, let quest = kid.quests.last {
                 editing = QuestEdit(kidId: kid.id, quest: quest)
@@ -214,11 +221,11 @@ private struct KidCard: View {
     @State private var renaming = false
     @State private var removing = false
     @State private var draft = ""
-    @State private var copied = false
     @State private var showingAll = false
 
     var body: some View {
         let waiting = kid.claims.filter { $0.status == .waiting }
+        let preparing = store.preparingInvite == kid.id
         let owed = kid.claims.total(.approved)
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 8) {
@@ -235,6 +242,9 @@ private struct KidCard: View {
                     Button("Rename") {
                         draft = kid.name
                         renaming = true
+                    }
+                    if kid.shared == true {
+                        Button("Sharing options") { store.invite(kid.id) }
                     }
                     Button("Remove \(kid.name)", role: .destructive) { removing = true }
                 } label: {
@@ -262,12 +272,12 @@ private struct KidCard: View {
                         }
                         Text("Done \(when(claim.doneAt))").caps(Ink.faint)
                         if claim.photo == true {
-                            Label("Photo came with \(kid.name)'s message", systemImage: "camera")
+                            Label("\(kid.name) took a photo. Ask to see it", systemImage: "camera")
                                 .font(Typeface.label())
                                 .textCase(.uppercase)
                                 .foregroundStyle(Ink.verdigris)
                         } else if (kid.quests + kid.past).first(where: { $0.id == claim.questId })?.askPhoto == true {
-                            Label("No photo was sent", systemImage: "camera")
+                            Label("No photo was taken", systemImage: "camera")
                                 .font(Typeface.label())
                                 .textCase(.uppercase)
                                 .foregroundStyle(Ink.rust)
@@ -381,30 +391,37 @@ private struct KidCard: View {
 
             Hairline()
             VStack(alignment: .leading, spacing: 8) {
-                if let message = store.messageForChild(kid.id) {
-                    // Shared as a message, not a bare link: some apps turn links into previews and
-                    // lose the code after the "#", but the message repeats the code as plain text.
-                    Button(kid.needsUpdate ? "Send update to \(kid.name)" : "Send to \(kid.name) again") {
+                if kid.joined == true {
+                    Label("Connected", systemImage: "checkmark.icloud")
+                        .font(Typeface.label())
+                        .textCase(.uppercase)
+                        .foregroundStyle(Ink.verdigris)
+                    Text(kid.needsUpdate
+                         ? "Your latest changes are on their way to \(kid.name)'s Spade."
+                         : "\(kid.name)'s Spade keeps up with your changes by itself.")
+                        .caps(kid.needsUpdate ? Ink.lantern : Ink.faint)
+                } else if kid.shared == true {
+                    Text("Waiting for \(kid.name) to open the invite on their iPhone.").caps(Ink.lantern)
+                    Button(preparing ? "Opening…" : "Send the invite again") {
                         Feedback.tap()
-                        store.shareWithChild(kid.id)
-                    }
-                    .buttonStyle(PlateButtonStyle(kind: kid.needsUpdate ? .primary : .plain, block: true))
-                    Button(copied ? "Copied" : "Copy link") {
-                        UIPasteboard.general.string = message
-                        store.sentToChild(kid.id)
-                        Feedback.done()
-                        copied = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+                        store.invite(kid.id)
                     }
                     .buttonStyle(PlateButtonStyle(block: true))
-                    .accessibilityHint("Copies the link and family code, to paste into any app")
+                    .disabled(preparing)
+                } else {
+                    Button(preparing ? "Getting the invite ready…" : "Invite \(kid.name)") {
+                        Feedback.tap()
+                        store.invite(kid.id)
+                    }
+                    .buttonStyle(PlateButtonStyle(kind: .primary, block: true))
+                    .disabled(preparing)
+                    Text("\(kid.name) opens the invite once, on an iPhone signed in to their own iCloud. After that, their Spade keeps up by itself.")
+                        .caps(Ink.faint)
                 }
-                Text(kid.needsUpdate ? "\(kid.name)'s Spade doesn't have your latest changes yet." : "\(kid.name)'s Spade is up to date.")
-                    .caps(kid.needsUpdate ? Ink.lantern : Ink.faint)
             }
             .padding(14)
         }
-        .plate(fill: Ink.loam, edge: kid.needsUpdate || !waiting.isEmpty ? Ink.lantern : Ink.moss, notch: 9)
+        .plate(fill: Ink.loam, edge: waiting.isEmpty ? Ink.moss : Ink.lantern, notch: 9)
         .alert("Rename", isPresented: $renaming) {
             TextField("Name", text: $draft)
             Button("Save") { store.renameChild(kid.id, to: draft) }
@@ -414,7 +431,7 @@ private struct KidCard: View {
             Button("Remove", role: .destructive) { store.removeChild(kid.id) }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Their quests and allowance records go from this phone. Their own Spade keeps what it has.")
+            Text("Their quests and allowance records go from this phone, and sharing with them stops. Their own Spade keeps what it has.")
         }
     }
 
@@ -534,7 +551,7 @@ struct FamilyQuestSheet: View {
                     RowGroup {
                         ToggleRow(
                             title: "Ask for a photo",
-                            note: askPhoto ? "It comes with their message to you" : "No photo needed",
+                            note: askPhoto ? "They take one before it counts" : "No photo needed",
                             isOn: $askPhoto
                         )
                     }
@@ -613,7 +630,7 @@ struct FamilyQuestSheet: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("It leaves \(kidName)'s board the next time you send an update. Anything already done stays done.")
+            Text("It leaves \(kidName)'s board. Anything already done stays done.")
         }
     }
 
@@ -669,7 +686,8 @@ struct FamilyBanner: View {
                 if !family.quests.isEmpty || !claims.isEmpty {
                     let unsent = unsentClaims(save).count
                     let waiting = claims.filter { $0.status == .waiting }.count
-                    let summary = unsent > 0 ? "\(unsent) to send to \(family.parentName)"
+                    let summary = family.cloud == nil ? "Ask \(family.parentName) for a new invite"
+                        : unsent > 0 ? "\(unsent) on the way to \(family.parentName)"
                         : waiting > 0 ? "\(waiting) waiting for \(family.parentName)"
                         : "From \(family.parentName)"
                     Button {
@@ -680,7 +698,7 @@ struct FamilyBanner: View {
                             PropIcon(name: "home", size: 30, res: 20)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(paysAllowance ? "Allowance" : "Family quests").font(Typeface.text()).foregroundStyle(Ink.bone)
-                                Text(summary).caps(unsent > 0 ? Ink.lantern : Ink.faint)
+                                Text(summary).caps(unsent > 0 || family.cloud == nil ? Ink.lantern : Ink.faint)
                             }
                             Spacer(minLength: 8)
                             if paysAllowance {
@@ -701,7 +719,7 @@ struct FamilyBanner: View {
             } else if save.role == .child {
                 HStack(alignment: .top, spacing: 12) {
                     PropIcon(name: "home", size: 30, res: 20)
-                    Text("Ask your parent to send you a link from their Spade. Their quests will show up here.")
+                    Text("Ask your parent to invite you from the Family tab of their Spade. Tap the invite they send, and their quests show up here.")
                         .font(Typeface.italic(16))
                         .foregroundStyle(Ink.dim)
                         .fixedSize(horizontal: false, vertical: true)
@@ -721,7 +739,6 @@ struct FamilyBanner: View {
 struct AllowanceSheet: View {
     @EnvironmentObject private var store: GameStore
     @Environment(\.dismiss) private var dismiss
-    @State private var copied = false
 
     var body: some View {
         let family = store.save.family
@@ -731,6 +748,11 @@ struct AllowanceSheet: View {
         let unsent = unsentClaims(store.save).count
         let quests = family?.quests ?? []
         let paysAllowance = quests.contains { $0.allowance > 0 } || claims.contains { $0.allowance > 0 }
+        let connected = family?.cloud != nil
+        let onTheWay = unsent == 1 ? "1 quest is" : "\(unsent) quests are"
+        let syncLine: String = !connected ? "Not connected to \(parent)'s Spade. Ask them for a new invite."
+            : unsent > 0 ? "\(onTheWay) on the way to \(parent)'s Spade."
+            : "\(parent)'s Spade sees these by itself."
 
         VStack(spacing: 0) {
             SheetHeader(title: paysAllowance ? "Allowance" : "Family quests") { dismiss() }
@@ -802,29 +824,20 @@ struct AllowanceSheet: View {
                 .padding(.bottom, 16)
             }
 
-            if let message = store.messageForParent() {
+            if family != nil {
                 VStack(spacing: 8) {
                     let photos = store.photosForParent().count
                     if photos > 0 {
-                        Label(photos == 1 ? "1 photo goes with it" : "\(photos) photos go with it", systemImage: "camera")
-                            .font(Typeface.label())
-                            .textCase(.uppercase)
-                            .foregroundStyle(Ink.dim)
+                        // Photos stay on this iPhone, so for now they are sent by hand.
+                        Button(photos == 1 ? "Send the photo to \(parent)" : "Send \(photos) photos to \(parent)") {
+                            Feedback.tap()
+                            store.sharePhotosWithParent()
+                        }
+                        .buttonStyle(PlateButtonStyle(block: true))
                     }
-                    Button(unsent > 0 ? "Send \(unsent) to \(parent)" : "Send to \(parent) again") {
-                        Feedback.tap()
-                        store.shareWithParent()
-                    }
-                    .buttonStyle(PlateButtonStyle(kind: unsent > 0 ? .primary : .plain, block: true))
-                    Button(copied ? "Copied" : "Copy link") {
-                        UIPasteboard.general.string = message
-                        store.sentToParent()
-                        Feedback.done()
-                        copied = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
-                    }
-                    .buttonStyle(PlateButtonStyle(block: true))
-                    .accessibilityHint("Copies the link and family code, to paste into any app")
+                    Text(syncLine)
+                        .caps(unsent > 0 || !connected ? Ink.lantern : Ink.faint)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
@@ -843,17 +856,18 @@ struct AllowanceSheet: View {
     }
 }
 
-// MARK: - Both: a link arrives
+// MARK: - Child: an invite arrives
 
+/// Opens when a parent's invite is tapped: asks whether to join, then says how it went.
 struct IncomingSheet: View {
     let arrival: GameStore.Incoming
-    /// Opens the Family tab, for a parent with quests to check.
-    let review: () -> Void
 
     @EnvironmentObject private var store: GameStore
 
     var body: some View {
-        let content = describe()
+        // The sheet is handed the invite once; the store has its newest state.
+        let step = store.incoming?.id == arrival.id ? (store.incoming?.step ?? arrival.step) : arrival.step
+        let content = describe(step)
         VStack(alignment: .leading, spacing: 0) {
             SheetHeader(title: content.title) { store.closeIncoming() }
             ScrollView {
@@ -863,6 +877,9 @@ struct IncomingSheet: View {
                             .font(Typeface.text(18))
                             .foregroundStyle(Ink.bone)
                             .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if step == .joining {
+                        ProgressView().tint(Ink.lantern).frame(maxWidth: .infinity).padding(.top, 8)
                     }
                     if !content.quests.isEmpty {
                         RowGroup {
@@ -889,6 +906,7 @@ struct IncomingSheet: View {
                             .font(Typeface.italic(16))
                             .foregroundStyle(Ink.dim)
                             .fixedSize(horizontal: false, vertical: true)
+                            .textSelection(.enabled)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -907,13 +925,19 @@ struct IncomingSheet: View {
                         store.acceptIncoming()
                     }
                     .buttonStyle(PlateButtonStyle(kind: .primary, block: true))
-                case .review:
-                    Button("Check them") {
+                case .retry:
+                    Button("Close") {
                         Feedback.tap()
                         store.closeIncoming()
-                        review()
+                    }
+                    .buttonStyle(PlateButtonStyle(block: true))
+                    Button("Try again") {
+                        Feedback.tap()
+                        store.acceptIncoming()
                     }
                     .buttonStyle(PlateButtonStyle(kind: .primary, block: true))
+                case .wait:
+                    EmptyView()
                 case .done:
                     Button("OK") {
                         Feedback.tap()
@@ -928,7 +952,7 @@ struct IncomingSheet: View {
         .spadeSheet([.medium, .large])
     }
 
-    private enum Action { case join, review, done }
+    private enum Action { case join, retry, wait, done }
 
     private struct Content {
         var title: String
@@ -939,69 +963,37 @@ struct IncomingSheet: View {
         var action: Action = .done
     }
 
-    /// Allowance quests from this child still waiting for the parent's check.
-    private func toCheck(_ kidId: String) -> Int {
-        store.save.household?.children.first { $0.id == kidId }?.claims.filter { $0.status == .waiting }.count ?? 0
-    }
-
     private func plural(_ n: Int, _ one: String, _ many: String) -> String {
         n == 1 ? "1 \(one)" : "\(n) \(many)"
     }
 
-    private func describe() -> Content {
-        switch arrival.link {
-        case .fromParent(let note):
-            switch arrival.outcome {
-            case nil:
-                var content = Content(title: "Join a family?", quests: note.quests, currency: note.currency, action: .join)
-                content.lines = ["\(note.parentName) wants to send you quests in Spade."]
-                if let old = store.save.family, old.familyId != note.familyId {
-                    content.note = "This takes you out of \(old.parentName)'s family. Everything you've earned stays."
-                } else {
-                    content.note = "Their quests go on your board. Everything you've earned stays yours."
-                }
-                return content
-            case .fromParent(.applied(let summary))?:
-                var content = Content(title: summary.joined ? "You're in" : "From \(note.parentName)")
-                if summary.joined {
-                    content.lines.append("You're in \(note.parentName)'s family now.")
-                }
-                if summary.newQuests > 0 { content.lines.append("\(plural(summary.newQuests, "new quest", "new quests")) on your board.") }
-                if summary.removedQuests > 0 { content.lines.append("\(plural(summary.removedQuests, "quest", "quests")) taken off.") }
-                if summary.approved > 0 { content.lines.append("\(plural(summary.approved, "quest", "quests")) approved. That allowance is owed to you.") }
-                if summary.paid > 0 { content.lines.append("\(plural(summary.paid, "quest", "quests")) paid.") }
-                if summary.declined > 0 { content.lines.append("\(plural(summary.declined, "quest wasn't", "quests weren't")) approved.") }
-                if content.lines.isEmpty { content.lines = ["Everything is up to date."] }
-                return content
-            case .fromParent(.stale)?:
-                return Content(title: "Up to date", lines: ["You've already opened this link, or a newer one from \(note.parentName)."])
-            case .fromParent(.isParent)?, .wrongRole?:
-                return Content(title: "Not for you", lines: ["This link is for a child's Spade. Send it to your child instead."])
-            case .fromChild?:
-                return Content(title: "Not for you", lines: ["Something went wrong reading this link."])
+    private func describe(_ step: GameStore.Incoming.Step) -> Content {
+        let from = arrival.from
+        switch step {
+        case .asking:
+            var content = Content(title: "Join a family?", action: .join)
+            content.lines = ["\(from) wants to send you quests in Spade."]
+            if let old = store.save.family, old.parentName != from {
+                content.note = "This takes you out of \(old.parentName)'s family. Everything you've earned stays."
+            } else {
+                content.note = "Their quests go on your board, and they can see when you finish them. Everything you've earned stays yours."
             }
-        case .fromChild(let note):
-            switch arrival.outcome {
-            case .fromChild(.added(_, let count))?:
-                return Content(
-                    title: "From \(note.childName)",
-                    lines: [
-                        "\(note.childName) finished \(plural(count, "quest", "quests")).",
-                        toCheck(note.childId) > 0
-                            ? "\(plural(toCheck(note.childId), "allowance quest needs", "allowance quests need")) checking in Family. Then send \(note.childName) an update."
-                            : "You can see when each was done in Family.",
-                    ],
-                    action: .review
-                )
-            case .fromChild(.nothingNew)?:
-                return Content(title: "From \(note.childName)", lines: ["Nothing new. You've already seen these."])
-            case .fromChild(.wrongFamily)?:
-                return Content(title: "Not your family", lines: ["This link is from a child in a different family."])
-            case .fromChild(.unknownChild)?:
-                return Content(title: "Who's this?", lines: ["\(note.childName) isn't in your family list on this phone."])
-            default:
-                return Content(title: "Not for you", lines: ["This link is for a parent's Spade. Send it to your parent instead."])
-            }
+            return content
+        case .joining:
+            return Content(title: "Joining…", lines: ["Fetching your quests from iCloud."], action: .wait)
+        case .joined(let summary, let quests, let currency):
+            var content = Content(title: summary.joined ? "You're in" : "From \(from)", quests: quests, currency: currency)
+            if summary.joined { content.lines.append("You're in \(from)'s family now.") }
+            if summary.newQuests > 0 { content.lines.append("\(plural(summary.newQuests, "new quest", "new quests")) on your board.") }
+            if content.lines.isEmpty { content.lines = ["Everything is up to date."] }
+            content.note = "From now on, new quests from \(from) show up by themselves."
+            return content
+        case .already:
+            return Content(title: "Already in", lines: ["You're already in \(from)'s family, and everything is up to date."])
+        case .failed(let why):
+            return Content(title: "Couldn't join", lines: ["Spade couldn't fetch the quests from iCloud."], note: why, action: .retry)
+        case .notForYou(let why):
+            return Content(title: "Not for this Spade", lines: [why])
         }
     }
 }

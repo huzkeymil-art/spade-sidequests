@@ -129,9 +129,12 @@ struct TitlePanel: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: choosing)
+        .onChange(of: store.incoming?.id) { _, arrived in
+            if arrived != nil { role = .child }
+        }
         .onAppear {
-            // Opened from a parent's link: this is a child's Spade.
-            if case .fromParent(_)? = store.incoming?.link { role = .child }
+            // Opened by tapping a parent's invite: this is a child's Spade.
+            if store.incoming != nil { role = .child }
             if DemoMode.requested == "roles" { choosing = true }
         }
     }
@@ -319,11 +322,13 @@ private struct ToastRow: View {
                 let family = store.save.family
                 row(
                     icon: "home",
-                    title: "Send it to \(family?.parentName ?? "your parent")",
-                    note: "Allowance waiting to be checked",
+                    title: "\(family?.parentName ?? "Your parent") will check it",
+                    note: "Allowance waiting",
                     trailing: Money.format(amount, family?.currency ?? Money.local),
                     edge: Ink.lantern
                 )
+            case .family(let title, let note):
+                row(icon: "home", title: title, note: note, trailing: "", edge: Ink.verdigris)
             }
         }
         .pop(0)

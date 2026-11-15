@@ -3,8 +3,8 @@ import UIKit
 // Photos a child adds to show a parent that a quest was done.
 //
 // They stay on this iPhone, in Spade's own folder. They only leave it when the
-// child sends them along with a "Send to …" message, through the share sheet.
-// They never go inside a family link: a photo is far too big for one.
+// child chooses "Send the photo" in Allowance, which opens the share sheet.
+// (They are not yet part of what iCloud keeps in step between the two phones.)
 
 enum ProofPhotos {
     private static var folder: URL {

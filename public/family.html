@@ -5,14 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0d0f0c">
 <meta name="robots" content="noindex">
-<title>Spade family link</title>
+<title>Spade family links have moved</title>
 <link rel="icon" type="image/png" href="./icon-192.png">
 <style>
-  /*
-    This page hands a family link to the Spade app.
-    The note travels after the "#" in the address. Browsers never send that
-    part to a server, so it goes from one phone to the other and nowhere else.
-  */
+  /* Old family links pointed here. Families now connect through iCloud, so this page only explains that. */
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: #0d0f0c; color: #e6dfc8; }
@@ -51,44 +47,13 @@
 </head>
 <body>
   <img src="./icon-192.png" alt="">
-  <h1 id="title">Opening Spade…</h1>
-  <p id="lead">If Spade doesn't open by itself, tap the button.</p>
-  <a class="button" id="open" href="#">Open in Spade</a>
-  <button class="button plain" id="copy" type="button">Copy this link</button>
-  <p class="small" id="help">
-    Still not opening? Copy the whole message the link came in, then in Spade go to Settings, then Paste a family link.
-    Don't have Spade yet? Ask whoever sent this for the TestFlight invite.
+  <h1>Family links have moved</h1>
+  <p>
+    Spade families now connect through iCloud, so this kind of link no longer does anything.
   </p>
-  <script>
-    (function () {
-      // The code normally sits after the "#". Take only the characters a code can have,
-      // in case an app stuck something on the end.
-      var raw = location.hash.slice(1) || new URLSearchParams(location.search).get('d') || '';
-      var note = (raw.match(/^[A-Za-z0-9_-]+/) || [''])[0];
-      var open = document.getElementById('open');
-      var copy = document.getElementById('copy');
-      if (!note) {
-        document.getElementById('title').textContent = 'This link lost its family code';
-        document.getElementById('lead').textContent =
-          'The app it was sent through dropped the code on the way. Look in the same message for a line that says ' +
-          '"Family code": copy the whole message, then in Spade go to Settings, then Paste a family link. ' +
-          'Or ask for it to be sent again with Copy link.';
-        open.hidden = true;
-        copy.hidden = true;
-        document.getElementById('help').hidden = true;
-        return;
-      }
-      var app = 'spade://family#' + note;
-      open.href = app;
-      copy.addEventListener('click', function () {
-        var done = function () { copy.textContent = 'Copied'; };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(location.href).then(done, function () {});
-        }
-      });
-      // Try straight away; the button is there if the phone wants a tap first.
-      setTimeout(function () { location.href = app; }, 300);
-    })();
-  </script>
+  <p>
+    Update Spade on both iPhones. Then the parent opens the Family tab and taps <strong>Invite</strong>,
+    and the child taps the invite they are sent. After that, quests reach the child's Spade by themselves.
+  </p>
 </body>
 </html>

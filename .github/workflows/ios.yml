@@ -32,7 +32,7 @@ jobs:
     env:
       SCREENS: >-
         launch quests hero satchel feats settings guide form dig level item picker smooth
-        roles family familyquest childboard allowance photoproof join report openlink
+        roles family familyquest invite childboard allowance photoproof join joined sync
       SMALL_SCREENS: launch roles quests hero dig family childboard
     steps:
       - uses: actions/checkout@v4

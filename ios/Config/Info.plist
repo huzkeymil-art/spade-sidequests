@@ -9,16 +9,11 @@
 		<string>IMFeENrm28P.ttf</string>
 		<string>IMFeENit28P.ttf</string>
 	</array>
-	<key>CFBundleURLTypes</key>
+	<key>CKSharingSupported</key>
+	<true/>
+	<key>UIBackgroundModes</key>
 	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>com.huzkeymil.spade.family</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>spade</string>
-			</array>
-		</dict>
+		<string>remote-notification</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Spade uses the camera only when you take a photo to show a parent you finished a quest. The photo stays on your iPhone unless you send it.</string>

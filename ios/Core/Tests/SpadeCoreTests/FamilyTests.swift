@@ -1,7 +1,8 @@
 import XCTest
 @testable import SpadeCore
 
-// Families: a parent's Spade and a child's Spade passing notes back and forth.
+// Families: a parent's Spade and a child's Spade keeping each other up to date
+// through two pages in iCloud. Here a pretend iCloud stands in for the real one.
 
 final class FamilyTests: XCTestCase {
     private let utc = TimeZone(identifier: "UTC")!
@@ -28,50 +29,289 @@ final class FamilyTests: XCTestCase {
         FamilyQuestInput(title: "Take out the bins", cadence: .daily, category: .home, xp: 60, allowance: 150, repeats: true)
     }
 
-    /// Passes a note through a real link, the way it travels between phones.
-    private func send(_ link: FamilyLink) throws -> FamilyLink {
-        let text = FamilyLinks.webLink(link)
-        XCTAssertTrue(text.hasPrefix(FamilyLinks.webPage + "#"))
-        return try XCTUnwrap(FamilyLinks.read(text), "the link should read back")
+    /// A pretend iCloud for one child: the two pages, as the text stored on them.
+    private struct Pages {
+        var parent = ""
+        var kid = ""
     }
 
-    func testLinksSurviveTheTrip() throws {
-        let note = ChildNote(familyId: "fam_1", childId: "kid_1", childName: "Tess", done: [])
-        let payload = FamilyLinks.payload(.fromChild(note))
-        XCTAssertFalse(payload.contains("+") || payload.contains("/") || payload.contains("="), "URL-safe")
-        XCTAssertEqual(FamilyLinks.read(payload), .fromChild(note), "bare text")
-        XCTAssertEqual(FamilyLinks.read("  \(FamilyLinks.webPage)#\(payload)\n"), .fromChild(note), "pasted link")
-        XCTAssertEqual(FamilyLinks.read("spade://family#\(payload)"), .fromChild(note), "the app's own link")
-        XCTAssertNil(FamilyLinks.read("hello"))
-        XCTAssertNil(FamilyLinks.read("https://example.com/#e30"), "valid base64 JSON that isn't a note")
-        XCTAssertNil(FamilyLinks.read(""))
+    /// Where the pretend pages live.
+    private let place = CloudLink(zone: "SpadeFamily", owner: "_mum")
+
+    /// What the parent's phone does on a sync, in the same order as the app:
+    /// store its own page if iCloud is behind, then read the child's.
+    private func syncParent(_ save: Save, _ kidId: String, _ cloud: inout Pages) -> Save {
+        var save = save
+        if let due = parentPageDue(save, kidId: kidId) {
+            cloud.parent = due.body
+            save = markSent(save, kidId: kidId, revision: due.revision)
+        }
+        if let out = readKidPage(save, kidId: kidId, cloud.kid) { save = out.save }
+        return save
     }
 
-    /// Links travel through other apps, which sometimes mangle them. The code should be found
-    /// wherever it ends up, and a link that lost its code should be recognised as such.
-    func testCodesAreFoundWhereverTheyEndUp() throws {
+    /// What the child's phone does on a sync: read the parent's page, then store its own if iCloud is behind.
+    private func syncKid(_ save: Save, _ cloud: inout Pages, now: Date) -> Save {
+        var save = save
+        if let out = readParentPage(save, cloud.parent, cloud: place, now: now) { save = out.save }
+        if let due = kidPageDue(save) {
+            cloud.kid = due.body
+            save = markReported(save, keys: due.keys)
+        }
+        return save
+    }
+
+    /// A parent's note, after a trip through a page.
+    private func viaPage(_ note: ParentNote) throws -> ParentNote {
+        guard case .fromParent(let read)? = FamilyPages.read(FamilyPages.write(.fromParent(note))) else {
+            XCTFail("the page should read back as a parent's note")
+            return note
+        }
+        return read
+    }
+
+    func testPagesReadBackWhatWasWritten() throws {
         let note = ChildNote(familyId: "fam_1", childId: "kid_1", childName: "Tess", done: [])
-        let link = FamilyLink.fromChild(note)
-        let code = FamilyLinks.payload(link)
-        let message = FamilyLinks.message(link, intro: "Tess finished some quests in Spade.")
-        XCTAssertTrue(message.contains("\(FamilyLinks.webPage)#\(code)"), "the message carries the full link")
-        XCTAssertTrue(message.hasSuffix("Family code: \(code)"), "and the code on its own line")
-        XCTAssertEqual(FamilyLinks.read(message), link, "the whole shared message")
+        let text = FamilyPages.write(.fromChild(note))
+        XCTAssertTrue(text.hasPrefix("{"), "stored as readable JSON")
+        XCTAssertEqual(FamilyPages.read(text), .fromChild(note))
+        XCTAssertNil(FamilyPages.read(""), "an empty page, before the child has written on it")
+        XCTAssertNil(FamilyPages.read("hello"))
+        XCTAssertNil(FamilyPages.read("{}"), "JSON that isn't a note")
+        XCTAssertNil(FamilyPages.read(#"{"v":2,"child":{"familyId":"a","childId":"b","childName":"c","done":[]}}"#), "a version this app doesn't know")
+    }
 
-        // An app turned the link into a preview and dropped the part after "#": the code line still works.
-        let mangled = message.replacingOccurrences(of: "#\(code)", with: "")
-        XCTAssertFalse(mangled.contains("#"))
-        XCTAssertEqual(FamilyLinks.read(mangled), link, "the code line survives")
+    /// The whole thing through the pretend iCloud: invite, join, a finished quest, the parent's answer.
+    func testPagesKeepTwoPhonesInStep() throws {
+        let now = at(2026, 11, 14)
+        var cloud = Pages()
+        var (parent, kidId) = try parentWithKid(now)
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, chores(), now: now)
 
-        XCTAssertEqual(FamilyLinks.read("(\(FamilyLinks.webPage)#\(code))."), link, "punctuation after the link")
-        XCTAssertEqual(FamilyLinks.read("\(FamilyLinks.webPage)?d=\(code)&x=1"), link, "a d= value")
-        XCTAssertEqual(FamilyLinks.read("Family code: \(code)"), link, "just the code line")
+        // Nothing goes to iCloud until the child has been invited.
+        XCTAssertNil(parentPageDue(parent, kidId: kidId))
+        parent = markShared(parent, kidId: kidId, true)
+        parent = syncParent(parent, kidId, &cloud)
+        XCTAssertFalse(cloud.parent.isEmpty)
+        XCTAssertFalse(try XCTUnwrap(parent.household?.children.first).needsUpdate)
+        XCTAssertNil(parent.household?.children.first?.joined, "the child hasn't opened the invite yet")
 
-        XCTAssertTrue(FamilyLinks.missingCode(FamilyLinks.webPage), "the bare page")
-        XCTAssertTrue(FamilyLinks.missingCode("\(FamilyLinks.webPage)#"), "an empty code")
-        XCTAssertTrue(FamilyLinks.missingCode("spade://family"), "the app's link with no code")
-        XCTAssertFalse(FamilyLinks.missingCode(message), "a good message")
-        XCTAssertFalse(FamilyLinks.missingCode("hello"), "not a link at all")
+        // The child opens the invite: the quest is on their board, and their page says hello.
+        var child = player(3, "Tessie", now)
+        XCTAssertNil(kidPageDue(child), "not in a family yet")
+        child = syncKid(child, &cloud, now: now)
+        XCTAssertEqual(child.role, .child)
+        XCTAssertEqual(child.family?.cloud, place)
+        XCTAssertEqual(child.boards.daily.quests.first?.title, "Take out the bins")
+        XCTAssertFalse(cloud.kid.isEmpty, "an empty note, to say they joined")
+        parent = syncParent(parent, kidId, &cloud)
+        XCTAssertEqual(parent.household?.children.first?.joined, true)
+
+        // The child finishes it. One sync each, and the parent's Spade knows.
+        let key = try XCTUnwrap(child.boards.daily.quests.first?.key)
+        child = markQuest(child, .daily, key: key, now: now, clock: clock).save
+        XCTAssertEqual(unsentClaims(child).count, 1)
+        child = syncKid(child, &cloud, now: now)
+        XCTAssertTrue(unsentClaims(child).isEmpty)
+        parent = syncParent(parent, kidId, &cloud)
+        XCTAssertEqual(parent.household?.children.first?.claims.map { $0.status }, [.waiting])
+
+        // The parent approves. One sync each, and the child's Spade knows.
+        parent = decideClaim(parent, kidId: kidId, key: key, approve: true)
+        parent = syncParent(parent, kidId, &cloud)
+        child = syncKid(child, &cloud, now: now)
+        XCTAssertEqual(child.family?.claims.map { $0.status }, [.approved])
+
+        // With nothing new, more syncs change nothing at all, on either phone or in iCloud.
+        let before = cloud
+        XCTAssertEqual(syncParent(parent, kidId, &cloud), parent)
+        XCTAssertEqual(syncKid(child, &cloud, now: now), child)
+        XCTAssertEqual(cloud.parent, before.parent)
+        XCTAssertEqual(cloud.kid, before.kid)
+    }
+
+    /// Both phones change things while the child's is offline. When it comes back, nothing is
+    /// lost and nothing counts twice, whichever phone syncs first.
+    func testOfflineChangesCatchUpInAnyOrder() throws {
+        let now = at(2026, 11, 14)
+        for parentFirst in [true, false] {
+            var cloud = Pages()
+            var (parent, kidId) = try parentWithKid(now)
+            parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, chores(), now: now)
+            var shed = chores()
+            shed.title = "Tidy the shed"
+            shed.allowance = 400
+            parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, shed, now: now)
+            parent = markShared(parent, kidId: kidId, true)
+            parent = syncParent(parent, kidId, &cloud)
+            var child = syncKid(player(3, "Tess", now), &cloud, now: now)
+            let xpBefore = child.xp
+
+            // Offline, the child finishes both quests.
+            for entry in child.boards.daily.quests where entry.family != nil {
+                child = markQuest(child, .daily, key: entry.key, now: now, clock: clock).save
+            }
+            XCTAssertEqual(unsentClaims(child).count, 2)
+            let xpEarned = child.xp - xpBefore
+            XCTAssertGreaterThanOrEqual(xpEarned, 120, "60 XP for each of the two quests")
+
+            // Meanwhile the parent raises one quest's allowance and deletes the other.
+            let quests = try XCTUnwrap(parent.household?.children.first?.quests)
+            let binsId = try XCTUnwrap(quests.first { $0.title == "Take out the bins" }?.id)
+            let shedId = try XCTUnwrap(quests.first { $0.title == "Tidy the shed" }?.id)
+            var raised = chores()
+            raised.allowance = 200
+            parent = saveFamilyQuest(parent, kidId: kidId, questId: binsId, raised, now: now)
+            parent = removeFamilyQuest(parent, kidId: kidId, questId: shedId)
+
+            // The child's phone comes back. The phones sync in one order or the other, twice over.
+            for _ in 0..<2 {
+                if parentFirst {
+                    parent = syncParent(parent, kidId, &cloud)
+                    child = syncKid(child, &cloud, now: now)
+                } else {
+                    child = syncKid(child, &cloud, now: now)
+                    parent = syncParent(parent, kidId, &cloud)
+                }
+            }
+
+            // The child keeps the XP their phone gave them, and both finished quests stay on record.
+            XCTAssertEqual(child.xp - xpBefore, xpEarned, "parent first: \(parentFirst)")
+            XCTAssertEqual(child.family?.claims.count, 2)
+            XCTAssertEqual(child.family?.quests.map { $0.title }, ["Take out the bins"], "the deleted quest is gone from the list")
+            XCTAssertTrue(unsentClaims(child).isEmpty)
+
+            // The parent sees both, each once, at the amounts on the parent's own phone:
+            // the raised one at the new amount, the deleted one at what it was.
+            let claims = try XCTUnwrap(parent.household?.children.first?.claims)
+            XCTAssertEqual(claims.count, 2, "parent first: \(parentFirst)")
+            XCTAssertEqual(claims.first { $0.questId == binsId }?.allowance, 200)
+            XCTAssertEqual(claims.first { $0.questId == shedId }?.allowance, 400)
+            XCTAssertEqual(claims.first { $0.questId == shedId }?.title, "Tidy the shed")
+            XCTAssertEqual(claims.total(.waiting), 600)
+            XCTAssertFalse(try XCTUnwrap(parent.household?.children.first).needsUpdate)
+        }
+    }
+
+    /// A page that turns up late (an older copy than one already read) changes nothing.
+    func testAnOlderPageIsIgnored() throws {
+        let now = at(2026, 11, 14)
+        var cloud = Pages()
+        var (parent, kidId) = try parentWithKid(now)
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, chores(), now: now)
+        parent = markShared(parent, kidId: kidId, true)
+        parent = syncParent(parent, kidId, &cloud)
+        let older = cloud.parent
+
+        var second = chores()
+        second.title = "Feed the cat"
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, second, now: now)
+        parent = syncParent(parent, kidId, &cloud)
+        var child = syncKid(player(3, "Tess", now), &cloud, now: now)
+        XCTAssertEqual(child.family?.quests.count, 2)
+
+        cloud.parent = older
+        let again = try XCTUnwrap(readParentPage(child, cloud.parent, cloud: place, now: now))
+        XCTAssertEqual(again.result, .stale)
+        XCTAssertEqual(again.save, child)
+        child = syncKid(child, &cloud, now: now)
+        XCTAssertEqual(child.family?.quests.count, 2, "still both quests")
+    }
+
+    /// Something can change while a page is on its way to iCloud. Only what was
+    /// actually stored counts as stored; the rest goes with the next sync.
+    func testOnlyWhatWasStoredCountsAsStored() throws {
+        let now = at(2026, 11, 14)
+        var cloud = Pages()
+        var (parent, kidId) = try parentWithKid(now)
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, chores(), now: now)
+        parent = markShared(parent, kidId: kidId, true)
+
+        // The parent adds a quest while the first page is still uploading.
+        let first = try XCTUnwrap(parentPageDue(parent, kidId: kidId))
+        var second = chores()
+        second.title = "Feed the cat"
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, second, now: now)
+        cloud.parent = first.body
+        parent = markSent(parent, kidId: kidId, revision: first.revision)
+        XCTAssertTrue(try XCTUnwrap(parent.household?.children.first).needsUpdate, "the cat quest still has to go")
+        parent = syncParent(parent, kidId, &cloud)
+        XCTAssertFalse(try XCTUnwrap(parent.household?.children.first).needsUpdate)
+
+        // The child finishes a second quest while their page is still uploading.
+        var child = syncKid(player(3, "Tess", now), &cloud, now: now)
+        let keys = child.boards.daily.quests.filter { $0.family != nil }.map { $0.key }
+        XCTAssertEqual(keys.count, 2)
+        child = markQuest(child, .daily, key: keys[0], now: now, clock: clock).save
+        let page = try XCTUnwrap(kidPageDue(child))
+        child = markQuest(child, .daily, key: keys[1], now: now, clock: clock).save
+        cloud.kid = page.body
+        child = markReported(child, keys: page.keys)
+        XCTAssertEqual(unsentClaims(child).map { $0.key }, [keys[1]], "the second one still has to go")
+        parent = syncParent(parent, kidId, &cloud)
+        XCTAssertEqual(parent.household?.children.first?.claims.count, 1)
+        child = syncKid(child, &cloud, now: now)
+        parent = syncParent(parent, kidId, &cloud)
+        XCTAssertEqual(parent.household?.children.first?.claims.count, 2)
+    }
+
+    /// A child's page can only add that child's finished quests. It can't speak for a
+    /// brother or sister, and a parent's page in its place is not read at all.
+    func testAPageOnlySpeaksForItsOwnChild() throws {
+        let now = at(2026, 11, 14)
+        var cloud = Pages()
+        var (parent, tessId) = try parentWithKid(now)
+        let added = addKid(parent, name: "Robin", now: at(2026, 11, 15))
+        parent = added.save
+        let robinId = try XCTUnwrap(added.kidId)
+        XCTAssertNotEqual(tessId, robinId)
+        parent = saveFamilyQuest(parent, kidId: tessId, questId: nil, chores(), now: now)
+        parent = saveFamilyQuest(parent, kidId: robinId, questId: nil, chores(), now: now)
+        parent = markShared(parent, kidId: tessId, true)
+        parent = syncParent(parent, tessId, &cloud)
+
+        var tess = syncKid(player(3, "Tess", now), &cloud, now: now)
+        let key = try XCTUnwrap(tess.boards.daily.quests.first?.key)
+        tess = markQuest(tess, .daily, key: key, now: now, clock: clock).save
+        tess = syncKid(tess, &cloud, now: now)
+
+        XCTAssertNil(readKidPage(parent, kidId: robinId, cloud.kid), "Tess's page, offered as Robin's")
+        XCTAssertNil(readKidPage(parent, kidId: tessId, cloud.parent), "a parent's page where a child's belongs")
+        XCTAssertNil(readParentPage(tess, cloud.kid, cloud: place, now: now), "a child's page where a parent's belongs")
+        XCTAssertNotNil(readKidPage(parent, kidId: tessId, cloud.kid))
+    }
+
+    /// Taking an invite back, then inviting again, starts cleanly: everything is sent afresh.
+    func testInvitingAgainStartsAfresh() throws {
+        let now = at(2026, 11, 14)
+        var cloud = Pages()
+        var (parent, kidId) = try parentWithKid(now)
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, chores(), now: now)
+        parent = markShared(parent, kidId: kidId, true)
+        parent = syncParent(parent, kidId, &cloud)
+        var child = syncKid(player(3, "Tess", now), &cloud, now: now)
+        let key = try XCTUnwrap(child.boards.daily.quests.first?.key)
+        child = markQuest(child, .daily, key: key, now: now, clock: clock).save
+        child = syncKid(child, &cloud, now: now)
+        parent = syncParent(parent, kidId, &cloud)
+        XCTAssertEqual(parent.household?.children.first?.joined, true)
+
+        // The parent stops sharing. iCloud's pages go, and the parent's Spade forgets the child had joined.
+        parent = markShared(parent, kidId: kidId, false)
+        cloud = Pages()
+        XCTAssertNil(parent.household?.children.first?.joined)
+        XCTAssertNil(parentPageDue(parent, kidId: kidId))
+        XCTAssertEqual(parent.household?.children.first?.claims.count, 1, "the record stays")
+
+        // A new invite, kept somewhere new. Both phones write their whole page again.
+        parent = markShared(parent, kidId: kidId, true)
+        parent = syncParent(parent, kidId, &cloud)
+        XCTAssertFalse(cloud.parent.isEmpty)
+        let elsewhere = CloudLink(zone: "SpadeFamily", owner: "_dad")
+        child = try XCTUnwrap(readParentPage(child, cloud.parent, cloud: elsewhere, now: now)).save
+        XCTAssertEqual(child.family?.cloud, elsewhere)
+        XCTAssertEqual(unsentClaims(child).count, 1, "the finished quest goes on the new page")
+        XCTAssertEqual(child.family?.claims.count, 1, "and the child's own record is untouched")
     }
 
     func testRolesStartPlainAndClearWhatTheyLeave() throws {
@@ -97,11 +337,9 @@ final class FamilyTests: XCTestCase {
         let kid = try XCTUnwrap(parent.household?.children.first)
         XCTAssertTrue(kid.needsUpdate)
 
-        // Parent sends a note; the child's Spade joins the family.
-        guard case .fromParent(let note) = try send(.fromParent(try XCTUnwrap(noteFor(parent, kidId: kidId)))) else {
-            return XCTFail("expected a parent's note")
-        }
-        parent = markSent(parent, kidId: kidId)
+        // The parent's note travels on a page; the child's Spade joins the family.
+        let note = try viaPage(try XCTUnwrap(noteFor(parent, kidId: kidId)))
+        parent = markSent(parent, kidId: kidId, revision: note.revision)
         XCTAssertFalse(try XCTUnwrap(parent.household?.children.first).needsUpdate)
 
         var child = player(3, "Tessie", now)
@@ -130,12 +368,14 @@ final class FamilyTests: XCTestCase {
         XCTAssertEqual(child.family?.claims.map { $0.status }, [.waiting])
         XCTAssertEqual(unsentClaims(child).count, 1)
 
-        // The child sends a note back. Even if the amount in it were changed, the parent's own amount counts.
+        // The child's note goes back. Even if the amount in it were changed, the parent's own amount counts.
         var report = try XCTUnwrap(childNote(child))
         report.done[0].allowance = 99_999
-        child = markReported(child)
+        child = markReported(child, keys: report.done.map { $0.key })
         XCTAssertTrue(unsentClaims(child).isEmpty)
-        guard case .fromChild(let travelled) = try send(.fromChild(report)) else { return XCTFail("expected a child's note") }
+        guard case .fromChild(let travelled)? = FamilyPages.read(FamilyPages.write(.fromChild(report))) else {
+            return XCTFail("expected a child's note")
+        }
         let heard = receiveChildNote(parent, travelled)
         parent = heard.save
         XCTAssertEqual(heard.result, .added(kidId: kidId, count: 1))
@@ -197,7 +437,7 @@ final class FamilyTests: XCTestCase {
         let heard = receiveChildNote(parent, try XCTUnwrap(childNote(child)))
         parent = heard.save
         XCTAssertEqual(heard.result, .added(kidId: kidId, count: 4))
-        child = markReported(child)
+        child = markReported(child, keys: unsentClaims(child).map { $0.key })
         XCTAssertTrue(unsentClaims(child).isEmpty)
         var claims = try XCTUnwrap(parent.household?.children.first?.claims)
         XCTAssertEqual(claims.filter { $0.status == .waiting }.count, 2)

@@ -3,19 +3,26 @@ import Foundation
 // Families.
 //
 // A parent sets quests for a child, chooses the XP each one is worth, and can
-// attach an allowance to it. There are no accounts and no server: the two
-// phones pass notes to each other as links, the way you might pass a notebook
-// back and forth.
+// attach an allowance to it. The two phones keep each other up to date through
+// iCloud, like a notebook with two pages that both can see:
 //
-//   Parent to child: "here are your quests, and here is what I decided about
-//   the ones you finished". Each note carries everything, so the newest one
-//   always brings the child fully up to date.
+//   The parent's page: "here are your quests, and here is what I decided about
+//   the ones you finished". It always carries everything, so the newest one
+//   brings the child fully up to date. Only the parent's phone writes it.
 //
-//   Child to parent: "these allowance quests are done, please check them".
+//   The child's page: "these quests are done, and this is when". Only the
+//   child's phone writes it.
 //
-// The parent's phone is the record of what is owed. A note from a child only
-// says which quests were finished; the amounts always come from the parent's
-// own copy, so an edited link can't ask for more.
+// Because each page has one writer, the two phones can never overwrite each
+// other, and a page that arrives late or twice does no harm: an older parent's
+// page is ignored, and a finished quest that is already recorded is skipped.
+//
+// The parent's phone is the record of what is owed. The child's page only says
+// which quests were finished; the amounts always come from the parent's own
+// copy, so a page that was tampered with can't ask for more.
+//
+// This file is the rules. The iCloud calls themselves are in the app
+// (Spade/Platform/CloudFamily.swift).
 
 /// Who this Spade belongs to.
 enum Role: String, Codable, CaseIterable {
@@ -75,8 +82,8 @@ struct Claim: Codable, Equatable, Identifiable {
     /// When it was done, in milliseconds since 1970.
     var doneAt: Double
     var status: ClaimStatus
-    /// A photo was taken for it. The photo itself stays on the child's phone and travels with
-    /// the child's message (never inside the link), so on the parent's Spade this only says one was sent.
+    /// A photo was taken for it. The photo itself stays on the child's phone, so on the
+    /// parent's Spade this only says that one exists.
     var photo: Bool?
 
     var id: String { key }
@@ -130,8 +137,19 @@ struct Membership: Codable, Equatable {
     var claims: [Claim] = []
     /// One-off quests already done, so they are not put on the board again.
     var finished: [String] = []
-    /// Claims already sent to the parent.
+    /// Claims the child's page in iCloud already holds.
     var reported: [String] = []
+    /// Where the family's pages are kept in iCloud. Missing until this Spade joins through an invite.
+    var cloud: CloudLink?
+    /// This Spade has written its own page at least once, which is how the parent's Spade learns it joined.
+    var greeted: Bool?
+}
+
+/// Where a child's Spade finds its family's pages: a shared corner of the parent's iCloud.
+/// These are names, not secrets. Only the invited iCloud account can open them.
+struct CloudLink: Codable, Equatable {
+    var zone: String
+    var owner: String
 }
 
 /// A child, as their parent's Spade knows them.
@@ -144,10 +162,14 @@ struct Kid: Codable, Equatable, Identifiable {
     var claims: [Claim] = []
     /// Goes up with every change the child should hear about.
     var revision: Int = 1
-    /// The revision last sent to the child.
+    /// The revision of the parent's page that iCloud holds.
     var sentRevision: Int = 0
+    /// An invite exists in iCloud for this child.
+    var shared: Bool?
+    /// The child's Spade has written its page, so it has joined.
+    var joined: Bool?
 
-    /// Whether there are changes the child hasn't been sent yet.
+    /// Whether there are changes iCloud doesn't have yet.
     var needsUpdate: Bool { revision > sentRevision }
 }
 
@@ -187,21 +209,16 @@ enum FamilyLink: Equatable {
     case fromChild(ChildNote)
 }
 
-enum FamilyLinks {
-    /// The web page a shared link points to. It hands the note straight on to the app.
-    /// The note itself sits after the "#", which browsers never send to a server.
-    static let webPage = "https://huzkeymil-art.github.io/spade-sidequests/family.html"
-    /// The app's own link scheme, which that page opens.
-    static let appScheme = "spade"
-
+/// How a note is written on a page in iCloud, and read back.
+enum FamilyPages {
     private struct Envelope: Codable {
         var v: Int
         var parent: ParentNote?
         var child: ChildNote?
     }
 
-    /// The text that goes after the "#": the note as JSON, in URL-safe base64.
-    static func payload(_ link: FamilyLink) -> String {
+    /// The note as text (JSON), ready to store.
+    static func write(_ link: FamilyLink) -> String {
         var envelope = Envelope(v: 1)
         switch link {
         case .fromParent(let note): envelope.parent = note
@@ -209,94 +226,14 @@ enum FamilyLinks {
         }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        let data = (try? encoder.encode(envelope)) ?? Data()
-        return data.base64EncodedString()
-            .replacingOccurrences(of: "+", with: "-")
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: "=", with: "")
+        guard let data = try? encoder.encode(envelope) else { return "" }
+        return String(decoding: data, as: UTF8.self)
     }
 
-    /// The link to share: it opens the web page, which opens Spade.
-    static func webLink(_ link: FamilyLink) -> String {
-        "\(webPage)#\(payload(link))"
-    }
-
-    /// What actually gets shared: a friendly line, the link, and the code again on a line of its own.
-    /// Some apps turn a link into a preview card and lose everything after the "#" on the way; the
-    /// code line is plain text, so it survives that, and pasting the whole message into Spade works.
-    static func message(_ link: FamilyLink, intro: String) -> String {
-        let code = payload(link)
-        return """
-        \(intro)
-
-        \(webPage)#\(code)
-
-        If the link doesn't open Spade, copy this whole message, then in Spade go to Settings > Paste a family link.
-
-        Family code: \(code)
-        """
-    }
-
-    /// Reads a note from anything that might hold one: a shared link, the app's own link, a whole
-    /// shared message, or the bare code. Returns nil if none of it is a Spade family note.
+    /// Turns a page's text back into a note, or nil if it isn't one (an empty page, say).
     static func read(_ text: String) -> FamilyLink? {
-        guard text.count < 200_000 else { return nil }
-        for candidate in candidates(text) {
-            if let link = decode(candidate) { return link }
-        }
-        return nil
-    }
-
-    /// True when the text looks like a family link, but the code that belongs with it is missing or
-    /// damaged: for example, when an app dropped everything after the "#".
-    static func missingCode(_ text: String) -> Bool {
-        let lower = text.lowercased()
-        return read(text) == nil && (lower.contains("family.html") || lower.contains("\(appScheme)://"))
-    }
-
-    /// The characters a code is made of (URL-safe base64).
-    private static let codeCharacters = CharacterSet(
-        charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-    )
-
-    /// The code characters at the start of some text, stopping at the first one that isn't.
-    private static func leadingCode<S: StringProtocol>(_ text: S) -> String {
-        String(String.UnicodeScalarView(text.unicodeScalars.prefix { codeCharacters.contains($0) }))
-    }
-
-    /// The places a code might be, most likely first.
-    private static func candidates(_ text: String) -> [String] {
-        var found: [String] = []
-        // After a "#", up to the first character that can't be part of a code (a space, a bracket...).
-        var rest = Substring(text)
-        while let hash = rest.firstIndex(of: "#") {
-            rest = rest[rest.index(after: hash)...]
-            found.append(leadingCode(rest))
-        }
-        // A "d=" value, as in "?d=code".
-        for part in text.components(separatedBy: CharacterSet(charactersIn: "?&")) where part.hasPrefix("d=") {
-            found.append(leadingCode(part.dropFirst(2)))
-        }
-        // Any long run of code characters, anywhere: the "Family code:" line, or a code pasted on its own.
-        let runs = text.unicodeScalars
-            .split { !codeCharacters.contains($0) }
-            .map { String(String.UnicodeScalarView($0)) }
-            .filter { $0.count >= 40 }
-            .sorted { $0.count > $1.count }
-        found += runs
-        // And the whole text, for anything else.
-        found.append(text.trimmingCharacters(in: .whitespacesAndNewlines))
-        return found.filter { !$0.isEmpty }
-    }
-
-    /// Turns one candidate code back into a note, or nil if it isn't one.
-    private static func decode(_ code: String) -> FamilyLink? {
-        var base64 = code
-            .replacingOccurrences(of: "-", with: "+")
-            .replacingOccurrences(of: "_", with: "/")
-        while base64.count % 4 != 0 { base64 += "=" }
-        guard let data = Data(base64Encoded: base64),
-              let envelope = try? JSONDecoder().decode(Envelope.self, from: data),
+        guard !text.isEmpty, text.utf8.count < 900_000,
+              let envelope = try? JSONDecoder().decode(Envelope.self, from: Data(text.utf8)),
               envelope.v == 1
         else { return nil }
         if let note = envelope.parent { return .fromParent(note) }
@@ -457,9 +394,37 @@ func noteFor(_ save: Save, kidId: String) -> ParentNote? {
     )
 }
 
-/// Remembers that the child has been sent everything up to now.
-func markSent(_ save: Save, kidId: String) -> Save {
-    editKid(save, kidId) { $0.sentRevision = $0.revision }
+/// Remembers that iCloud holds the parent's page up to this revision. (Not simply "the newest":
+/// the parent may have changed something again while the page was on its way.)
+func markSent(_ save: Save, kidId: String, revision: Int) -> Save {
+    editKid(save, kidId) { $0.sentRevision = max($0.sentRevision, min(revision, $0.revision)) }
+}
+
+/// Remembers whether an invite exists in iCloud for this child. Withdrawing it also
+/// forgets that the child had joined, so the next invite starts cleanly.
+func markShared(_ save: Save, kidId: String, _ shared: Bool) -> Save {
+    editKid(save, kidId) { kid in
+        kid.shared = shared ? true : nil
+        if !shared {
+            kid.joined = nil
+            kid.sentRevision = 0
+        }
+    }
+}
+
+/// The parent's page for one child, if iCloud doesn't hold the newest one yet.
+func parentPageDue(_ save: Save, kidId: String) -> (revision: Int, body: String)? {
+    guard let kid = save.household?.children.first(where: { $0.id == kidId }),
+          kid.shared == true, kid.needsUpdate,
+          let note = noteFor(save, kidId: kidId)
+    else { return nil }
+    return (note.revision, FamilyPages.write(.fromParent(note)))
+}
+
+/// Reads a child's page on the parent's Spade. Anything that isn't that child's own page is ignored.
+func readKidPage(_ save: Save, kidId: String, _ body: String) -> (save: Save, result: ChildNoteResult)? {
+    guard case .fromChild(let note)? = FamilyPages.read(body), note.childId == kidId else { return nil }
+    return receiveChildNote(save, note)
 }
 
 enum ChildNoteResult: Equatable {
@@ -499,6 +464,8 @@ func receiveChildNote(_ save: Save, _ note: ChildNote) -> (save: Save, result: C
         added += 1
     }
     kid.claims = Array(kid.claims.suffix(300))
+    // A page from the child's own Spade means it has joined.
+    kid.joined = true
     house.children[at] = kid
     var next = save
     next.household = house
@@ -579,7 +546,32 @@ func receiveParentNote(_ save: Save, _ note: ParentNote, now: Date) -> (save: Sa
     return (placeFamilyQuests(next), .applied(summary))
 }
 
-/// Allowance quests done here that the parent hasn't been sent yet.
+/// Reads the parent's page on the child's Spade, joining the family if needed, and
+/// remembers where in iCloud the family's pages are kept.
+func readParentPage(_ save: Save, _ body: String, cloud: CloudLink, now: Date) -> (save: Save, result: ParentNoteResult)? {
+    guard case .fromParent(let note)? = FamilyPages.read(body) else { return nil }
+    var out = receiveParentNote(save, note, now: now)
+    // Even when the page itself is old news, this is still where the family lives.
+    if var family = out.save.family, family.familyId == note.familyId, family.childId == note.childId, family.cloud != cloud {
+        family.cloud = cloud
+        // A different place means a new invite: say hello there, and send everything again.
+        family.greeted = nil
+        family.reported = []
+        out.save.family = family
+    }
+    return out
+}
+
+/// The child's page, if iCloud doesn't hold everything on it yet: the note, and the
+/// finished quests it carries (to tick off once it has been stored).
+func kidPageDue(_ save: Save) -> (body: String, keys: [String])? {
+    guard save.role == .child, let family = save.family, family.cloud != nil else { return nil }
+    guard family.greeted != true || !unsentClaims(save).isEmpty else { return nil }
+    guard let note = childNote(save) else { return nil }
+    return (FamilyPages.write(.fromChild(note)), note.done.map { $0.key })
+}
+
+/// Finished quests here that the child's page in iCloud doesn't hold yet.
 func unsentClaims(_ save: Save) -> [Claim] {
     guard let family = save.family else { return [] }
     return family.claims.filter { toReport($0) && !family.reported.contains($0.key) }
@@ -591,25 +583,26 @@ private func toReport(_ claim: Claim) -> Bool {
     claim.status == .waiting || claim.status == .done
 }
 
-/// The note to send the parent: the quests finished here that they should hear about.
+/// The child's note for the parent: the quests finished here that they should hear about.
+/// It can be empty, which still tells the parent's Spade that this one has joined.
 func childNote(_ save: Save) -> ChildNote? {
     guard save.role == .child, let family = save.family else { return nil }
-    let done = family.claims.filter(toReport)
-    if done.isEmpty { return nil }
     return ChildNote(
         familyId: family.familyId,
         childId: family.childId,
         childName: family.childName,
-        done: Array(done.suffix(60))
+        // Every one still on record (the record itself is capped), so none can be left behind.
+        done: family.claims.filter(toReport)
     )
 }
 
-/// Remembers that the finished quests have been sent to the parent.
-func markReported(_ save: Save) -> Save {
+/// Remembers that the child's page in iCloud now holds these finished quests. (Only these:
+/// another quest may have been finished while the page was on its way.)
+func markReported(_ save: Save, keys: [String]) -> Save {
     guard var family = save.family else { return save }
-    let waiting = family.claims.filter(toReport).map { $0.key }
-    let all = Array(Set(family.reported + waiting)).sorted()
+    let all = Array(Set(family.reported + keys)).sorted()
     family.reported = Array(all.suffix(300))
+    family.greeted = true
     var next = save
     next.family = family
     return next
