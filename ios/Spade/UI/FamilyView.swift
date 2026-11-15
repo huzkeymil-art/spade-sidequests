@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // Families, on screen.
 //
@@ -53,8 +54,10 @@ struct RolePicker: View {
     }
 }
 
+/// When something was done, for example "Sun, Nov 15, 4:32 PM".
 private func when(_ millis: Double) -> String {
-    Date(timeIntervalSince1970: millis / 1000).formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+    Date(timeIntervalSince1970: millis / 1000)
+        .formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute())
 }
 
 private func schedule(_ quest: FamilyQuest) -> String {
@@ -63,14 +66,64 @@ private func schedule(_ quest: FamilyQuest) -> String {
     return (quest.repeats ? every : once)[quest.cadence] ?? ""
 }
 
-/// How a finished allowance quest is getting on, in a child's words.
+/// How a finished quest is getting on, in a child's words.
 func claimWords(_ status: ClaimStatus, parent: String) -> (text: String, color: Color) {
     switch status {
+    case .done: return ("Done", Ink.faint)
     case .waiting: return ("Waiting for \(parent)", Ink.faint)
     case .approved: return ("Approved", Ink.verdigris)
     case .declined: return ("Not approved", Ink.rust)
     case .paid: return ("Paid", Ink.lantern)
     }
+}
+
+/// One finished family quest: what it was, when it was done, how it's getting on, and what it pays.
+private struct HistoryRow: View {
+    let claim: Claim
+    let currency: String
+    /// Who checks it, for the "Waiting for …" wording.
+    let checker: String
+    /// The photo itself, on the child's own phone.
+    var thumbnail: UIImage?
+
+    var body: some View {
+        let words = claimWords(claim.status, parent: checker)
+        HStack(spacing: 10) {
+            if let thumbnail {
+                Image(uiImage: thumbnail)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 44, height: 44)
+                    .clipShape(Notched(notch: 5))
+                    .accessibilityLabel("Photo")
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(claim.title).font(Typeface.text()).foregroundStyle(Ink.bone)
+                Text("\(when(claim.doneAt)) · \(words.text)\(claim.photo == true ? " · photo" : "")").caps(words.color)
+            }
+            Spacer(minLength: 8)
+            if claim.allowance > 0 {
+                Text(Money.format(claim.allowance, currency))
+                    .font(Typeface.label(22))
+                    .foregroundStyle(claim.status == .declined ? Ink.faint : Ink.lantern)
+                    .strikethrough(claim.status == .declined)
+            } else {
+                Text("No allowance").caps(Ink.faint, size: 14)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The line under a quest that says how it's done so far: "Done 4 times · $3.00 earned".
+private func earningsLine(_ e: QuestEarnings, allowance: Int, currency: String) -> String? {
+    if e.times == 0 { return nil }
+    var parts = [e.times == 1 ? "Done once" : "Done \(e.times) times"]
+    if allowance > 0 || e.earned > 0 { parts.append("\(Money.format(e.earned, currency)) earned") }
+    if e.waiting > 0 { parts.append("\(Money.format(e.waiting, currency)) waiting") }
+    return parts.joined(separator: " · ")
 }
 
 // MARK: - Parent: the Family tab
@@ -161,12 +214,12 @@ private struct KidCard: View {
     @State private var renaming = false
     @State private var removing = false
     @State private var draft = ""
+    @State private var copied = false
+    @State private var showingAll = false
 
     var body: some View {
         let waiting = kid.claims.filter { $0.status == .waiting }
         let owed = kid.claims.total(.approved)
-        let parent = store.save.hero.name
-
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 8) {
                 Text(kid.name)
@@ -208,6 +261,17 @@ private struct KidCard: View {
                             Text(Money.format(claim.allowance, currency)).font(Typeface.label(22)).foregroundStyle(Ink.lantern)
                         }
                         Text("Done \(when(claim.doneAt))").caps(Ink.faint)
+                        if claim.photo == true {
+                            Label("Photo came with \(kid.name)'s message", systemImage: "camera")
+                                .font(Typeface.label())
+                                .textCase(.uppercase)
+                                .foregroundStyle(Ink.verdigris)
+                        } else if (kid.quests + kid.past).first(where: { $0.id == claim.questId })?.askPhoto == true {
+                            Label("No photo was sent", systemImage: "camera")
+                                .font(Typeface.label())
+                                .textCase(.uppercase)
+                                .foregroundStyle(Ink.rust)
+                        }
                         HStack(spacing: 8) {
                             Button("It's done") {
                                 Feedback.done()
@@ -263,13 +327,16 @@ private struct KidCard: View {
                         PropIcon(name: quest.category.rawValue, size: 22, res: 18)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(quest.title).font(Typeface.text()).foregroundStyle(Ink.bone)
-                            Text(schedule(quest)).caps(Ink.faint)
+                            Text(quest.askPhoto == true ? "\(schedule(quest)) · photo" : schedule(quest)).caps(Ink.faint)
+                            if let line = earningsLine(kid.claims.earnings(for: quest.id), allowance: quest.allowance, currency: currency) {
+                                Text(line).caps(Ink.dim)
+                            }
                         }
                         Spacer(minLength: 8)
                         VStack(alignment: .trailing, spacing: 3) {
                             Text("+\(quest.xp)").font(Typeface.label(20)).foregroundStyle(Ink.verdigris)
                             if quest.allowance > 0 {
-                                Text(Money.format(quest.allowance, currency)).caps(Ink.lantern)
+                                Text("\(Money.format(quest.allowance, currency)) each").caps(Ink.lantern)
                             }
                         }
                         Chevron()
@@ -292,18 +359,45 @@ private struct KidCard: View {
             }
             .buttonStyle(RowButtonStyle())
 
+            if !kid.claims.isEmpty {
+                let history = Array(kid.claims.reversed())
+                Hairline()
+                part("Done")
+                ForEach(Array((showingAll ? history : Array(history.prefix(5))).enumerated()), id: \.element.id) { index, claim in
+                    if index > 0 { Hairline().padding(.horizontal, 14) }
+                    HistoryRow(claim: claim, currency: currency, checker: "you")
+                }
+                if history.count > 5 {
+                    Button(showingAll ? "Show fewer" : "Show all \(history.count)") {
+                        Feedback.tap()
+                        showingAll.toggle()
+                    }
+                    .font(Typeface.label())
+                    .textCase(.uppercase)
+                    .foregroundStyle(Ink.dim)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                }
+            }
+
             Hairline()
             VStack(alignment: .leading, spacing: 8) {
-                if let url = store.linkForChild(kid.id) {
-                    ShareLink(
-                        item: url,
-                        subject: Text("Quests from \(parent)"),
-                        message: Text("\(parent) sent you quests in Spade. Tap the link to add them.")
-                    ) {
-                        Text(kid.needsUpdate ? "Send update to \(kid.name)" : "Send to \(kid.name) again")
+                if let message = store.messageForChild(kid.id) {
+                    // Shared as a message, not a bare link: some apps turn links into previews and
+                    // lose the code after the "#", but the message repeats the code as plain text.
+                    Button(kid.needsUpdate ? "Send update to \(kid.name)" : "Send to \(kid.name) again") {
+                        Feedback.tap()
+                        store.shareWithChild(kid.id)
                     }
                     .buttonStyle(PlateButtonStyle(kind: kid.needsUpdate ? .primary : .plain, block: true))
-                    .simultaneousGesture(TapGesture().onEnded { store.sentToChild(kid.id) })
+                    Button(copied ? "Copied" : "Copy link") {
+                        UIPasteboard.general.string = message
+                        store.sentToChild(kid.id)
+                        Feedback.done()
+                        copied = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+                    }
+                    .buttonStyle(PlateButtonStyle(block: true))
+                    .accessibilityHint("Copies the link and family code, to paste into any app")
                 }
                 Text(kid.needsUpdate ? "\(kid.name)'s Spade doesn't have your latest changes yet." : "\(kid.name)'s Spade is up to date.")
                     .caps(kid.needsUpdate ? Ink.lantern : Ink.faint)
@@ -348,6 +442,7 @@ struct FamilyQuestSheet: View {
     @State private var kind: QuestKind = .home
     @State private var xp = 30
     @State private var pays = false
+    @State private var askPhoto = false
     @State private var amount = ""
     @State private var removing = false
     @FocusState private var typingAmount: Bool
@@ -435,6 +530,15 @@ struct FamilyQuestSheet: View {
                         .foregroundStyle(Ink.dim)
                         .padding(.top, 9)
 
+                    SectionLabel("Proof")
+                    RowGroup {
+                        ToggleRow(
+                            title: "Ask for a photo",
+                            note: askPhoto ? "It comes with their message to you" : "No photo needed",
+                            isOn: $askPhoto
+                        )
+                    }
+
                     SectionLabel("Allowance")
                     RowGroup {
                         ToggleRow(
@@ -483,7 +587,10 @@ struct FamilyQuestSheet: View {
                 store.saveChildQuest(
                     kidId: kidId,
                     questId: quest?.id,
-                    FamilyQuestInput(title: title, cadence: cadence, category: kind, xp: xp, allowance: pays ? (cents ?? 0) : 0, repeats: repeats)
+                    FamilyQuestInput(
+                        title: title, cadence: cadence, category: kind, xp: xp,
+                        allowance: pays ? (cents ?? 0) : 0, repeats: repeats, askPhoto: askPhoto
+                    )
                 )
                 Feedback.done()
                 dismiss()
@@ -521,6 +628,7 @@ struct FamilyQuestSheet: View {
         kind = quest.category
         xp = quest.xp
         pays = quest.allowance > 0
+        askPhoto = quest.askPhoto == true
         amount = quest.allowance > 0 ? Money.plain(quest.allowance, currency) : ""
     }
 
@@ -557,7 +665,8 @@ struct FamilyBanner: View {
         Group {
             if save.role == .child, let family = save.family {
                 let claims = family.claims
-                if family.quests.contains(where: { $0.allowance > 0 }) || !claims.isEmpty {
+                let paysAllowance = family.quests.contains { $0.allowance > 0 } || claims.contains { $0.allowance > 0 }
+                if !family.quests.isEmpty || !claims.isEmpty {
                     let unsent = unsentClaims(save).count
                     let waiting = claims.filter { $0.status == .waiting }.count
                     let summary = unsent > 0 ? "\(unsent) to send to \(family.parentName)"
@@ -570,14 +679,16 @@ struct FamilyBanner: View {
                         HStack(spacing: 12) {
                             PropIcon(name: "home", size: 30, res: 20)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Allowance").font(Typeface.text()).foregroundStyle(Ink.bone)
+                                Text(paysAllowance ? "Allowance" : "Family quests").font(Typeface.text()).foregroundStyle(Ink.bone)
                                 Text(summary).caps(unsent > 0 ? Ink.lantern : Ink.faint)
                             }
                             Spacer(minLength: 8)
-                            Text(Money.format(claims.total(.approved), family.currency))
-                                .font(Typeface.label(24))
-                                .foregroundStyle(Ink.lantern)
-                                .accessibilityLabel("\(Money.format(claims.total(.approved), family.currency)) owed to you")
+                            if paysAllowance {
+                                Text(Money.format(claims.total(.approved), family.currency))
+                                    .font(Typeface.label(24))
+                                    .foregroundStyle(Ink.lantern)
+                                    .accessibilityLabel("\(Money.format(claims.total(.approved), family.currency)) owed to you")
+                            }
                             Chevron()
                         }
                         .padding(.horizontal, 20)
@@ -610,6 +721,7 @@ struct FamilyBanner: View {
 struct AllowanceSheet: View {
     @EnvironmentObject private var store: GameStore
     @Environment(\.dismiss) private var dismiss
+    @State private var copied = false
 
     var body: some View {
         let family = store.save.family
@@ -617,48 +729,71 @@ struct AllowanceSheet: View {
         let currency = family?.currency ?? Money.local
         let parent = family?.parentName ?? "your parent"
         let unsent = unsentClaims(store.save).count
+        let quests = family?.quests ?? []
+        let paysAllowance = quests.contains { $0.allowance > 0 } || claims.contains { $0.allowance > 0 }
 
         VStack(spacing: 0) {
-            SheetHeader(title: "Allowance") { dismiss() }
+            SheetHeader(title: paysAllowance ? "Allowance" : "Family quests") { dismiss() }
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 6) {
-                        stat("Waiting", claims.total(.waiting), currency, Ink.bone)
-                        stat("Owed to you", claims.total(.approved), currency, Ink.lantern)
-                        stat("Paid so far", claims.total(.paid), currency, Ink.verdigris)
+                    if paysAllowance {
+                        HStack(spacing: 6) {
+                            stat("Waiting", claims.total(.waiting), currency, Ink.bone)
+                            stat("Owed to you", claims.total(.approved), currency, Ink.lantern)
+                            stat("Paid so far", claims.total(.paid), currency, Ink.verdigris)
+                        }
+                        .padding(.vertical, 10)
+                        Hairline()
+                        Text("\(parent) checks each allowance quest on their Spade. Once it's approved, it counts as owed.")
+                            .font(Typeface.italic(16))
+                            .foregroundStyle(Ink.dim)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 10)
                     }
-                    .padding(.vertical, 10)
-                    Hairline()
-                    Text("\(parent) checks each quest on their Spade. Once it's approved, it counts as owed.")
-                        .font(Typeface.italic(16))
-                        .foregroundStyle(Ink.dim)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 10)
+
+                    if !quests.isEmpty {
+                        SectionLabel("By quest")
+                        RowGroup {
+                            ForEach(Array(quests.enumerated()), id: \.element.id) { index, quest in
+                                if index > 0 { Hairline() }
+                                let earned = claims.earnings(for: quest.id)
+                                HStack(spacing: 10) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(quest.title).font(Typeface.text()).foregroundStyle(Ink.bone)
+                                        Text(quest.allowance > 0
+                                             ? "\(Money.format(quest.allowance, currency)) each · +\(quest.xp) XP"
+                                             : "+\(quest.xp) XP each · no allowance")
+                                            .caps(Ink.faint)
+                                        Text(earningsLine(earned, allowance: quest.allowance, currency: currency) ?? "Not done yet")
+                                            .caps(Ink.dim)
+                                    }
+                                    Spacer(minLength: 8)
+                                    if quest.allowance > 0 && earned.times > 0 {
+                                        Text(Money.format(earned.earned, currency))
+                                            .font(Typeface.label(22))
+                                            .foregroundStyle(Ink.lantern)
+                                    }
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .accessibilityElement(children: .combine)
+                            }
+                        }
+                    }
 
                     SectionLabel("Done")
                     if claims.isEmpty {
-                        Text("Finish a quest with allowance and it shows up here.")
+                        Text("Finish one of \(parent)'s quests and it shows up here, with when you did it.")
                             .font(Typeface.italic())
                             .foregroundStyle(Ink.dim)
                     } else {
                         RowGroup {
                             ForEach(Array(claims.reversed().enumerated()), id: \.element.id) { index, claim in
                                 if index > 0 { Hairline() }
-                                let words = claimWords(claim.status, parent: parent)
-                                HStack(spacing: 10) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(claim.title).font(Typeface.text()).foregroundStyle(Ink.bone)
-                                        Text("\(when(claim.doneAt)) · \(words.text)").caps(words.color)
-                                    }
-                                    Spacer(minLength: 8)
-                                    Text(Money.format(claim.allowance, currency))
-                                        .font(Typeface.label(22))
-                                        .foregroundStyle(claim.status == .declined ? Ink.faint : Ink.lantern)
-                                        .strikethrough(claim.status == .declined)
-                                }
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .accessibilityElement(children: .combine)
+                                HistoryRow(
+                                    claim: claim, currency: currency, checker: parent,
+                                    thumbnail: claim.photo == true ? ProofPhotos.image(for: claim.key) : nil
+                                )
                             }
                         }
                     }
@@ -667,16 +802,30 @@ struct AllowanceSheet: View {
                 .padding(.bottom, 16)
             }
 
-            if let url = store.linkForParent() {
-                ShareLink(
-                    item: url,
-                    subject: Text("Quests done"),
-                    message: Text("I finished some quests in Spade. Tap the link to check them.")
-                ) {
-                    Text(unsent > 0 ? "Send \(unsent) to \(parent)" : "Send to \(parent) again")
+            if let message = store.messageForParent() {
+                VStack(spacing: 8) {
+                    let photos = store.photosForParent().count
+                    if photos > 0 {
+                        Label(photos == 1 ? "1 photo goes with it" : "\(photos) photos go with it", systemImage: "camera")
+                            .font(Typeface.label())
+                            .textCase(.uppercase)
+                            .foregroundStyle(Ink.dim)
+                    }
+                    Button(unsent > 0 ? "Send \(unsent) to \(parent)" : "Send to \(parent) again") {
+                        Feedback.tap()
+                        store.shareWithParent()
+                    }
+                    .buttonStyle(PlateButtonStyle(kind: unsent > 0 ? .primary : .plain, block: true))
+                    Button(copied ? "Copied" : "Copy link") {
+                        UIPasteboard.general.string = message
+                        store.sentToParent()
+                        Feedback.done()
+                        copied = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+                    }
+                    .buttonStyle(PlateButtonStyle(block: true))
+                    .accessibilityHint("Copies the link and family code, to paste into any app")
                 }
-                .buttonStyle(PlateButtonStyle(kind: unsent > 0 ? .primary : .plain, block: true))
-                .simultaneousGesture(TapGesture().onEnded { store.sentToParent() })
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
             }
@@ -790,6 +939,11 @@ struct IncomingSheet: View {
         var action: Action = .done
     }
 
+    /// Allowance quests from this child still waiting for the parent's check.
+    private func toCheck(_ kidId: String) -> Int {
+        store.save.household?.children.first { $0.id == kidId }?.claims.filter { $0.status == .waiting }.count ?? 0
+    }
+
     private func plural(_ n: Int, _ one: String, _ many: String) -> String {
         n == 1 ? "1 \(one)" : "\(n) \(many)"
     }
@@ -831,7 +985,12 @@ struct IncomingSheet: View {
             case .fromChild(.added(_, let count))?:
                 return Content(
                     title: "From \(note.childName)",
-                    lines: ["\(note.childName) finished \(plural(count, "allowance quest", "allowance quests")). Check them in Family, then send \(note.childName) an update."],
+                    lines: [
+                        "\(note.childName) finished \(plural(count, "quest", "quests")).",
+                        toCheck(note.childId) > 0
+                            ? "\(plural(toCheck(note.childId), "allowance quest needs", "allowance quests need")) checking in Family. Then send \(note.childName) an update."
+                            : "You can see when each was done in Family.",
+                    ],
                     action: .review
                 )
             case .fromChild(.nothingNew)?:

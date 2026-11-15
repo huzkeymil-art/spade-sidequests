@@ -60,6 +60,18 @@ back and forth:
    **Not done**, and **Paid** once they've paid in real life. The next update
    they send tells the child.
 
+A parent can also turn on **Ask for a photo** for a quest. The child then takes
+or picks a photo before that quest counts. The photo stays on the child's phone
+(it is far too big to fit in a link) and goes along with their **Send to …**
+message, with a numbered list of which photo is for which quest. On the
+parent's phone, the quest to check says whether a photo came with the message.
+The share sheet only counts something as sent if it really was.
+
+Both phones keep a history of every parent's quest that was done, with the date
+and time, including quests that pay no allowance. Each quest also shows how many
+times it has been done and how much it has earned so far (approved or paid), and
+anything still waiting to be checked.
+
 The parent's phone is the record of what is owed. A note from a child only says
 which quests were done; the amounts always come from the parent's copy, so an
 edited link can't ask for more. Spade never moves real money.
@@ -68,6 +80,12 @@ How a link travels: it points at `family.html` on the web site, and the note
 itself sits after the `#`, which browsers never send to a server. The page
 hands it straight to the app through the `spade://` link scheme. If that ever
 fails, **Settings → Paste a family link** takes the link by hand.
+
+Some apps turn a shared link into a preview card and drop everything after the
+`#` on the way. So Spade shares a short message instead of a bare link: the link,
+then the same code again on a line of its own (`Family code: …`). Pasting the
+whole message works even if the link was cut short, and **Copy link** puts the
+same message on the clipboard for apps where the share sheet misbehaves.
 
 The rules live in `Core/Sources/SpadeCore/Family.swift`, with tests in
 `Core/Tests/SpadeCoreTests/FamilyTests.swift`; the screens are in

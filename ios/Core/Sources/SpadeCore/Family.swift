@@ -39,6 +39,8 @@ struct FamilyQuest: Codable, Equatable, Identifiable {
     var allowance: Int
     /// Comes back every day, week or month. If false, it stays on the board until it is done once.
     var repeats: Bool
+    /// The child adds a photo before it counts. Missing in notes from older versions, which means no.
+    var askPhoto: Bool?
 }
 
 /// Marks a board entry that came from a parent.
@@ -46,9 +48,12 @@ struct FamilyTag: Codable, Equatable {
     var parent: String
     var allowance: Int
     var repeats: Bool
+    var askPhoto: Bool?
 }
 
 enum ClaimStatus: String, Codable {
+    /// Done. It pays no allowance, so there is nothing for the parent to check.
+    case done
     /// Done, and waiting for the parent to check it.
     case waiting
     /// The parent agreed it was done: the money is owed.
@@ -59,7 +64,8 @@ enum ClaimStatus: String, Codable {
     case paid
 }
 
-/// One finished quest that earns allowance.
+/// One finished quest from a parent: when it was done, and what it earned.
+/// Quests with an allowance go through the parent's check; the rest are simply recorded.
 struct Claim: Codable, Equatable, Identifiable {
     /// The board key, for example "2026-11-14:fq_abc". One per quest per day, week or month.
     var key: String
@@ -69,6 +75,9 @@ struct Claim: Codable, Equatable, Identifiable {
     /// When it was done, in milliseconds since 1970.
     var doneAt: Double
     var status: ClaimStatus
+    /// A photo was taken for it. The photo itself stays on the child's phone and travels with
+    /// the child's message (never inside the link), so on the parent's Spade this only says one was sent.
+    var photo: Bool?
 
     var id: String { key }
 }
@@ -78,6 +87,34 @@ extension Array where Element == Claim {
     func total(_ status: ClaimStatus) -> Int {
         filter { $0.status == status }.reduce(0) { $0 + $1.allowance }
     }
+
+    /// What one quest has earned so far.
+    func earnings(for questId: String) -> QuestEarnings {
+        var out = QuestEarnings()
+        for claim in self where claim.questId == questId {
+            switch claim.status {
+            case .done:
+                out.times += 1
+            case .waiting:
+                out.times += 1
+                out.waiting += claim.allowance
+            case .approved, .paid:
+                out.times += 1
+                out.earned += claim.allowance
+            case .declined:
+                break
+            }
+        }
+        return out
+    }
+}
+
+/// How one quest has done: how many times it was finished (not counting any the parent
+/// turned down), the money approved or paid for it, and the money still waiting to be checked.
+struct QuestEarnings: Equatable {
+    var times = 0
+    var earned = 0
+    var waiting = 0
 }
 
 /// On a child's Spade: the family it belongs to.
@@ -184,16 +221,77 @@ enum FamilyLinks {
         "\(webPage)#\(payload(link))"
     }
 
-    /// Reads a note from a shared link, the app's own link, or the bare text after the "#".
-    /// Returns nil for anything that isn't a Spade family note.
+    /// What actually gets shared: a friendly line, the link, and the code again on a line of its own.
+    /// Some apps turn a link into a preview card and lose everything after the "#" on the way; the
+    /// code line is plain text, so it survives that, and pasting the whole message into Spade works.
+    static func message(_ link: FamilyLink, intro: String) -> String {
+        let code = payload(link)
+        return """
+        \(intro)
+
+        \(webPage)#\(code)
+
+        If the link doesn't open Spade, copy this whole message, then in Spade go to Settings > Paste a family link.
+
+        Family code: \(code)
+        """
+    }
+
+    /// Reads a note from anything that might hold one: a shared link, the app's own link, a whole
+    /// shared message, or the bare code. Returns nil if none of it is a Spade family note.
     static func read(_ text: String) -> FamilyLink? {
-        var body = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let hash = body.lastIndex(of: "#") {
-            body = String(body[body.index(after: hash)...])
+        guard text.count < 200_000 else { return nil }
+        for candidate in candidates(text) {
+            if let link = decode(candidate) { return link }
         }
-        body = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !body.isEmpty, body.count < 200_000 else { return nil }
-        var base64 = body
+        return nil
+    }
+
+    /// True when the text looks like a family link, but the code that belongs with it is missing or
+    /// damaged: for example, when an app dropped everything after the "#".
+    static func missingCode(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return read(text) == nil && (lower.contains("family.html") || lower.contains("\(appScheme)://"))
+    }
+
+    /// The characters a code is made of (URL-safe base64).
+    private static let codeCharacters = CharacterSet(
+        charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+    )
+
+    /// The code characters at the start of some text, stopping at the first one that isn't.
+    private static func leadingCode<S: StringProtocol>(_ text: S) -> String {
+        String(String.UnicodeScalarView(text.unicodeScalars.prefix { codeCharacters.contains($0) }))
+    }
+
+    /// The places a code might be, most likely first.
+    private static func candidates(_ text: String) -> [String] {
+        var found: [String] = []
+        // After a "#", up to the first character that can't be part of a code (a space, a bracket...).
+        var rest = Substring(text)
+        while let hash = rest.firstIndex(of: "#") {
+            rest = rest[rest.index(after: hash)...]
+            found.append(leadingCode(rest))
+        }
+        // A "d=" value, as in "?d=code".
+        for part in text.components(separatedBy: CharacterSet(charactersIn: "?&")) where part.hasPrefix("d=") {
+            found.append(leadingCode(part.dropFirst(2)))
+        }
+        // Any long run of code characters, anywhere: the "Family code:" line, or a code pasted on its own.
+        let runs = text.unicodeScalars
+            .split { !codeCharacters.contains($0) }
+            .map { String(String.UnicodeScalarView($0)) }
+            .filter { $0.count >= 40 }
+            .sorted { $0.count > $1.count }
+        found += runs
+        // And the whole text, for anything else.
+        found.append(text.trimmingCharacters(in: .whitespacesAndNewlines))
+        return found.filter { !$0.isEmpty }
+    }
+
+    /// Turns one candidate code back into a note, or nil if it isn't one.
+    private static func decode(_ code: String) -> FamilyLink? {
+        var base64 = code
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
         while base64.count % 4 != 0 { base64 += "=" }
@@ -236,6 +334,7 @@ struct FamilyQuestInput {
     var xp: Int
     var allowance: Int
     var repeats: Bool
+    var askPhoto = false
 }
 
 /// The XP range a parent can choose from.
@@ -296,7 +395,8 @@ func saveFamilyQuest(_ save: Save, kidId: String, questId: String?, _ input: Fam
             category: input.category,
             xp: min(familyXpRange.upperBound, max(familyXpRange.lowerBound, input.xp)),
             allowance: min(familyAllowanceLimit, max(0, input.allowance)),
-            repeats: input.repeats
+            repeats: input.repeats,
+            askPhoto: input.askPhoto ? true : nil
         )
         if let at = kid.quests.firstIndex(where: { $0.id == id }) {
             kid.quests[at] = quest
@@ -342,7 +442,7 @@ func noteFor(_ save: Save, kidId: String) -> ParentNote? {
           let kid = house.children.first(where: { $0.id == kidId })
     else { return nil }
     var decisions: [String: ClaimStatus] = [:]
-    for claim in kid.claims.suffix(120) where claim.status != .waiting {
+    for claim in kid.claims.suffix(120) where claim.status != .waiting && claim.status != .done {
         decisions[claim.key] = claim.status
     }
     return ParentNote(
@@ -385,14 +485,16 @@ func receiveChildNote(_ save: Save, _ note: ChildNote) -> (save: Save, result: C
     for claim in note.done {
         if kid.claims.contains(where: { $0.key == claim.key }) { continue }
         // Only quests this parent actually set count, at the amount the parent set.
-        guard let quest = (kid.quests + kid.past).first(where: { $0.id == claim.questId }), quest.allowance > 0 else { continue }
+        guard let quest = (kid.quests + kid.past).first(where: { $0.id == claim.questId }) else { continue }
         kid.claims.append(Claim(
             key: claim.key,
             questId: quest.id,
             title: quest.title,
             allowance: quest.allowance,
             doneAt: claim.doneAt,
-            status: .waiting
+            // Quests with an allowance wait for the parent's check; the rest are just recorded.
+            status: quest.allowance > 0 ? .waiting : .done,
+            photo: claim.photo == true ? true : nil
         ))
         added += 1
     }
@@ -455,7 +557,7 @@ func receiveParentNote(_ save: Save, _ note: ParentNote, now: Date) -> (save: Sa
         case .approved: summary.approved += 1
         case .declined: summary.declined += 1
         case .paid: summary.paid += 1
-        case .waiting: break
+        case .waiting, .done: break
         }
         family.claims[i].status = decision
     }
@@ -480,26 +582,32 @@ func receiveParentNote(_ save: Save, _ note: ParentNote, now: Date) -> (save: Sa
 /// Allowance quests done here that the parent hasn't been sent yet.
 func unsentClaims(_ save: Save) -> [Claim] {
     guard let family = save.family else { return [] }
-    return family.claims.filter { $0.status == .waiting && !family.reported.contains($0.key) }
+    return family.claims.filter { toReport($0) && !family.reported.contains($0.key) }
 }
 
-/// The note to send the parent: every allowance quest still waiting to be checked.
+/// Finished quests the parent should hear about: allowance quests still to be checked,
+/// and quests without an allowance, so the parent can see when they were done too.
+private func toReport(_ claim: Claim) -> Bool {
+    claim.status == .waiting || claim.status == .done
+}
+
+/// The note to send the parent: the quests finished here that they should hear about.
 func childNote(_ save: Save) -> ChildNote? {
     guard save.role == .child, let family = save.family else { return nil }
-    let waiting = family.claims.filter { $0.status == .waiting }
-    if waiting.isEmpty { return nil }
+    let done = family.claims.filter(toReport)
+    if done.isEmpty { return nil }
     return ChildNote(
         familyId: family.familyId,
         childId: family.childId,
         childName: family.childName,
-        done: Array(waiting.suffix(60))
+        done: Array(done.suffix(60))
     )
 }
 
-/// Remembers that the waiting claims have been sent to the parent.
+/// Remembers that the finished quests have been sent to the parent.
 func markReported(_ save: Save) -> Save {
     guard var family = save.family else { return save }
-    let waiting = family.claims.filter { $0.status == .waiting }.map { $0.key }
+    let waiting = family.claims.filter(toReport).map { $0.key }
     let all = Array(Set(family.reported + waiting)).sorted()
     family.reported = Array(all.suffix(300))
     var next = save
@@ -523,7 +631,7 @@ private func activateFamily(_ quest: FamilyQuest, period: String, parent: String
         custom: false,
         // Parents' quests can't be swapped away.
         pinned: true,
-        family: FamilyTag(parent: parent, allowance: quest.allowance, repeats: quest.repeats)
+        family: FamilyTag(parent: parent, allowance: quest.allowance, repeats: quest.repeats, askPhoto: quest.askPhoto)
     )
 }
 
@@ -547,7 +655,9 @@ func placeFamilyQuests(_ save: Save) -> Save {
             board.quests[i].title = quest.title
             board.quests[i].category = quest.category
             board.quests[i].xp = quest.xp
-            board.quests[i].family = FamilyTag(parent: family?.parentName ?? "", allowance: quest.allowance, repeats: quest.repeats)
+            board.quests[i].family = FamilyTag(
+                parent: family?.parentName ?? "", allowance: quest.allowance, repeats: quest.repeats, askPhoto: quest.askPhoto
+            )
         }
         // And new ones go on top, as long as the board belongs to a real day, week or month.
         if !board.period.isEmpty {
@@ -568,18 +678,30 @@ func recordFamilyQuestDone(_ save: Save, _ quest: ActiveQuest, now: Date, _ even
     if !tag.repeats && !family.finished.contains(quest.defId) {
         family.finished.append(quest.defId)
     }
-    if tag.allowance > 0 && !family.claims.contains(where: { $0.key == quest.key }) {
+    // Every quest from a parent is recorded with when it was done. Allowance quests then wait
+    // for the parent to check them; the rest have nothing to check.
+    if !family.claims.contains(where: { $0.key == quest.key }) {
         family.claims.append(Claim(
             key: quest.key,
             questId: quest.defId,
             title: quest.title,
             allowance: tag.allowance,
             doneAt: millis(now),
-            status: .waiting
+            status: tag.allowance > 0 ? .waiting : .done
         ))
         family.claims = Array(family.claims.suffix(300))
-        events.append(.allowance(amount: tag.allowance))
+        if tag.allowance > 0 { events.append(.allowance(amount: tag.allowance)) }
     }
+    var next = save
+    next.family = family
+    return next
+}
+
+/// Notes that a photo was taken for a finished quest (on the child's Spade). The photo file
+/// itself is kept by the app; this flag is what travels to the parent.
+func markPhotoTaken(_ save: Save, key: String) -> Save {
+    guard var family = save.family, let at = family.claims.firstIndex(where: { $0.key == key }) else { return save }
+    family.claims[at].photo = true
     var next = save
     next.family = family
     return next

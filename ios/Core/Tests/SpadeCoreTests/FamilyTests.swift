@@ -47,6 +47,33 @@ final class FamilyTests: XCTestCase {
         XCTAssertNil(FamilyLinks.read(""))
     }
 
+    /// Links travel through other apps, which sometimes mangle them. The code should be found
+    /// wherever it ends up, and a link that lost its code should be recognised as such.
+    func testCodesAreFoundWhereverTheyEndUp() throws {
+        let note = ChildNote(familyId: "fam_1", childId: "kid_1", childName: "Tess", done: [])
+        let link = FamilyLink.fromChild(note)
+        let code = FamilyLinks.payload(link)
+        let message = FamilyLinks.message(link, intro: "Tess finished some quests in Spade.")
+        XCTAssertTrue(message.contains("\(FamilyLinks.webPage)#\(code)"), "the message carries the full link")
+        XCTAssertTrue(message.hasSuffix("Family code: \(code)"), "and the code on its own line")
+        XCTAssertEqual(FamilyLinks.read(message), link, "the whole shared message")
+
+        // An app turned the link into a preview and dropped the part after "#": the code line still works.
+        let mangled = message.replacingOccurrences(of: "#\(code)", with: "")
+        XCTAssertFalse(mangled.contains("#"))
+        XCTAssertEqual(FamilyLinks.read(mangled), link, "the code line survives")
+
+        XCTAssertEqual(FamilyLinks.read("(\(FamilyLinks.webPage)#\(code))."), link, "punctuation after the link")
+        XCTAssertEqual(FamilyLinks.read("\(FamilyLinks.webPage)?d=\(code)&x=1"), link, "a d= value")
+        XCTAssertEqual(FamilyLinks.read("Family code: \(code)"), link, "just the code line")
+
+        XCTAssertTrue(FamilyLinks.missingCode(FamilyLinks.webPage), "the bare page")
+        XCTAssertTrue(FamilyLinks.missingCode("\(FamilyLinks.webPage)#"), "an empty code")
+        XCTAssertTrue(FamilyLinks.missingCode("spade://family"), "the app's link with no code")
+        XCTAssertFalse(FamilyLinks.missingCode(message), "a good message")
+        XCTAssertFalse(FamilyLinks.missingCode("hello"), "not a link at all")
+    }
+
     func testRolesStartPlainAndClearWhatTheyLeave() throws {
         let now = at(2026, 11, 14)
         let solo = player(2, "Sam", now)
@@ -132,6 +159,95 @@ final class FamilyTests: XCTestCase {
         let told = receiveParentNote(child, update, now: now)
         XCTAssertEqual(told.result, .applied(ParentNoteSummary(paid: 1)))
         XCTAssertEqual(told.save.family?.claims.map { $0.status }, [.paid])
+    }
+
+    /// Both phones can see when each quest was done, including quests that pay no allowance,
+    /// and how much each quest has earned.
+    func testEveryFamilyQuestIsRecordedWithItsEarnings() throws {
+        let day1 = at(2026, 11, 14)
+        let day2 = at(2026, 11, 15)
+        var (parent, kidId) = try parentWithKid(day1)
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, chores(), now: day1)
+        var reading = chores()
+        reading.title = "Read for 20 minutes"
+        reading.allowance = 0
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, reading, now: day1)
+        var child = receiveParentNote(player(3, "Tess", day1), try XCTUnwrap(noteFor(parent, kidId: kidId)), now: day1).save
+
+        // Two days of both quests.
+        for day in [day1, day2] {
+            child = syncPeriods(child, now: day, clock: clock)
+            for entry in child.boards.daily.quests where entry.family != nil && !entry.done {
+                let out = markQuest(child, .daily, key: entry.key, now: day, clock: clock)
+                child = out.save
+                // Only the allowance quest raises the "send it to your parent" notice.
+                XCTAssertEqual(out.events.contains(.allowance(amount: 150)), entry.title == "Take out the bins")
+            }
+        }
+
+        // The child's phone recorded all four, with when each was done.
+        let mine = try XCTUnwrap(child.family?.claims)
+        XCTAssertEqual(mine.count, 4)
+        XCTAssertEqual(mine.filter { $0.title == "Read for 20 minutes" }.map { $0.status }, [.done, .done])
+        XCTAssertEqual(mine.filter { $0.title == "Take out the bins" }.map { $0.status }, [.waiting, .waiting])
+        XCTAssertEqual(mine.map { $0.doneAt }, [millis(day1), millis(day1), millis(day2), millis(day2)])
+        XCTAssertEqual(unsentClaims(child).count, 4, "XP-only quests are reported too")
+
+        // The parent hears about all four; only the allowance ones need checking.
+        let heard = receiveChildNote(parent, try XCTUnwrap(childNote(child)))
+        parent = heard.save
+        XCTAssertEqual(heard.result, .added(kidId: kidId, count: 4))
+        child = markReported(child)
+        XCTAssertTrue(unsentClaims(child).isEmpty)
+        var claims = try XCTUnwrap(parent.household?.children.first?.claims)
+        XCTAssertEqual(claims.filter { $0.status == .waiting }.count, 2)
+        XCTAssertEqual(claims.filter { $0.status == .done }.map { $0.doneAt }, [millis(day1), millis(day2)])
+
+        // Earnings, quest by quest: one approved, one turned down.
+        let bins = try XCTUnwrap(parent.household?.children.first?.quests.first { $0.title == "Take out the bins" })
+        let readId = try XCTUnwrap(parent.household?.children.first?.quests.first { $0.title == "Read for 20 minutes" }?.id)
+        XCTAssertEqual(claims.earnings(for: bins.id), QuestEarnings(times: 2, earned: 0, waiting: 300))
+        let waitingKeys = claims.filter { $0.status == .waiting }.map { $0.key }
+        parent = decideClaim(parent, kidId: kidId, key: waitingKeys[0], approve: true)
+        parent = decideClaim(parent, kidId: kidId, key: waitingKeys[1], approve: false)
+        claims = try XCTUnwrap(parent.household?.children.first?.claims)
+        XCTAssertEqual(claims.earnings(for: bins.id), QuestEarnings(times: 1, earned: 150, waiting: 0))
+        XCTAssertEqual(claims.earnings(for: readId), QuestEarnings(times: 2, earned: 0, waiting: 0))
+
+        // The child sees the same once the parent's next note arrives.
+        child = receiveParentNote(child, try XCTUnwrap(noteFor(parent, kidId: kidId)), now: day2).save
+        let theirs = try XCTUnwrap(child.family?.claims)
+        XCTAssertEqual(theirs.earnings(for: bins.id), QuestEarnings(times: 1, earned: 150, waiting: 0))
+        XCTAssertEqual(theirs.earnings(for: readId).times, 2)
+    }
+
+    /// A parent can ask for a photo. The request reaches the child's board, the child's record
+    /// notes that a photo was taken, and the parent's copy learns that one was sent.
+    func testPhotoProofFlagsTravel() throws {
+        let now = at(2026, 11, 14)
+        var (parent, kidId) = try parentWithKid(now)
+        var lawn = chores()
+        lawn.title = "Mow the lawn"
+        lawn.askPhoto = true
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, lawn, now: now)
+        XCTAssertEqual(parent.household?.children.first?.quests.first?.askPhoto, true)
+
+        var child = receiveParentNote(player(3, "Tess", now), try XCTUnwrap(noteFor(parent, kidId: kidId)), now: now).save
+        let entry = try XCTUnwrap(child.boards.daily.quests.first)
+        XCTAssertEqual(entry.family?.askPhoto, true)
+        child = markQuest(child, .daily, key: entry.key, now: now, clock: clock).save
+        XCTAssertNil(child.family?.claims.first?.photo)
+        child = markPhotoTaken(child, key: entry.key)
+        XCTAssertEqual(child.family?.claims.first?.photo, true)
+        XCTAssertEqual(markPhotoTaken(child, key: "no-such-key"), child)
+
+        parent = receiveChildNote(parent, try XCTUnwrap(childNote(child))).save
+        XCTAssertEqual(parent.household?.children.first?.claims.first?.photo, true)
+
+        // Notes from before photos existed still read, as "no photo".
+        let old = #"{"id":"fq_1","title":"Bins","cadence":"daily","category":"home","xp":40,"allowance":100,"repeats":true}"#
+        let quest = try JSONDecoder().decode(FamilyQuest.self, from: Data(old.utf8))
+        XCTAssertNil(quest.askPhoto)
     }
 
     func testDeclinedQuestsPayNothing() throws {

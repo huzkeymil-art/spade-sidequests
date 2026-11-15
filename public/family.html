@@ -56,19 +56,26 @@
   <a class="button" id="open" href="#">Open in Spade</a>
   <button class="button plain" id="copy" type="button">Copy this link</button>
   <p class="small" id="help">
-    Still not opening? Copy the link, then in Spade go to Settings, then Paste a family link.
+    Still not opening? Copy the whole message the link came in, then in Spade go to Settings, then Paste a family link.
     Don't have Spade yet? Ask whoever sent this for the TestFlight invite.
   </p>
   <script>
     (function () {
-      var note = location.hash.slice(1);
+      // The code normally sits after the "#". Take only the characters a code can have,
+      // in case an app stuck something on the end.
+      var raw = location.hash.slice(1) || new URLSearchParams(location.search).get('d') || '';
+      var note = (raw.match(/^[A-Za-z0-9_-]+/) || [''])[0];
       var open = document.getElementById('open');
       var copy = document.getElementById('copy');
       if (!note) {
-        document.getElementById('title').textContent = 'This link is empty';
-        document.getElementById('lead').textContent = 'Part of the link went missing on the way. Ask for it to be sent again.';
+        document.getElementById('title').textContent = 'This link lost its family code';
+        document.getElementById('lead').textContent =
+          'The app it was sent through dropped the code on the way. Look in the same message for a line that says ' +
+          '"Family code": copy the whole message, then in Spade go to Settings, then Paste a family link. ' +
+          'Or ask for it to be sent again with Copy link.';
         open.hidden = true;
         copy.hidden = true;
+        document.getElementById('help').hidden = true;
         return;
       }
       var app = 'spade://family#' + note;

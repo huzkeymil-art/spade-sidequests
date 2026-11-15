@@ -20,6 +20,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Spade uses the camera only when you take a photo to show a parent you finished a quest. The photo stays on your iPhone unless you send it.</string>
 	<key>SCNDisableLinearSpaceRendering</key>
 	<true/>
 	<key>UILaunchScreen</key>

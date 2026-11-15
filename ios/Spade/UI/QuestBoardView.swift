@@ -147,9 +147,12 @@ struct QuestRow: View {
     @State private var hint = false
     @State private var gain: Int?
     @State private var floated = false
+    @State private var askingPhoto = false
 
     private let holdSeconds = 0.65
     private var counted: Bool { quest.target > 1 }
+    /// A parent's quest that wants a photo before it counts.
+    private var needsPhoto: Bool { quest.family?.askPhoto == true && !quest.done }
     /// For a parent's allowance quest that is done: what the parent decided.
     private var claimStatus: ClaimStatus? {
         store.save.family?.claims.first { $0.key == quest.key }?.status
@@ -167,7 +170,8 @@ struct QuestRow: View {
                     .foregroundStyle(quest.done ? Ink.faint : Ink.bone)
                     .fixedSize(horizontal: false, vertical: true)
                 if hint {
-                    Text("Press and hold to \(counted && !lastStep ? "count it" : "seal it")").caps(Ink.lantern)
+                    Text(needsPhoto ? "Press and hold, then add a photo" : "Press and hold to \(counted && !lastStep ? "count it" : "seal it")")
+                        .caps(Ink.lantern)
                 } else if let tag = quest.family {
                     HStack(spacing: 6) {
                         PropIcon(name: "home", size: 18, res: 18)
@@ -175,7 +179,13 @@ struct QuestRow: View {
                             let words = claimWords(status, parent: tag.parent)
                             Text(words.text).caps(words.color)
                         } else {
-                            Text("from \(tag.parent)").caps(Ink.faint)
+                            Text(tag.askPhoto == true && !quest.done ? "from \(tag.parent) · photo" : "from \(tag.parent)").caps(Ink.faint)
+                        }
+                        if tag.askPhoto == true && !quest.done {
+                            Image(systemName: "camera")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Ink.faint)
+                                .accessibilityHidden(true)
                         }
                     }
                 } else {
@@ -234,9 +244,17 @@ struct QuestRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(quest.title)
         .accessibilityValue(accessibleValue)
-        .accessibilityHint(quest.done ? "" : "Double tap and hold to \(lastStep ? "seal" : "count")")
+        .accessibilityHint(quest.done ? "" : needsPhoto ? "Double tap and hold, then add a photo" : "Double tap and hold to \(lastStep ? "seal" : "count")")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { seal() }
+        .sheet(isPresented: $askingPhoto) {
+            PhotoProofSheet(title: quest.title, parent: quest.family?.parent ?? "your parent") { image in
+                celebrate(store.sealWithPhoto(quest.cadence, key: quest.key, image: image))
+            }
+        }
+        .onAppear {
+            if DemoMode.requested == "photoproof" && needsPhoto { askingPhoto = true }
+        }
     }
 
     private var accessibleValue: String {
@@ -291,7 +309,16 @@ struct QuestRow: View {
         guard !quest.done else { return }
         pressing = false
         hint = false
-        let events = store.mark(quest.cadence, key: quest.key)
+        // A parent asked for a photo: it counts once one is added.
+        if needsPhoto {
+            Feedback.tap()
+            askingPhoto = true
+            return
+        }
+        celebrate(store.mark(quest.cadence, key: quest.key))
+    }
+
+    private func celebrate(_ events: [GameEvent]) {
         var earned = 0
         for event in events {
             if case .xp(let amount, _) = event { earned += amount }
