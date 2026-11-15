@@ -40,7 +40,8 @@ func syncPeriods(_ save: Save, now: Date, clock: GameClock = .device) -> Save {
     if next.streak.count > 0 && last != today && last != clock.shiftDay(today, -1) {
         next.streak.count = 0
     }
-    return next
+    // A child's quests from their parent go on top of the fresh boards.
+    return placeFamilyQuests(next)
 }
 
 // MARK: - Rewards
@@ -145,6 +146,11 @@ func markQuest(_ save: Save, _ cadence: Cadence, key: String, now: Date, clock: 
         next = giveItem(next, loot.item.id, .quest, &events)
     }
 
+    // A quest from a parent: note it down, and queue any allowance for them to check.
+    if quest.family != nil {
+        next = recordFamilyQuestDone(next, quest, now: now, &events)
+    }
+
     next = settleFeats(next, now: now, &events)
     return Outcome(save: next, events: events)
 }
@@ -171,7 +177,7 @@ struct CustomQuestInput {
     var pinned: Bool
 }
 
-/// Adds a quest the player wrote. Pinned ones join the current board straight away.
+/// Adds a quest the player wrote, and puts it on the current board straight away.
 func addCustomQuest(_ save: Save, _ input: CustomQuestInput, now: Date) -> Outcome {
     var events: [GameEvent] = []
     let title = String(input.title.trimmingCharacters(in: .whitespacesAndNewlines).prefix(80))
@@ -189,11 +195,11 @@ func addCustomQuest(_ save: Save, _ input: CustomQuestInput, now: Date) -> Outco
     var next = save
     next.custom.append(quest)
     next.counts.customMade += 1
-    if quest.pinned {
-        var board = next.boards[quest.cadence]
-        board.quests.insert(activatePinned(quest, period: board.period), at: 0)
-        next.boards[quest.cadence] = board
-    }
+    // Every new quest goes on the board straight away, so it can be done this period.
+    // After that, pinned ones are dealt every time and the rest are mixed in with the deck.
+    var board = next.boards[quest.cadence]
+    board.quests.insert(activateCustom(quest, period: board.period), at: 0)
+    next.boards[quest.cadence] = board
     next = settleFeats(next, now: now, &events)
     return Outcome(save: next, events: events)
 }
@@ -266,7 +272,7 @@ func repairSave(_ data: Data, now: Date) -> Save? {
     save.hero.scarf = clamp(save.hero.scarf, Catalog.looks.scarf.count, base.scarf)
 
     save.activeDays = Array(save.activeDays.suffix(60))
-    return save
+    return repairFamily(save)
 }
 
 /// Packs a save as JSON text, in the same shape the web version uses.

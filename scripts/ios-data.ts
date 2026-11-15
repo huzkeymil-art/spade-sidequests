@@ -195,6 +195,11 @@ function parityFixtures() {
     { id: 'c_two', cadence: 'daily', category: 'craft', difficulty: 3, title: 'Juggle', pinned: false },
     { id: 'c_three', cadence: 'weekly', category: 'mind', difficulty: 2, title: 'Chess club', pinned: true },
   ];
+  const shuffledIn: CustomQuest[] = [
+    { id: 'c_four', cadence: 'daily', category: 'body', difficulty: 2, title: 'Skip rope', pinned: false },
+    { id: 'c_five', cadence: 'daily', category: 'heart', difficulty: 1, title: 'Call Gran', pinned: false },
+    { id: 'c_six', cadence: 'monthly', category: 'craft', difficulty: 3, title: 'Build a birdhouse', pinned: false },
+  ];
   const dealCases: { seed: number; cadence: Cadence; period: string; recent: string[]; off: Category[]; custom: CustomQuest[] }[] = [
     { seed: 1, cadence: 'daily', period: '2026-11-14', recent: [], off: [], custom: [] },
     { seed: 1, cadence: 'daily', period: '2026-11-15', recent: [], off: [], custom: [] },
@@ -205,6 +210,8 @@ function parityFixtures() {
     { seed: 12345, cadence: 'weekly', period: '2026-W53', recent: [], off: ['mind', 'craft', 'heart', 'home'], custom: [] },
     { seed: 4242, cadence: 'daily', period: '2026-11-27', recent: [], off: [], custom: pinned },
     { seed: 4242, cadence: 'weekly', period: '2026-W48', recent: [], off: [], custom: pinned },
+    { seed: 4242, cadence: 'daily', period: '2026-11-28', recent: ['c_two'], off: [], custom: [...pinned, ...shuffledIn] },
+    { seed: 7, cadence: 'monthly', period: '2026-12', recent: [], off: [], custom: shuffledIn },
   ];
   const deals = dealCases.map((c) => {
     const categories = { ...ALL_ON };

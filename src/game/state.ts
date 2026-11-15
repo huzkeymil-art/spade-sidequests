@@ -1,7 +1,7 @@
 import { pendingFeats } from './achievements';
 import { ITEM_BY_ID, LOOKS } from './content';
 import { dayKey, periodKey, shiftDay } from './periods';
-import { DAILY_REROLLS, dealBoard, swapQuest, type DealContext } from './quests';
+import { DAILY_REROLLS, activateCustom, dealBoard, swapQuest, type DealContext } from './quests';
 import { DAILY_CLEAR_XP, ECHO_XP, MILESTONES, levelInfo, rankUnlockedAt, rollLoot } from './rewards';
 import { rngFor } from './rng';
 import {
@@ -240,14 +240,13 @@ export function addCustomQuest(save: Save, input: CustomQuestInput, now: Date): 
     custom: [...save.custom, quest],
     counts: { ...save.counts, customMade: save.counts.customMade + 1 },
   };
-  if (quest.pinned) {
-    const board = next.boards[quest.cadence];
-    const fresh = dealBoard(quest.cadence, board.period, { ...dealContext(next, quest.cadence), custom: [quest] }).quests[0];
-    next = {
-      ...next,
-      boards: { ...next.boards, [quest.cadence]: { ...board, quests: [fresh, ...board.quests] } },
-    };
-  }
+  // Every new quest goes on the board straight away, so it can be done this period.
+  // After that, pinned ones are dealt every time and the rest are mixed in with the deck.
+  const board = next.boards[quest.cadence];
+  next = {
+    ...next,
+    boards: { ...next.boards, [quest.cadence]: { ...board, quests: [activateCustom(quest, board.period), ...board.quests] } },
+  };
   next = settleFeats(next, now, events);
   return { save: next, events };
 }

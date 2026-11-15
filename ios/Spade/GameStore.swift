@@ -25,6 +25,8 @@ struct Toast: Identifiable, Equatable {
     enum Kind: Equatable {
         case feat(id: String)
         case clear
+        /// A parent's allowance quest is done and waits for them to check it.
+        case allowance(amount: Int)
     }
 
     let id: Int
@@ -103,6 +105,8 @@ final class GameStore: ObservableObject {
                 toasts.append(Toast(id: serial, kind: .feat(id: id)))
             case .clear:
                 toasts.append(Toast(id: serial, kind: .clear))
+            case .allowance(let amount):
+                toasts.append(Toast(id: serial, kind: .allowance(amount: amount)))
             case .xp:
                 break
             }

@@ -35,6 +35,11 @@ function activate(def: QuestDef, period: string, custom: boolean, pinned: boolea
   };
 }
 
+/** The board entry for one of the player's own quests. */
+export function activateCustom(quest: CustomQuest, period: string): ActiveQuest {
+  return activate(quest, period, true, quest.pinned);
+}
+
 /** Every quest that could be dealt for this cadence: built-in ones in enabled categories, plus unpinned custom ones. */
 function deckFor(cadence: Cadence, ctx: DealContext): { def: QuestDef; custom: boolean }[] {
   const anyEnabled = Object.values(ctx.categories).some(Boolean);
@@ -65,16 +70,32 @@ function draw(cadence: Cadence, ctx: DealContext, count: number, exclude: readon
   return picked;
 }
 
+/**
+ * Picks one of the player's own shuffled-in quests for this period, preferring
+ * one that wasn't dealt last time. Returns undefined if they have none.
+ */
+function pickOwn(cadence: Cadence, period: string, ctx: DealContext): CustomQuest | undefined {
+  const own = ctx.custom.filter((q) => q.cadence === cadence && !q.pinned);
+  if (own.length === 0) return undefined;
+  const fresh = own.filter((q) => !ctx.recent.includes(q.id));
+  return shuffled(fresh.length > 0 ? fresh : own, rngFor(ctx.seed, cadence, `${period}:own`))[0];
+}
+
 /** Deals a fresh board for the given day, week or month. */
 export function dealBoard(cadence: Cadence, period: string, ctx: DealContext): Board {
   const pinned = ctx.custom.filter((q) => q.cadence === cadence && q.pinned);
-  // Pinned quests take up places, but at least one place is always left for a surprise.
-  const fromDeck = Math.max(1, DEAL_COUNT[cadence] - pinned.length);
-  const drawn = draw(cadence, ctx, fromDeck, ctx.recent, period);
+  // Pinned quests take up places, but at least one place is always left over.
+  const places = Math.max(1, DEAL_COUNT[cadence] - pinned.length);
+  // One of those places always goes to one of the player's own shuffled-in quests,
+  // if they have any. Otherwise a quest they wrote could take weeks to turn up.
+  const own = pickOwn(cadence, period, ctx);
+  const rest = own ? { ...ctx, custom: ctx.custom.filter((q) => q.id !== own.id) } : ctx;
+  const drawn = draw(cadence, rest, places - (own ? 1 : 0), ctx.recent, period);
   return {
     period,
     quests: [
       ...pinned.map((def) => activate(def, period, true, true)),
+      ...(own ? [activate(own, period, true, false)] : []),
       ...drawn.map(({ def, custom }) => activate(def, period, custom, false)),
     ],
     rerolls: 0,

@@ -260,11 +260,20 @@ private struct ToastRow: View {
         Group {
             switch toast.kind {
             case .clear:
-                row(icon: "flame", title: "Lantern full", note: "Every quest today", xp: dailyClearXp, edge: Ink.lantern)
+                row(icon: "flame", title: "Lantern full", note: "Every quest today", trailing: "+\(dailyClearXp)", edge: Ink.lantern)
             case .feat(let id):
                 if let feat = Catalog.featById[id] {
-                    row(icon: "feat", title: feat.name, note: "Feat earned", xp: feat.xp, edge: Ink.verdigris)
+                    row(icon: "feat", title: feat.name, note: "Feat earned", trailing: "+\(feat.xp)", edge: Ink.verdigris)
                 }
+            case .allowance(let amount):
+                let family = store.save.family
+                row(
+                    icon: "home",
+                    title: "Send it to \(family?.parentName ?? "your parent")",
+                    note: "Allowance waiting to be checked",
+                    trailing: Money.format(amount, family?.currency ?? Money.local),
+                    edge: Ink.lantern
+                )
             }
         }
         .pop(0)
@@ -276,7 +285,7 @@ private struct ToastRow: View {
         }
     }
 
-    private func row(icon: String, title: String, note: String, xp: Int, edge: Color) -> some View {
+    private func row(icon: String, title: String, note: String, trailing: String, edge: Color) -> some View {
         Button {
             store.dropToast(toast.id)
         } label: {
@@ -287,7 +296,7 @@ private struct ToastRow: View {
                     Text(note).caps(Ink.faint)
                 }
                 Spacer(minLength: 8)
-                Text("+\(xp)").font(Typeface.label(22)).foregroundStyle(edge == Ink.lantern ? Ink.lantern : Ink.verdigris)
+                Text(trailing).font(Typeface.label(22)).foregroundStyle(edge == Ink.lantern ? Ink.lantern : Ink.verdigris)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)

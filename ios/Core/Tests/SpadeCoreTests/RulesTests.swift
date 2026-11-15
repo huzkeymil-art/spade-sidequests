@@ -113,6 +113,25 @@ final class RulesTests: XCTestCase {
         XCTAssertEqual(blank.save, save)
     }
 
+    /// A quest you write should show up straight away, even when it isn't pinned,
+    /// and keep turning up in later deals rather than getting lost in the deck.
+    func testShuffledInQuestsShowUp() {
+        var save = started(at(2026, 11, 14))
+        let added = addCustomQuest(save, CustomQuestInput(title: "Juggle", cadence: .daily, category: .craft, difficulty: 3, pinned: false), now: at(2026, 11, 14))
+        XCTAssertEqual(added.save.boards.daily.quests.count, 4)
+        XCTAssertEqual(added.save.boards.daily.quests.first?.title, "Juggle")
+        XCTAssertEqual(added.save.boards.daily.quests.first?.pinned, false)
+        XCTAssertEqual(added.save.boards.daily.quests.first?.xp, 45)
+
+        save = added.save
+        for day in 15...24 {
+            save = syncPeriods(save, now: at(2026, 11, day), clock: clock)
+            let ids = save.boards.daily.quests.map { $0.defId }
+            XCTAssertEqual(ids.count, 3, "day \(day)")
+            XCTAssertTrue(ids.contains(save.custom[0].id), "day \(day): the only own quest is dealt every day")
+        }
+    }
+
     func testRepairTidiesNonsense() throws {
         let now = at(2026, 11, 14)
         let junk = #"{"seed": 5, "xp": -20, "inventory": ["rusty_spade", "not_real", "rusty_spade"], "equipped": {"head": "rusty_spade"}, "hero": {"name": "A", "skin": 99, "hair": 1, "hairStyle": 1, "scarf": 0}}"#
