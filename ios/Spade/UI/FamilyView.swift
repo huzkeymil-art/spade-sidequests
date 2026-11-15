@@ -764,12 +764,11 @@ struct AllowanceSheet: View {
                                              ? "\(Money.format(quest.allowance, currency)) each · +\(quest.xp) XP"
                                              : "+\(quest.xp) XP each · no allowance")
                                             .caps(Ink.faint)
-                                        if let line = earningsLine(earned, allowance: quest.allowance, currency: currency) {
-                                            Text(line).caps(Ink.dim)
-                                        }
+                                        Text(earningsLine(earned, allowance: quest.allowance, currency: currency) ?? "Not done yet")
+                                            .caps(Ink.dim)
                                     }
                                     Spacer(minLength: 8)
-                                    if quest.allowance > 0 {
+                                    if quest.allowance > 0 && earned.times > 0 {
                                         Text(Money.format(earned.earned, currency))
                                             .font(Typeface.label(22))
                                             .foregroundStyle(Ink.lantern)
