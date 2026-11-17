@@ -55,7 +55,8 @@ enum FamilyAlerts {
         }
     }
 
-    static let tabKey = "spade.tab"
+    /// Read by the notification delegate too, which isn't tied to the main thread.
+    nonisolated static let tabKey = "spade.tab"
 
     /// Whether the player said no to notifications in the past. Only the Settings app can change that.
     static func blocked() async -> Bool {
