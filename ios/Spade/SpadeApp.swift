@@ -1,6 +1,7 @@
 import CloudKit
 import SwiftUI
 import UIKit
+import UserNotifications
 
 // Spade for iPhone.
 //
@@ -12,7 +13,7 @@ import UIKit
 @main
 struct SpadeApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @StateObject private var store = DemoMode.makeStore()
+    @StateObject private var store = GameStore.shared
     @StateObject private var stage = StageController()
 
     var body: some Scene {
@@ -21,6 +22,10 @@ struct SpadeApp: App {
                 .environmentObject(store)
                 .environmentObject(stage)
                 .preferredColorScheme(.dark)
+        }
+        // Now and then, iOS lets Spade check for family news in the background.
+        .backgroundTask(.appRefresh(FamilyCheck.id)) {
+            await FamilyCheck.run()
         }
     }
 }
@@ -46,6 +51,25 @@ enum CloudDoor {
     /// What to do when iCloud says something changed.
     static var onNudge: (@MainActor () async -> Void)?
 
+    private static var waitingTab: AppTab?
+
+    /// What to do when a notification asks for a tab. A request that came before anyone was listening waits.
+    static var onOpen: (@MainActor (AppTab) -> Void)? {
+        didSet {
+            guard let onOpen, let tab = waitingTab else { return }
+            waitingTab = nil
+            onOpen(tab)
+        }
+    }
+
+    static func open(_ tab: AppTab) {
+        if let onOpen {
+            onOpen(tab)
+        } else {
+            waitingTab = tab
+        }
+    }
+
     static func invite(_ metadata: CKShare.Metadata) {
         if let onInvite {
             onInvite(metadata)
@@ -60,8 +84,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        // iCloud nudges the app when a family page changes. The nudges are silent:
-        // no permission is asked for, and nothing is shown.
+        // The store first, so a background wake-up has something to sync with.
+        _ = GameStore.shared
+        // Taps on notifications, and ones that arrive while Spade is open, come here.
+        UNUserNotificationCenter.current().delegate = NotificationDoor.shared
+        // iCloud nudges the app when a family page changes. The nudges themselves are silent;
+        // Spade looks at what changed and shows its own notification if there is news.
         if DemoMode.requested == nil { application.registerForRemoteNotifications() }
         return true
     }

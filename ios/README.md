@@ -62,6 +62,25 @@ other up to date through iCloud:
 Updates usually arrive within about 15 seconds while Spade is open, and when it
 is next opened otherwise.
 
+**Notifications.** With Spade closed, family news still comes as a notification:
+
+- on a child's phone, **New quest from Sam** when a parent adds a quest
+- on a parent's phone, **Tess finished a quest** when a child finishes one (and
+  **Tess joined your family** when an invite is accepted)
+
+Tapping one opens the quest board or the Family tab. While Spade is open, the
+same news shows as a notice at the top of the screen instead. Spade asks once
+for permission to show notifications, after a family is set up, and Settings
+has a **Family notifications** switch.
+
+These notifications come from the phone itself, not from a server. When the
+other phone changes something, iCloud gives Spade a silent nudge; Spade syncs,
+sees what is new, and shows the notification. (Every so often iOS also lets
+Spade check by itself.) iOS decides when Spade may wake up, so a notification
+can come late, and none come while Spade is swiped away in the app switcher or
+the phone is in Low Power Mode. The news is still there the next time Spade
+opens.
+
 See [the update and testing guide](../docs/progression-update-testing.md) for additional guardians, repeat-day requests, the changelog and Chamber rewards. Additional guardians share a separate private record; the family owner must open Spade to relay updates to and from children.
 
 ### How it works
@@ -289,10 +308,16 @@ Then:
 3. **Parent:** add a third quest. It should reach the child's phone within about
    15 seconds.
 4. **Child:** finish a quest. The parent's Family tab should show it.
-5. **Offline:** put the child's phone in Airplane Mode and finish a quest. On the
+5. **Notifications:** on the parent's phone, allow notifications when Spade asks,
+   then go to the Home Screen (don't swipe Spade away). Finish a quest on the
+   child's phone. Within a minute or so, the parent's phone should show
+   "Tess finished a quest". Then the other way round: with Spade in the
+   background on the child's phone, add a quest on the parent's phone; the
+   child's phone should show "New quest from Sam".
+6. **Offline:** put the child's phone in Airplane Mode and finish a quest. On the
    parent's phone, edit one quest and delete another. Turn Airplane Mode off and
    compare with the table in "How it works".
-6. **Signed out:** sign out of iCloud on one phone. Settings → iCloud sync in
+7. **Signed out:** sign out of iCloud on one phone. Settings → iCloud sync in
    Spade should say why it can't sync.
 
 If a step fails, open Spade's Settings on that phone and send a screenshot of

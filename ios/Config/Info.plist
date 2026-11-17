@@ -13,7 +13,12 @@
 	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>fetch</string>
 		<string>remote-notification</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.huzkeymil.spade.family</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Spade uses the camera only when you take a photo to show a parent you finished a quest. The photo stays on your iPhone unless you send it.</string>

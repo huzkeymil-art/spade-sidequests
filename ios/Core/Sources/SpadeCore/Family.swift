@@ -953,3 +953,53 @@ func mergeGuardianChange(_ change: GuardianChange, into document: GuardianDocume
     out.applied = Array((out.applied + [change.id]).suffix(1000))
     return out
 }
+
+// MARK: - News for notifications
+
+/// One child's news, as their parent's Spade sees it after a sync.
+struct KidNews: Equatable {
+    var kidId: String
+    var kidName: String
+    /// Quests the child finished that this Spade hadn't heard about before.
+    var finished: [Claim] = []
+    /// The child's Spade has just joined through its invite.
+    var joined = false
+}
+
+/// What a sync brought that is worth telling someone about, even when Spade isn't open:
+/// on a child's Spade, quests their parent added; on a parent's Spade, quests a child finished.
+struct FamilyNews: Equatable {
+    var parentName = ""
+    var currency = ""
+    var newQuests: [FamilyQuest] = []
+    var kids: [KidNews] = []
+
+    var isEmpty: Bool { newQuests.isEmpty && kids.isEmpty }
+}
+
+/// Compares a save before and after a sync. Only changes within the same family count, so
+/// joining a family, or switching to another one, never reads as a pile of news.
+func familyNews(before: Save, after: Save) -> FamilyNews {
+    var news = FamilyNews()
+    if before.role == .child, after.role == .child, let then = before.family, let now = after.family,
+       then.familyId == now.familyId, then.childId == now.childId {
+        let known = Set(then.quests.map { $0.id })
+        news.parentName = now.parentName
+        news.currency = now.currency
+        news.newQuests = now.quests.filter { !known.contains($0.id) }
+    }
+    if before.role == .parent, after.role == .parent, let then = before.household, let now = after.household,
+       then.familyId == now.familyId {
+        news.currency = now.currency
+        for kid in now.children {
+            // A child added on another guardian's phone has no history here yet: nothing is "new".
+            guard let old = then.children.first(where: { $0.id == kid.id }) else { continue }
+            let known = Set(old.claims.map { $0.key })
+            var item = KidNews(kidId: kid.id, kidName: kid.name)
+            item.finished = kid.claims.filter { !known.contains($0.key) }
+            item.joined = kid.joined == true && old.joined != true
+            if !item.finished.isEmpty || item.joined { news.kids.append(item) }
+        }
+    }
+    return news
+}
