@@ -194,6 +194,74 @@ final class FamilyTests: XCTestCase {
         }
     }
 
+    /// Notifications come from comparing a phone's save before and after a sync. The child hears
+    /// about new quests, the parent about finished ones, and nothing is announced twice.
+    func testNewsSaysWhatTheOtherPhoneDid() throws {
+        let now = at(2026, 11, 14)
+        var cloud = Pages()
+        var (parent, kidId) = try parentWithKid(now)
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, chores(), now: now)
+        parent = markShared(parent, kidId: kidId, true)
+        parent = syncParent(parent, kidId, &cloud)
+
+        // Joining is the child's own doing, so it isn't news on the child's phone.
+        let fresh = player(3, "Tess", now)
+        var child = syncKid(fresh, &cloud, now: now)
+        XCTAssertTrue(familyNews(before: fresh, after: child).isEmpty)
+
+        // The parent's phone hears that Tess joined, once.
+        var before = parent
+        parent = syncParent(parent, kidId, &cloud)
+        var news = familyNews(before: before, after: parent)
+        XCTAssertEqual(news.kids.map { $0.joined }, [true])
+        XCTAssertEqual(news.kids.first?.kidName, "Tess")
+        XCTAssertTrue(news.kids.first?.finished.isEmpty ?? false)
+        XCTAssertTrue(familyNews(before: parent, after: syncParent(parent, kidId, &cloud)).isEmpty)
+
+        // The parent adds a quest: the child's phone hears about that one quest, with its details.
+        var lawn = chores()
+        lawn.title = "Mow the lawn"
+        lawn.xp = 150
+        lawn.allowance = 500
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: nil, lawn, now: now)
+        parent = syncParent(parent, kidId, &cloud)
+        before = child
+        child = syncKid(child, &cloud, now: now)
+        news = familyNews(before: before, after: child)
+        XCTAssertEqual(news.newQuests.map { $0.title }, ["Mow the lawn"])
+        XCTAssertEqual(news.newQuests.first?.xp, 150)
+        XCTAssertEqual(news.parentName, "Mum")
+        XCTAssertEqual(news.currency, "USD")
+        XCTAssertTrue(news.kids.isEmpty)
+
+        // An edit or an approval isn't a new quest.
+        var edited = lawn
+        edited.xp = 200
+        let lawnId = try XCTUnwrap(parent.household?.children.first?.quests.first { $0.title == "Mow the lawn" }?.id)
+        parent = saveFamilyQuest(parent, kidId: kidId, questId: lawnId, edited, now: now)
+        parent = syncParent(parent, kidId, &cloud)
+        before = child
+        child = syncKid(child, &cloud, now: now)
+        XCTAssertTrue(familyNews(before: before, after: child).newQuests.isEmpty)
+
+        // The child finishes both quests: the parent's phone hears about both, once.
+        for entry in child.boards.daily.quests where entry.family != nil && !entry.done {
+            child = markQuest(child, .daily, key: entry.key, now: now, clock: clock).save
+        }
+        child = syncKid(child, &cloud, now: now)
+        before = parent
+        parent = syncParent(parent, kidId, &cloud)
+        news = familyNews(before: before, after: parent)
+        XCTAssertEqual(news.kids.count, 1)
+        XCTAssertEqual(Set(news.kids.first?.finished.map { $0.title } ?? []), ["Take out the bins", "Mow the lawn"])
+        XCTAssertFalse(news.kids.first?.joined ?? true)
+        XCTAssertTrue(familyNews(before: parent, after: syncParent(parent, kidId, &cloud)).isEmpty, "not twice")
+
+        // Changing role is never news.
+        XCTAssertTrue(familyNews(before: parent, after: setRole(parent, .solo, currency: "USD", now: now)).isEmpty)
+        XCTAssertTrue(familyNews(before: child, after: setRole(child, .solo, currency: "USD", now: now)).isEmpty)
+    }
+
     /// A page that turns up late (an older copy than one already read) changes nothing.
     func testAnOlderPageIsIgnored() throws {
         let now = at(2026, 11, 14)

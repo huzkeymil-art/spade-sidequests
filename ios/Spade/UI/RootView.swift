@@ -148,7 +148,16 @@ struct RootView: View {
                 store.sync()
                 store.syncFamily()
             }
-            if phase == .background { Reminders.refresh(for: store.save) }
+            if phase == .background {
+                Reminders.refresh(for: store.save)
+                store.wentToBackground()
+            }
+        }
+        // A tapped notification asks for the tab it is about.
+        .onChange(of: store.requestedTab) { _, wanted in
+            guard let wanted else { return }
+            store.requestedTab = nil
+            pick(wanted)
         }
         .onReceive(ticker) { _ in store.sync() }
         .onReceive(cloudTicker) { _ in

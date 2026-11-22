@@ -17,6 +17,8 @@ struct SettingsSheet: View {
     @State private var backup: URL?
     @State private var pendingRole: Role?
     @State private var allowanceOpen = false
+    @State private var familyAlerts = FamilyAlerts.enabled
+    @State private var familyAlertNote = ""
 
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -196,6 +198,12 @@ struct SettingsSheet: View {
         }
         .spadeSheet()
         .onAppear { backup = store.backupFile(); if DemoMode.requested == "chamber" { chamberOpen = true } }
+        .task {
+            // Notifications switched off in the Settings app since: say so next to the switch.
+            if familyAlerts, store.save.role != .solo, await FamilyAlerts.blocked() {
+                familyAlertNote = "Notifications are switched off for Spade in the Settings app, so family news only shows when Spade is open."
+            }
+        }
         .onChange(of: store.save) { _, _ in backup = store.backupFile() }
         .sheet(isPresented: $guideOpen) { GuideSheet() }
         .sheet(isPresented: $chamberOpen) { ChamberSheet() }
@@ -252,6 +260,8 @@ struct SettingsSheet: View {
                     if family.cloud != nil {
                         Hairline()
                         cloudRow()
+                        Hairline()
+                        alertsRow("When \(family.parentName) adds a quest")
                     }
                 }
                 .padding(.top, 10)
@@ -259,15 +269,21 @@ struct SettingsSheet: View {
                     footnote("This Spade joined with an old family link, which no longer updates. Ask \(family.parentName) to invite you from their Family tab.")
                 } else {
                     cloudTrouble()
+                    alertsTrouble()
                 }
             } else {
                 footnote("Ask your parent to invite you from the Family tab of their Spade. Tap the invite they send, and their quests join your board.")
             }
         case .parent:
             footnote("Set quests and allowance for your children in the Family tab. Invite each child once, and iCloud keeps their Spade up to date.")
-            RowGroup { cloudRow() }
-                .padding(.top, 10)
+            RowGroup {
+                cloudRow()
+                Hairline()
+                alertsRow("When a child finishes a quest")
+            }
+            .padding(.top, 10)
             cloudTrouble()
+            alertsTrouble()
         }
     }
 
@@ -290,6 +306,37 @@ struct SettingsSheet: View {
         case .upToDate(let at): return "Up to date at \(at.formatted(date: .omitted, time: .shortened))"
         case .unavailable: return "iCloud isn't available"
         case .failed: return "Something went wrong. Tap to try again"
+        }
+    }
+
+    /// The switch for family notifications.
+    private func alertsRow(_ note: String) -> some View {
+        ToggleRow(title: "Family notifications", note: note, isOn: Binding(get: { familyAlerts }, set: setFamilyAlerts))
+    }
+
+    @ViewBuilder
+    private func alertsTrouble() -> some View {
+        if !familyAlertNote.isEmpty { footnote(familyAlertNote) }
+    }
+
+    private func setFamilyAlerts(_ on: Bool) {
+        familyAlertNote = ""
+        guard on else {
+            familyAlerts = false
+            FamilyAlerts.enabled = false
+            return
+        }
+        // The phone asks the player once. If they said no before, only the Settings app can change it.
+        Task { @MainActor in
+            if await Reminders.askPermission() {
+                familyAlerts = true
+                FamilyAlerts.enabled = true
+            } else {
+                familyAlerts = false
+                FamilyAlerts.enabled = false
+                familyAlertNote = "Notifications are switched off for Spade. Allow them in the Settings app, then try again."
+                Feedback.warn()
+            }
         }
     }
 

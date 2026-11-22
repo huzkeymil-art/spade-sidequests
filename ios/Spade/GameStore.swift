@@ -39,6 +39,10 @@ struct Toast: Identifiable, Equatable {
 
 @MainActor
 final class GameStore: ObservableObject {
+    /// The app's store. It is made as soon as Spade launches, also when iOS wakes Spade in
+    /// the background to check for family news, before any screen exists.
+    static let shared: GameStore = DemoMode.makeStore()
+
     @Published private(set) var save: Save
     /// The current time, refreshed regularly so countdowns stay right.
     @Published private(set) var now = Date()
@@ -71,6 +75,7 @@ final class GameStore: ObservableObject {
         // Family invites that were opened, and nudges from iCloud, come in through here.
         CloudDoor.onInvite = { [weak self] invite in self?.inviteArrived(invite) }
         CloudDoor.onNudge = { [weak self] in await self?.syncFamilyAndWait() }
+        CloudDoor.onOpen = { [weak self] tab in self?.requestedTab = tab }
         syncFamily()
     }
 
@@ -101,6 +106,8 @@ final class GameStore: ObservableObject {
         }
         guard next != save else { return }
         let familyChanged = next.household != save.household || next.family != save.family || next.role != save.role
+        // What a sync brought from the other phone: worth a notice, or a notification.
+        if fromCloud && familyChanged && !ephemeral { tell(familyNews(before: save, after: next)) }
         save = next
         guard !ephemeral else { return }
         try? exportSave(next).write(to: Self.fileURL, options: .atomic)
@@ -391,9 +398,13 @@ final class GameStore: ObservableObject {
     @Published private(set) var cloudState: CloudState = .idle
 
     private var cloudKit: CloudFamily?
-    private var syncing = false
     private var syncWanted = false
+    private var running: Task<Void, Never>?
     private var syncTimer: Task<Void, Never>?
+    /// Notifications waiting to be shown at the end of the sync that found them.
+    private var pendingAlerts: [FamilyAlerts.Alert] = []
+    /// A tab to switch to, asked for by a tapped notification.
+    @Published var requestedTab: AppTab?
     /// The version of each page that was read last, so an unchanged page isn't read twice.
     private var pageTags: [String: String] = [:]
 
@@ -423,24 +434,34 @@ final class GameStore: ObservableObject {
         Task { await syncFamilyAndWait() }
     }
 
-    /// The same, for a caller that wants to wait until it has finished.
+    /// The same, for a caller that wants to wait until it has finished. If a sync is already
+    /// running, this waits for it, and for one more after it, so nothing new is missed. (When
+    /// iOS wakes Spade in the background, it may put it back to sleep as soon as this returns.)
     func syncFamilyAndWait() async {
         guard !ephemeral else { return }
-        guard usesCloud, let cloudKit = cloudFamily() else {
-            if cloudState != .idle { cloudState = .idle }
-            return
-        }
-        if syncing {
+        if let running {
             syncWanted = true
+            await running.value
             return
         }
-        syncing = true
-        await runSync(cloudKit)
-        syncing = false
-        if syncWanted {
-            syncWanted = false
-            syncFamily()
+        let work = Task { @MainActor in
+            repeat {
+                syncWanted = false
+                guard usesCloud, let cloudKit = cloudFamily() else {
+                    if cloudState != .idle { cloudState = .idle }
+                    break
+                }
+                await runSync(cloudKit)
+            } while syncWanted
         }
+        running = work
+        await work.value
+        running = nil
+    }
+
+    /// Spade is going off screen: ask iOS to look in on the family now and then.
+    func wentToBackground() {
+        if usesCloud && !ephemeral { FamilyCheck.schedule() }
     }
 
     /// A sync shortly after something changed, so several quick changes go up together.
@@ -476,6 +497,10 @@ final class GameStore: ObservableObject {
         } catch {
             cloudState = .failed(CloudFamily.describe(error))
         }
+        let alerts = pendingAlerts
+        pendingAlerts = []
+        await FamilyAlerts.post(alerts)
+        if usesCloud { FamilyAlerts.askIfCalm() }
     }
 
     /// The parent's phone: store its page for each invited child if iCloud is behind, then read theirs.
@@ -497,7 +522,6 @@ final class GameStore: ObservableObject {
                 if let tag = page.tag, pageTags[kidId] == tag { continue }
                 if let out = readKidPage(save, kidId: kidId, page.body) {
                     commit(out.save, fromCloud: true)
-                    if case .added(_, let count) = out.result { announceFinished(kidId: kidId, count: count) }
                 }
                 pageTags[kidId] = page.tag
             } catch CloudProblem.notShared {
@@ -541,20 +565,80 @@ final class GameStore: ObservableObject {
         toasts.append(Toast(id: serial, kind: .family(title: title, note: note)))
     }
 
-    /// Tells the parent a child finished something.
-    private func announceFinished(kidId: String, count: Int) {
-        guard let kid = save.household?.children.first(where: { $0.id == kidId }) else { return }
-        let waiting = kid.claims.filter { $0.status == .waiting }.count
-        toast(
-            "\(kid.name) finished \(count == 1 ? "a quest" : "\(count) quests")",
-            waiting > 0 ? "\(waiting) to check in Family" : "See when in Family"
-        )
+    /// News from the other phone. On screen it is a notice at the top; with Spade off screen
+    /// it becomes a notification, shown once the sync that found it is over.
+    private func tell(_ news: FamilyNews) {
+        guard !news.isEmpty else { return }
+        let alerts = Self.alerts(for: news)
+        if UIApplication.shared.applicationState == .active {
+            for alert in alerts { toast(alert.title, alert.note) }
+        } else {
+            pendingAlerts += alerts
+        }
     }
 
-    /// Tells the child what their parent changed.
+    /// The words for each piece of news.
+    static func alerts(for news: FamilyNews) -> [FamilyAlerts.Alert] {
+        var alerts: [FamilyAlerts.Alert] = []
+        /// "A", "A and B", "A, B and C", "A, B and 2 more".
+        func listed(_ titles: [String]) -> String {
+            switch titles.count {
+            case 0: return ""
+            case 1: return titles[0]
+            case 2, 3: return titles.dropLast().joined(separator: ", ") + " and " + titles[titles.count - 1]
+            default: return titles.prefix(2).joined(separator: ", ") + " and \(titles.count - 2) more"
+            }
+        }
+
+        if !news.newQuests.isEmpty {
+            let quests = news.newQuests
+            let from = news.parentName.isEmpty ? "your parent" : news.parentName
+            var body = listed(quests.map { $0.title })
+            if quests.count == 1, let quest = quests.first {
+                body += " · +\(quest.xp) XP"
+                if quest.allowance > 0 { body += " · \(Money.format(quest.allowance, news.currency))" }
+            }
+            alerts.append(FamilyAlerts.Alert(
+                title: quests.count == 1 ? "New quest from \(from)" : "\(quests.count) new quests from \(from)",
+                body: body,
+                note: quests.count == 1 ? quests[0].title : "From \(from)",
+                thread: "family",
+                tab: .quests
+            ))
+        }
+
+        for kid in news.kids {
+            if kid.joined {
+                alerts.append(FamilyAlerts.Alert(
+                    title: "\(kid.kidName) joined your family",
+                    body: "Their Spade gets your quests now.",
+                    note: "Connected through iCloud",
+                    thread: "kid-\(kid.kidId)",
+                    tab: .family
+                ))
+            }
+            let done = kid.finished
+            guard !done.isEmpty else { continue }
+            let toApprove = done.contains { $0.status == .waiting }
+            let them = done.count == 1 ? "it" : "them"
+            var body = listed(done.map { $0.title })
+            let money = done.reduce(0) { $0 + $1.allowance }
+            if money > 0 { body += " (\(Money.format(money, news.currency)))" }
+            body += toApprove ? ". Open Spade to approve \(them)." : "."
+            alerts.append(FamilyAlerts.Alert(
+                title: done.count == 1 ? "\(kid.kidName) finished a quest" : "\(kid.kidName) finished \(done.count) quests",
+                body: body,
+                note: toApprove ? "Approve in Family" : "See it in Family",
+                thread: "kid-\(kid.kidId)",
+                tab: .family
+            ))
+        }
+        return alerts
+    }
+
+    /// Tells the child what else their parent changed. (New quests are told about in `tell`.)
     private func announce(_ summary: ParentNoteSummary, from parent: String) {
         func count(_ n: Int, _ one: String, _ many: String) -> String { n == 1 ? "1 \(one)" : "\(n) \(many)" }
-        if summary.newQuests > 0 { toast(count(summary.newQuests, "new quest", "new quests"), "From \(parent)") }
         if summary.approved > 0 { toast(count(summary.approved, "quest approved", "quests approved"), "Your approved rewards have been added") }
         if summary.paid > 0 { toast(count(summary.paid, "quest paid", "quests paid"), "From \(parent)") }
         if summary.declined > 0 { toast(count(summary.declined, "quest not approved", "quests not approved"), "Ask \(parent) why") }
