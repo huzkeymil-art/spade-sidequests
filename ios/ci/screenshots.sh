@@ -26,26 +26,34 @@ mkdir -p shots
 
 # Prints the id of a simulator: "big" picks the newest full-size iPhone,
 # "small" picks an iPhone SE or mini if one is installed.
+# A plain numbered model ("iPhone 18", then "iPhone 18 Pro") is preferred over special
+# shapes such as Air, e or folding models, on the newest regular iOS version.
 pick_device() {
   xcrun simctl list devices available -j | python3 -c '
-import json, sys
+import json, re, sys
 want = sys.argv[1]
 runtimes = json.load(sys.stdin)["devices"]
 phones = []
-for runtime in runtimes:
-    if "iOS" not in runtime:
+for runtime, devices in runtimes.items():
+    m = re.search(r"iOS-(\d+)-(\d+)(-.*)?$", runtime)
+    if not m:
         continue
-    for device in runtimes[runtime]:
+    # Runtimes with a suffix are made for one particular model; regular ones come first.
+    version = (m.group(3) is None, int(m.group(1)), int(m.group(2)))
+    for device in devices:
         name = device["name"]
         if not name.startswith("iPhone"):
             continue
         small = "SE" in name or "mini" in name
-        if small == (want == "small"):
-            phones.append((runtime, "Pro" not in name, name, device["udid"]))
+        if small != (want == "small"):
+            continue
+        plain = re.fullmatch(r"iPhone (\d+)( Pro)?", name)
+        rank = (1, int(plain.group(1)), plain.group(2) is None) if plain else (0, 0, False)
+        phones.append(((rank[0],) + version + rank[1:], name, runtime, device["udid"]))
 if not phones:
     sys.exit(0)
 phones.sort(reverse=True)
-runtime, _, name, udid = phones[0]
+_, name, runtime, udid = phones[0]
 sys.stderr.write("simulator: %s on %s\n" % (name, runtime.split(".")[-1]))
 print(udid)
 ' "$1"

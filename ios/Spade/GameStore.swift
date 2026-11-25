@@ -655,6 +655,9 @@ final class GameStore: ObservableObject {
         guard save.guardianHub?.cloud == nil else { cloudNotice = "The family owner sends child invites. Ask them to open Spade."; return }
         guard preparingInvite == nil, let note = noteFor(save, kidId: kidId), let cloudKit = cloudFamily() else { return }
         preparingInvite = kidId
+        // Made out here, so they hold the store weakly instead of through the task below.
+        let stopped: @MainActor () -> Void = { [weak self] in self?.sharingStopped(kidId) }
+        let failed: @MainActor (Error) -> Void = { [weak self] error in self?.cloudNotice = CloudFamily.describe(error) }
         Task {
             defer { preparingInvite = nil }
             if let reason = await cloudKit.unavailableReason() {
@@ -669,8 +672,8 @@ final class GameStore: ObservableObject {
                     share: share,
                     container: cloudKit.container,
                     title: title,
-                    stopped: { [weak self] in self?.sharingStopped(kidId) },
-                    failed: { [weak self] error in self?.cloudNotice = CloudFamily.describe(error) }
+                    stopped: stopped,
+                    failed: failed
                 )
             } catch {
                 cloudNotice = CloudFamily.describe(error)
@@ -738,6 +741,13 @@ final class GameStore: ObservableObject {
     func inviteGuardian() {
         guard preparingInvite == nil, save.guardianHub?.cloud == nil, let house = save.household, let cloud = cloudFamily() else { return }
         preparingInvite = "guardians"
+        // Made out here, so they hold the store weakly instead of through the task below.
+        let stopped: @MainActor () -> Void = { [weak self] in
+            guard let self else { return }
+            var next = self.save; next.guardianHub = nil; next.guardianPending = nil; self.commit(next, fromGuardianHub: true)
+            Task { try? await cloud.leaveGuardians(GuardianHub(record: "g-" + house.familyId)) }
+        }
+        let failed: @MainActor (Error) -> Void = { [weak self] in self?.cloudNotice = CloudFamily.describe($0) }
         Task {
             defer { preparingInvite = nil }
             do {
@@ -746,10 +756,7 @@ final class GameStore: ObservableObject {
                 guard save.role == .parent, save.household?.familyId == house.familyId else { return }
                 var next = save; next.guardianHub = GuardianHub(record: "g-" + house.familyId)
                 commit(next)
-                InviteSheet.present(share: share, container: cloud.container, title: "Spade guardians", stopped: { [weak self] in
-                    guard let self else { return }; var next = self.save; next.guardianHub = nil; next.guardianPending = nil; self.commit(next, fromGuardianHub: true)
-                    Task { try? await cloud.leaveGuardians(GuardianHub(record: "g-" + house.familyId)) }
-                }, failed: { [weak self] in self?.cloudNotice = CloudFamily.describe($0) })
+                InviteSheet.present(share: share, container: cloud.container, title: "Spade guardians", stopped: stopped, failed: failed)
             } catch { cloudNotice = CloudFamily.describe(error) }
         }
     }
