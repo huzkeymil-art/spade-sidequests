@@ -40,7 +40,7 @@ export function newSave(seed: number, now: Date): Save {
     seed,
     createdAt: now.getTime(),
     onboarded: false,
-    hero: { name: '', skin: 1, hair: 1, hairStyle: 1, scarf: 0 },
+    hero: { name: '', skin: 1, hair: 1, hairStyle: 1, scarf: 0, hoodDown: false },
     xp: 0,
     inventory: [],
     equipped: {},
@@ -56,6 +56,8 @@ export function newSave(seed: number, now: Date): Save {
       sound: true,
       haptics: true,
       guideSeen: false,
+      newHero: true,
+      celShading: true,
       categories: { body: true, mind: true, craft: true, heart: true, home: true },
     },
   };
@@ -335,6 +337,7 @@ export function repairSave(raw: unknown, now: Date): Save | null {
       hair: clampIndex(hero.hair, LOOKS.hair.length, base.hero.hair),
       hairStyle: clampIndex(hero.hairStyle, LOOKS.hairStyles.length, base.hero.hairStyle),
       scarf: clampIndex(hero.scarf, LOOKS.scarf.length, base.hero.scarf),
+      hoodDown: hero.hoodDown === true,
     },
     xp: Math.max(0, Math.floor(input.xp)),
     inventory,
@@ -356,6 +359,8 @@ export function repairSave(raw: unknown, now: Date): Save | null {
       haptics: input.settings?.haptics ?? true,
       // A save from before the guide existed belongs to someone who already knows the game.
       guideSeen: input.settings?.guideSeen ?? !!input.onboarded,
+      newHero: input.settings?.newHero ?? true,
+      celShading: input.settings?.celShading ?? true,
       categories,
     },
   };

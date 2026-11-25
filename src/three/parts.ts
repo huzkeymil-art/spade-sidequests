@@ -27,6 +27,8 @@ interface PartBase {
   tile?: TileName;
   /** 0 = lit by the scene, 1 = glows with its own colour. */
   emit?: number;
+  /** Stretches the shape before it is turned and moved, for example to flatten a round torso front to back. */
+  scale?: Vec3;
 }
 
 export interface BoxPart extends PartBase {
@@ -52,9 +54,41 @@ export interface BallPart extends PartBase {
   /** Radius, or separate radii for X, Y, Z to make an egg or a pebble. */
   r: number | Vec3;
   seg?: [number, number];
+  /** Only the top half, like a dome or the crown of a cap. */
+  top?: boolean;
 }
 
-export type Part = BoxPart | CylPart | BallPart;
+/** A shape turned on a lathe: a profile of [radius, height] points spun around the up axis. */
+export interface LathePart extends PartBase {
+  s: 'lathe';
+  /** From the bottom up. A radius of 0 closes the shape there. */
+  pts: [number, number][];
+  sides?: number;
+  /** Leaves a gap this many degrees wide at the front (+Z), like the opening of a cloak. */
+  open?: number;
+}
+
+/** A rod with rounded ends: arms, fingers, straps. `h` is the length of the straight middle. */
+export interface CapsulePart extends PartBase {
+  s: 'capsule';
+  r: number;
+  h: number;
+  sides?: number;
+}
+
+/** A ring lying flat: belts, cuffs, collars. */
+export interface RingPart extends PartBase {
+  s: 'ring';
+  /** Distance from the middle of the ring to the middle of the tube. */
+  r: number;
+  /** Thickness of the tube. */
+  tube: number;
+  sides?: number;
+  /** How much of the ring to draw, in degrees (a C shape for less than 360). */
+  arc?: number;
+}
+
+export type Part = BoxPart | CylPart | BallPart | LathePart | CapsulePart | RingPart;
 
 const DEG = Math.PI / 180;
 const colorA = new THREE.Color();
@@ -68,7 +102,29 @@ function shadeOf(hex: string): THREE.Color {
 }
 
 function shapeGeometry(part: Part): THREE.BufferGeometry {
+  const geo = baseGeometry(part);
+  if (part.scale) {
+    geo.scale(part.scale[0], part.scale[1], part.scale[2]);
+    geo.computeVertexNormals();
+  }
+  return geo;
+}
+
+function baseGeometry(part: Part): THREE.BufferGeometry {
   switch (part.s) {
+    case 'lathe': {
+      const gap = (part.open ?? 0) * DEG;
+      const geo = new THREE.LatheGeometry(part.pts.map(([r, y]) => new THREE.Vector2(r, y)), part.sides ?? 12, gap / 2, Math.PI * 2 - gap);
+      geo.computeVertexNormals();
+      return geo;
+    }
+    case 'capsule':
+      return new THREE.CapsuleGeometry(part.r, part.h, 3, part.sides ?? 8);
+    case 'ring': {
+      const geo = new THREE.TorusGeometry(part.r, part.tube, 5, part.sides ?? 14, ((part.arc ?? 360) * Math.PI) / 180);
+      geo.rotateX(Math.PI / 2);
+      return geo;
+    }
     case 'box': {
       const geo = new THREE.BoxGeometry(part.size[0], part.size[1], part.size[2]);
       if (part.taper !== undefined) {
@@ -101,7 +157,7 @@ function shapeGeometry(part: Part): THREE.BufferGeometry {
     case 'ball': {
       const [rx, ry, rz] = Array.isArray(part.r) ? part.r : [part.r, part.r, part.r];
       const [w, h] = part.seg ?? [8, 6];
-      const geo = new THREE.SphereGeometry(1, w, h);
+      const geo = part.top ? new THREE.SphereGeometry(1, w, h, 0, Math.PI * 2, 0, Math.PI / 2) : new THREE.SphereGeometry(1, w, h);
       geo.scale(rx, ry, rz);
       return geo;
     }

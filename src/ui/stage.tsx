@@ -22,6 +22,7 @@ export function lookOf(hero: HeroSave): HeroLook {
     hair: LOOKS.hair[hero.hair] ?? LOOKS.hair[0],
     hairStyle: (LOOKS.hairStyles[hero.hairStyle] ?? 'crop') as HairStyle,
     scarf: LOOKS.scarf[hero.scarf] ?? LOOKS.scarf[0],
+    hoodDown: !!hero.hoodDown,
   };
 }
 

@@ -100,6 +100,8 @@ export interface HeroSave {
   hair: number;
   hairStyle: number;
   scarf: number;
+  /** The new hero's hood: lowered onto the shoulders instead of up. Tapping the hero flips it. */
+  hoodDown?: boolean;
 }
 
 export interface Settings {
@@ -109,6 +111,10 @@ export interface Settings {
   haptics: boolean;
   /** Whether the "How Spade works" sheet has been shown. */
   guideSeen: boolean;
+  /** The detailed hero in the hooded cloak; off shows the original, blockier one. */
+  newHero: boolean;
+  /** For the new hero: flat bands of light and an ink outline instead of soft shading. */
+  celShading: boolean;
   categories: Record<Category, boolean>;
 }
 

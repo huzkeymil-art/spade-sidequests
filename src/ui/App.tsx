@@ -39,6 +39,7 @@ export function App() {
   const moment = useStore((s) => s.moments[0]);
   const sync = useStore((s) => s.sync);
   const setSettings = useStore((s) => s.setSettings);
+  const setHero = useStore((s) => s.setHero);
 
   // Which camera shot the 3D stage should be on.
   const view: View = !save.onboarded ? 'title' : moment?.type === 'item' ? 'dig' : tab;
@@ -98,6 +99,23 @@ export function App() {
   useEffect(() => {
     stage?.setHero(lookOf(save.hero), gearOf(save));
   }, [stage, save.hero, save.equipped]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    stage?.setHeroDesign(save.settings.newHero, save.settings.celShading ? 'cel' : 'soft');
+  }, [stage, save.settings.newHero, save.settings.celShading]);
+
+  // Tapping the new hero puts the cloak's hood up or down (a hat keeps it down, so then it does nothing).
+  const canFlipHood = playing && save.settings.newHero && !save.equipped.head;
+  const hoodDown = !!save.hero.hoodDown;
+  useEffect(() => {
+    if (!stage) return;
+    stage.onHeroTap = canFlipHood
+      ? () => {
+          feedback.tap();
+          setHero({ hoodDown: !hoodDown });
+        }
+      : null;
+  }, [stage, canFlipHood, hoodDown, setHero]);
 
   useEffect(() => {
     stage?.setRetro(save.settings.retro);

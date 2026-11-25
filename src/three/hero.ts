@@ -23,6 +23,8 @@ export interface HeroLook {
   hair: string;
   hairStyle: HairStyle;
   scarf: string;
+  /** Only the new hero has a hood. */
+  hoodDown?: boolean;
 }
 
 export type Gear = Partial<Record<'head' | 'body' | 'hand' | 'shield' | 'charm', string>>;
