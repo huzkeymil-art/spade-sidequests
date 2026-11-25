@@ -99,6 +99,13 @@ struct RootView: View {
     // MARK: - Body
 
     var body: some View {
+        // In steps, so the compiler checks a few modifiers at a time. As one long chain it
+        // was too much for the Swift compiler in Xcode 27 ("unable to type-check this
+        // expression in reasonable time").
+        listening(to: following(presenting(screen)))
+    }
+
+    private var screen: some View {
         GeometryReader { proxy in
             let insets = proxy.safeAreaInsets
             let full = CGSize(
@@ -114,66 +121,82 @@ struct RootView: View {
         .ignoresSafeArea(.keyboard)
         .background(Ink.ink.ignoresSafeArea())
         .dynamicTypeSize(.xSmall ... .xxxLarge)
-        .sheet(isPresented: $settingsOpen) { SettingsSheet() }
-        .sheet(isPresented: $guideOpen, onDismiss: markGuideSeen) { GuideSheet() }
-        // A family invite that was opened. It waits until the player has started.
-        .sheet(item: Binding(
-            get: { store.save.onboarded ? store.incoming : nil },
-            set: { if $0 == nil { store.closeIncoming() } }
-        )) { arrival in
-            IncomingSheet(arrival: arrival)
-        }
-        .alert("Join as a guardian?", isPresented: $store.guardianInvitation) {
-            Button("Join family") { store.acceptGuardian() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("You will be able to manage the family's quests, approve completions and review its history. The family owner's phone relays updates to children when Spade is open.")
-        }
-        .onChange(of: store.save.role) { _, role in
-            if !AppTab.shown(for: role).contains(tab) { tab = .quests }
-        }
-        .onAppear(perform: start)
-        .onChange(of: shot) { _, next in stage.setShot(next) }
-        .onChange(of: progress) { _, next in stage.setProgress(next) }
-        .onChange(of: store.save.hero) { _, _ in dressHero() }
-        .onChange(of: store.save.equipped) { _, _ in dressHero() }
-        .onChange(of: store.save.settings) { _, _ in applySettings() }
-        .onChange(of: store.save.boards.daily) { _, _ in Reminders.refresh(for: store.save) }
-        .onChange(of: store.moment) { _, next in
-            // The dig stays on screen only while an item is being shown.
-            if case .item = next { return }
-            stage.endUnearth()
-        }
-        .onChange(of: playing) { _, _ in offerGuide() }
-        .onChange(of: scenePhase) { _, phase in
-            stage.setPaused(phase != .active)
-            if phase == .active {
-                store.sync()
+    }
+
+    /// Sheets and alerts.
+    private func presenting(_ content: some View) -> some View {
+        content
+            .sheet(isPresented: $settingsOpen) { SettingsSheet() }
+            .sheet(isPresented: $guideOpen, onDismiss: markGuideSeen) { GuideSheet() }
+            // A family invite that was opened. It waits until the player has started.
+            .sheet(item: Binding(
+                get: { store.save.onboarded ? store.incoming : nil },
+                set: { if $0 == nil { store.closeIncoming() } }
+            )) { arrival in
+                IncomingSheet(arrival: arrival)
+            }
+            .alert("Join as a guardian?", isPresented: $store.guardianInvitation) {
+                Button("Join family") { store.acceptGuardian() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("You will be able to manage the family's quests, approve completions and review its history. The family owner's phone relays updates to children when Spade is open.")
+            }
+    }
+
+    /// Keeps the 3D stage, the tabs and the reminders in step with the save.
+    private func following(_ content: some View) -> some View {
+        content
+            .onChange(of: store.save.role) { _, role in
+                if !AppTab.shown(for: role).contains(tab) { tab = .quests }
+            }
+            .onAppear(perform: start)
+            .onChange(of: shot) { _, next in stage.setShot(next) }
+            .onChange(of: progress) { _, next in stage.setProgress(next) }
+            .onChange(of: store.save.hero) { _, _ in dressHero() }
+            .onChange(of: store.save.equipped) { _, _ in dressHero() }
+            .onChange(of: store.save.settings) { _, _ in applySettings() }
+            .onChange(of: store.save.boards.daily) { _, _ in Reminders.refresh(for: store.save) }
+            .onChange(of: store.moment) { _, next in
+                // The dig stays on screen only while an item is being shown.
+                if case .item = next { return }
+                stage.endUnearth()
+            }
+            .onChange(of: playing) { _, _ in offerGuide() }
+    }
+
+    /// Things from outside the screen: the app coming and going, tapped notifications, timers and the keyboard.
+    private func listening(to content: some View) -> some View {
+        content
+            .onChange(of: scenePhase) { _, phase in
+                stage.setPaused(phase != .active)
+                if phase == .active {
+                    store.sync()
+                    store.syncFamily()
+                }
+                if phase == .background {
+                    Reminders.refresh(for: store.save)
+                    store.wentToBackground()
+                }
+            }
+            // A tapped notification asks for the tab it is about.
+            .onChange(of: store.requestedTab) { _, wanted in
+                guard let wanted else { return }
+                store.requestedTab = nil
+                pick(wanted)
+            }
+            .onReceive(ticker) { _ in store.sync() }
+            .onReceive(cloudTicker) { _ in
+                guard scenePhase == .active else { return }
                 store.syncFamily()
             }
-            if phase == .background {
-                Reminders.refresh(for: store.save)
-                store.wentToBackground()
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
+                guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+                let height = max(0, UIScreen.main.bounds.height - frame.minY)
+                withAnimation(.easeOut(duration: 0.22)) { keyboard = height }
             }
-        }
-        // A tapped notification asks for the tab it is about.
-        .onChange(of: store.requestedTab) { _, wanted in
-            guard let wanted else { return }
-            store.requestedTab = nil
-            pick(wanted)
-        }
-        .onReceive(ticker) { _ in store.sync() }
-        .onReceive(cloudTicker) { _ in
-            if scenePhase == .active { store.syncFamily() }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
-            guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
-            let height = max(0, UIScreen.main.bounds.height - frame.minY)
-            withAnimation(.easeOut(duration: 0.22)) { keyboard = height }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            withAnimation(.easeOut(duration: 0.22)) { keyboard = 0 }
-        }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                withAnimation(.easeOut(duration: 0.22)) { keyboard = 0 }
+            }
     }
 
     @ViewBuilder
