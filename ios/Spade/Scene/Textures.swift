@@ -14,6 +14,10 @@ enum Textures {
     static let faceOpen = crop(faceSheet, x: 0, y: 0, width: 24, height: 12)
     static let faceClosed = crop(faceSheet, x: 0, y: 12, width: 24, height: 12)
 
+    /// The new hero's painted face: four pictures stacked top to bottom
+    /// (eyes open, glancing right, glancing left, closed).
+    static let face2 = bundleImage("face2")
+
     private static let runeSheet = bundleImage("runes")
     /// The seven weekday runes, Monday first.
     static let runes: [UIImage] = (0..<7).map { crop(runeSheet, x: $0 * 8, y: 0, width: 8, height: 8) }

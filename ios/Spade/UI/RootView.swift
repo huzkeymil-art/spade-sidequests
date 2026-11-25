@@ -65,7 +65,7 @@ struct RootView: View {
         let demo = DemoMode.requested ?? ""
         let start = AppTab(rawValue: demo) ?? (
             demo == "item" ? .satchel
-                : demo == "picker" || demo == "chamberhero" ? .hero
+                : ["picker", "chamberhero", "hoodup", "hooddown", "softhero", "legacyhero"].contains(demo) ? .hero
                 : demo == "familyquest" || demo == "invite" ? .family
                 : .quests
         )
@@ -410,10 +410,13 @@ struct RootView: View {
     // MARK: - Actions
 
     private func start() {
-        stage.setShot(shot, animated: false)
         stage.setProgress(progress)
         dressHero()
         applySettings()
+        // After the hero is chosen, since the new one frames some shots a little closer.
+        stage.setShot(shot, animated: false)
+        let store = store
+        stage.onHeroTap = { store.flipHood() }
         offerGuide()
         Task { @MainActor in
             // A moment after launch, once the first screen is up.
@@ -434,6 +437,7 @@ struct RootView: View {
     private func applySettings() {
         let settings = store.save.settings
         stage.setRetro(settings.retro)
+        stage.setHeroDesign(newHero: settings.newHero, cel: settings.celShading)
         Feedback.soundOn = settings.sound
         Feedback.hapticsOn = settings.haptics
         Reminders.refresh(for: store.save)

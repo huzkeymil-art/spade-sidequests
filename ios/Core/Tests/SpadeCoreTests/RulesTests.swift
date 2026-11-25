@@ -132,6 +132,27 @@ final class RulesTests: XCTestCase {
         }
     }
 
+    /// The new hero's switches and hood are on (hood up) for saves made before they existed,
+    /// and survive a round trip once changed.
+    func testHeroDesignSettingsReadLeniently() throws {
+        let oldHero = try JSONDecoder().decode(HeroSave.self, from: Data(#"{"name":"Tess","skin":2,"hair":0,"hairStyle":3,"scarf":1}"#.utf8))
+        XCTAssertEqual(oldHero.name, "Tess")
+        XCTAssertEqual(oldHero.hairStyle, 3)
+        XCTAssertFalse(oldHero.hoodDown)
+        let oldSettings = try JSONDecoder().decode(GameSettings.self, from: Data(#"{"retro":false,"sound":true}"#.utf8))
+        XCTAssertTrue(oldSettings.newHero)
+        XCTAssertTrue(oldSettings.celShading)
+        XCTAssertFalse(oldSettings.retro)
+
+        var hero = oldHero
+        hero.hoodDown = true
+        var settings = oldSettings
+        settings.newHero = false
+        settings.celShading = false
+        XCTAssertEqual(try JSONDecoder().decode(HeroSave.self, from: JSONEncoder().encode(hero)), hero)
+        XCTAssertEqual(try JSONDecoder().decode(GameSettings.self, from: JSONEncoder().encode(settings)), settings)
+    }
+
     /// With Spade's own quests switched off, the boards hold only the player's quests: straight
     /// away, at every later deal, and without any swaps. Switching back brings Spade's quests back.
     func testSpadeQuestsCanBeTurnedOff() throws {

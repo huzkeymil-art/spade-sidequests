@@ -51,6 +51,23 @@ struct SettingsSheet: View {
                         ToggleRow(title: "Haptics", note: "Small taps you can feel", isOn: setting(\.haptics))
                     }
 
+                    SectionLabel("Hero")
+                    RowGroup {
+                        ToggleRow(
+                            title: "New hero",
+                            note: save.settings.newHero ? "Detailed, in a hooded cloak" : "Off: the original digger",
+                            isOn: setting(\.newHero)
+                        )
+                        if save.settings.newHero {
+                            Hairline()
+                            ToggleRow(
+                                title: "Cel shading",
+                                note: save.settings.celShading ? "Flat bands of light, inked edges" : "Off: soft, smooth light",
+                                isOn: setting(\.celShading)
+                            )
+                        }
+                    }
+
                     SectionLabel("Reminders")
                     RowGroup {
                         ToggleRow(

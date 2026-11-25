@@ -36,7 +36,8 @@ jobs:
       SCREENS: >-
         launch quests hero satchel feats settings guide form dig level item picker smooth
         roles family familyquest invite childboard allowance photoproof join joined sync ownonly chamber chamberhero
-      SMALL_SCREENS: launch roles quests hero dig family childboard
+        hoodup hooddown softhero legacyhero
+      SMALL_SCREENS: launch roles quests hero hoodup dig family childboard
     steps:
       - uses: actions/checkout@v4
       - name: Show tools

@@ -17,7 +17,7 @@ SMALL_SCREENS=${SMALL_SCREENS:-}
 WAIT=${WAIT:-7}
 HERE=$(cd "$(dirname "$0")" && pwd)
 # The screens where the scene is in full view (the others have a sheet over it).
-SCENE_SCREENS=" launch roles quests hero satchel feats dig level smooth family childboard "
+SCENE_SCREENS=" launch roles quests hero satchel feats dig level smooth family childboard hoodup hooddown softhero legacyhero "
 FAILED=0
 
 APP=$(find build/Build/Products -maxdepth 2 -name "Spade.app" | head -1)

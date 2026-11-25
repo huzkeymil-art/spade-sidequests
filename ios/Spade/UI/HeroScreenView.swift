@@ -70,6 +70,21 @@ struct HeroScreenView: View {
                         }
                     }
 
+                    if save.settings.newHero {
+                        let hatOn = save.equipped["head"] != nil
+                        SectionLabel(hatOn ? "Hood · a hat keeps it down" : "Hood · or tap your hero")
+                        FlowLayout {
+                            ForEach([false, true], id: \.self) { down in
+                                Chip(title: down ? "Down" : "Up", selected: !hatOn && save.hero.hoodDown == down) {
+                                    Feedback.select()
+                                    store.setHood(down: down)
+                                }
+                                .disabled(hatOn)
+                                .opacity(hatOn ? 0.5 : 1)
+                            }
+                        }
+                    }
+
                     SectionLabel("Skin")
                     FlowLayout {
                         ForEach(looks.skin.indices.filter { looks.skin[$0] != "#39ff14" || (save.chamber ?? []).contains("spade_green") }, id: \.self) { i in

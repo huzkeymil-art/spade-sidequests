@@ -179,6 +179,19 @@ final class GameStore: ObservableObject {
         commit(next)
     }
 
+    /// Puts the new hero's hood up or down. A hat keeps it down, so then nothing changes.
+    func setHood(down: Bool) {
+        guard save.equipped["head"] == nil, save.hero.hoodDown != down else { return }
+        setHero { $0.hoodDown = down }
+    }
+
+    /// Tapping the new hero flips its hood, while nothing else is on screen.
+    func flipHood() {
+        guard save.onboarded, moment == nil, save.settings.newHero, save.equipped["head"] == nil else { return }
+        Feedback.tap()
+        setHood(down: !save.hero.hoodDown)
+    }
+
     func setSettings(_ change: (inout GameSettings) -> Void) {
         var next = save
         change(&next.settings)
@@ -905,6 +918,11 @@ enum DemoMode {
         default:
             var save = midGame()
             if name == "smooth" { save.settings.retro = false }
+            // The hero screens: the new hero with the hood up (no hat) or down, soft-shaded, and the original.
+            if name == "hoodup" || name == "hooddown" || name == "softhero" { save.equipped["head"] = nil }
+            if name == "hooddown" { save.hero.hoodDown = true }
+            if name == "softhero" { save.settings.celShading = false }
+            if name == "legacyhero" { save.settings.newHero = false }
             let store = GameStore(preview: save)
             if name == "dig" { store.show(.item(serial: -1, itemId: "moonsteel_cap", fresh: true, echoXp: 0)) }
             if name == "level" { store.show(.level(serial: -2, level: 8, rank: nil)) }

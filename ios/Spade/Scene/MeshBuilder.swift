@@ -68,6 +68,24 @@ struct MeshBuffer {
         add(chunk.mesh, forceGlow: glowing) { i in bottom + (top - bottom) * t[i] }
     }
 
+    /// Adds a piece of the new hero. `cel` paints each shape in one flat colour instead of
+    /// shading it darker toward its foot.
+    mutating func add(_ piece: Piece, palette: [String: RGB], cel: Bool) {
+        let top: RGB
+        if let role = piece.role {
+            guard let chosen = palette[role] else { return }
+            top = chosen
+        } else if let fixed = piece.top {
+            top = rgb(fixed)
+        } else {
+            return
+        }
+        guard let t = piece.mesh.t else { return add(piece.mesh) }
+        let bottom = piece.bottom.map { rgb($0) } ?? (cel || piece.flat ? top : shade(top))
+        let glowing = simd_distance(top, rgb("#39ff14")) < 0.001
+        add(piece.mesh, forceGlow: glowing) { i in bottom + (top - bottom) * t[i] }
+    }
+
     private mutating func add(_ mesh: MeshData, forceGlow: Bool = false, color: (Int) -> RGB) {
         let base = UInt32(positions.count)
         let count = mesh.p.count / 3
@@ -92,7 +110,7 @@ struct MeshBuffer {
         }
     }
 
-    func geometry() -> SCNGeometry {
+    func geometry(lit: SCNMaterial = Materials.lit, glowing: SCNMaterial = Materials.glowing) -> SCNGeometry {
         let colorData = colors.withUnsafeBufferPointer { Data(buffer: $0) }
         let colorSource = SCNGeometrySource(
             data: colorData,
@@ -108,11 +126,11 @@ struct MeshBuffer {
         var materials: [SCNMaterial] = []
         if !litIndices.isEmpty {
             elements.append(SCNGeometryElement(indices: litIndices, primitiveType: .triangles))
-            materials.append(Materials.lit)
+            materials.append(lit)
         }
         if !glowIndices.isEmpty {
             elements.append(SCNGeometryElement(indices: glowIndices, primitiveType: .triangles))
-            materials.append(Materials.glowing)
+            materials.append(glowing)
         }
         let geometry = SCNGeometry(
             sources: [
@@ -127,8 +145,8 @@ struct MeshBuffer {
         return geometry
     }
 
-    func node() -> SCNNode {
-        SCNNode(geometry: geometry())
+    func node(lit: SCNMaterial = Materials.lit) -> SCNNode {
+        SCNNode(geometry: geometry(lit: lit))
     }
 }
 
@@ -168,10 +186,12 @@ enum Materials {
      repeating 4 x 4 pattern of dots (a "Bayer" pattern). A newspaper photo
      does the same trick with black ink.
     */
-    private static let dither = """
+    private static let ditherArguments = """
     #pragma arguments
     float ditherLevels;
-    #pragma body
+
+    """
+    private static let ditherBody = """
     float2 dp = floor(in.fragmentPosition.xy);
     float2 dh = floor(dp * 0.5);
     float ditherCoarse = fract(dh.x * 0.5 + dh.y * dh.y * 0.75);
@@ -181,9 +201,16 @@ enum Materials {
     """
 
     /// Registers a material so it gets the dot-pattern finish and follows the retro setting.
+    /// `fragmentStart` runs just before the dither, and `extra` adds other shader steps.
     @discardableResult
-    static func finish(_ material: SCNMaterial) -> SCNMaterial {
-        material.shaderModifiers = [.fragment: dither]
+    static func finish(
+        _ material: SCNMaterial,
+        fragmentStart: String = "",
+        extra: [SCNShaderModifierEntryPoint: String] = [:]
+    ) -> SCNMaterial {
+        var modifiers = extra
+        modifiers[.fragment] = ditherArguments + "#pragma body\n" + fragmentStart + "\n" + ditherBody
+        material.shaderModifiers = modifiers
         material.setValue(NSNumber(value: ditherLevels), forKey: "ditherLevels")
         all.append(material)
         return material
