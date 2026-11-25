@@ -145,7 +145,7 @@ iCloud itself can't be checked there: the test Macs have no Apple ID. The family
 rules are tested against a pretend iCloud; the real thing has to be tried on
 two iPhones (see "Trying families on two iPhones" below).
 
-With a Mac: open `ios/Spade.xcodeproj` in Xcode 16 or newer and press Run.
+With a Mac: open `ios/Spade.xcodeproj` in Xcode 27 or newer and press Run. (Older Xcode versions still build it, but App Store uploads need Xcode 27 from April 2027.)
 The rule tests run anywhere Swift is installed: `swift test --package-path ios/Core`.
 
 ## Getting it onto TestFlight with Codemagic

@@ -27,9 +27,12 @@ jobs:
         run: swift test --package-path ios/Core
 
   app:
-    runs-on: macos-latest
+    # GitHub's Mac with Xcode 27, the same Xcode Codemagic uses for App Store builds
+    # (see codemagic.yaml), so this checks the app against the iOS 27 SDK.
+    runs-on: xcode-27
     timeout-minutes: 50
     env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
       SCREENS: >-
         launch quests hero satchel feats settings guide form dig level item picker smooth
         roles family familyquest invite childboard allowance photoproof join joined sync ownonly chamber chamberhero
