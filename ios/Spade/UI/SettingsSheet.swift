@@ -63,16 +63,28 @@ struct SettingsSheet: View {
                         footnote(reminderNote)
                     }
 
-                    SectionLabel("Kinds of quest to deal")
-                    FlowLayout {
-                        ForEach(QuestKind.allCases, id: \.self) { kind in
-                            Chip(title: kind.rawValue, icon: kind.rawValue, selected: save.settings.allows(kind)) {
-                                Feedback.select()
-                                store.toggleKind(kind)
+                    SectionLabel("Quests from Spade")
+                    RowGroup {
+                        ToggleRow(
+                            title: "Spade's quests",
+                            note: save.settings.spadeQuests ? "Dealt every day, week and month" : "Off: only quests you write",
+                            isOn: Binding(get: { save.settings.spadeQuests }, set: { store.setSpadeQuestsOn($0) })
+                        )
+                    }
+                    if save.settings.spadeQuests {
+                        Text("Kinds to deal").caps(Ink.faint).padding(.top, 14).padding(.bottom, 9)
+                        FlowLayout {
+                            ForEach(QuestKind.allCases, id: \.self) { kind in
+                                Chip(title: kind.rawValue, icon: kind.rawValue, selected: save.settings.allows(kind)) {
+                                    Feedback.select()
+                                    store.toggleKind(kind)
+                                }
                             }
                         }
+                        footnote("Kinds apply from the next deal. At least one kind stays on.")
+                    } else {
+                        footnote("Your boards hold only the quests you write\(save.role == .child ? ", and your family's" : ""). Write one from the bottom of the quest board. Spade's quests come back straight away if you switch them on.")
                     }
-                    footnote("Changes apply from the next deal. At least one kind stays on.")
 
                     SectionLabel("Your own quests")
                     if save.custom.isEmpty {

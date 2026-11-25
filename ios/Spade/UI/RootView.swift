@@ -40,6 +40,7 @@ struct RootView: View {
     @EnvironmentObject private var store: GameStore
     @EnvironmentObject private var stage: StageController
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var tab: AppTab
     /// Screens are built the first time their tab is opened and then kept, so each
@@ -50,6 +51,8 @@ struct RootView: View {
     @State private var settingsOpen = false
     @State private var guideOpen = false
     @State private var keyboard: CGFloat = 0
+    /// The selected tab's highlight slides from tab to tab inside the glass.
+    @Namespace private var dockGlass
 
     private let ticker = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
     /// While Spade is open it also asks iCloud for family changes this often, in case a nudge was missed.
@@ -293,17 +296,24 @@ struct RootView: View {
         .environment(\.dockSpace, dockSpace)
         .frame(width: full.width, height: max(0, full.height - top), alignment: .top)
         .background(Ink.ink)
-        // Where a list slides under the tab bar it dissolves into the background.
+        // A list scrolls on under the glass tab bar, fading softly toward the bottom edge
+        // so the tabs stay easy to read over it.
         .overlay(alignment: .bottom) {
-            VStack(spacing: 0) {
-                DitherFade().frame(height: fade)
-                Ink.ink.frame(height: dockSpace)
-            }
+            LinearGradient(
+                stops: [
+                    .init(color: Ink.ink.opacity(0), location: 0),
+                    .init(color: Ink.ink.opacity(0.55), location: 0.55),
+                    .init(color: Ink.ink.opacity(0.8), location: 1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: dockSpace + 28)
             .allowsHitTesting(false)
         }
         .overlay(alignment: .bottom) {
             dock
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
                 .padding(.bottom, dockBottom)
         }
         // And the scene dissolves into the panel the same way.
@@ -324,14 +334,18 @@ struct RootView: View {
         }
     }
 
+    /// The floating tab bar: a capsule of Liquid Glass (on iOS 26 and newer), with the
+    /// selected tab picked out by a lighter pill that slides across when you switch.
     private var dock: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 0) {
             ForEach(AppTab.shown(for: store.save.role)) { option in
                 let selected = option == tab
                 Button {
-                    pick(option)
+                    withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.78)) {
+                        pick(option)
+                    }
                 } label: {
-                    VStack(spacing: 3) {
+                    VStack(spacing: 2) {
                         Group {
                             if option == .hero {
                                 PortraitIcon(hero: store.save.hero, gear: store.save.equipped, size: 28)
@@ -339,22 +353,33 @@ struct RootView: View {
                                 PropIcon(name: option.icon, size: 28)
                             }
                         }
-                        .saturation(selected ? 1 : 0.3)
-                        .opacity(selected ? 1 : 0.62)
-                        Text(option.title).caps(selected ? Ink.bone : Ink.faint).lineLimit(1).minimumScaleFactor(0.7)
+                        .saturation(selected ? 1 : 0.35)
+                        .opacity(selected ? 1 : 0.7)
+                        .scaleEffect(selected ? 1.06 : 1)
+                        Text(option.title)
+                            .caps(selected ? Ink.lantern : Ink.dim, size: 13)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .plate(fill: selected ? Ink.ink : .clear, edge: selected ? Ink.moss : .clear, notch: 9)
-                    .contentShape(Rectangle())
+                    .background {
+                        if selected {
+                            Capsule()
+                                .fill(Ink.bone.opacity(0.13))
+                                .overlay(Capsule().strokeBorder(Ink.bone.opacity(0.08), lineWidth: 0.5))
+                                .matchedGeometryEffect(id: "selected", in: dockGlass)
+                        }
+                    }
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(option.title)
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
-        .padding(5)
+        .padding(4)
         .frame(height: dockHeight)
-        .plate(fill: Ink.loam2, edge: Ink.moss2, notch: 14)
+        .liquidGlassBar()
         .dynamicTypeSize(.xSmall ... .large)
     }
 
@@ -412,6 +437,20 @@ struct RootView: View {
 }
 
 private extension View {
+    /// Liquid Glass for the tab bar: the system's own material on iOS 26 and newer, which
+    /// bends and lights the content behind it and answers to a touch. Older versions get
+    /// a frosted capsule in the same shape.
+    @ViewBuilder
+    func liquidGlassBar() -> some View {
+        if #available(iOS 26.0, *) {
+            glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.6))
+                .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+        }
+    }
+
     /// The small dark plates that float over the scene at the top of the screen.
     func hudPlate() -> some View {
         padding(.horizontal, 11)

@@ -132,6 +132,67 @@ final class RulesTests: XCTestCase {
         }
     }
 
+    /// With Spade's own quests switched off, the boards hold only the player's quests: straight
+    /// away, at every later deal, and without any swaps. Switching back brings Spade's quests back.
+    func testSpadeQuestsCanBeTurnedOff() throws {
+        let now = at(2026, 11, 14)
+        var save = started(now)
+        save = addCustomQuest(save, CustomQuestInput(title: "Feed the cat", cadence: .daily, category: .home, difficulty: 1, pinned: true), now: now).save
+        save = addCustomQuest(save, CustomQuestInput(title: "Juggle", cadence: .daily, category: .craft, difficulty: 2, pinned: false), now: now).save
+        save = addCustomQuest(save, CustomQuestInput(title: "Stretch", cadence: .daily, category: .body, difficulty: 1, pinned: false), now: now).save
+        save = addCustomQuest(save, CustomQuestInput(title: "Bake bread", cadence: .weekly, category: .craft, difficulty: 2, pinned: false), now: now).save
+        // Finish one of Spade's quests first: it stays on the board, as a record.
+        let spadeQuest = try XCTUnwrap(save.boards.daily.quests.first { !$0.custom })
+        for _ in 0..<spadeQuest.target {
+            save = markQuest(save, .daily, key: spadeQuest.key, now: now, clock: clock).save
+        }
+        let xp = save.xp
+
+        let off = setSpadeQuests(save, false)
+        XCTAssertFalse(off.settings.spadeQuests)
+        XCTAssertEqual(off.xp, xp, "nothing earned is taken back")
+        XCTAssertEqual(Set(off.boards.daily.quests.filter { !$0.done }.map { $0.title }), ["Feed the cat", "Juggle", "Stretch"])
+        XCTAssertTrue(off.boards.daily.quests.contains { $0.key == spadeQuest.key && $0.done }, "the finished one stays")
+        XCTAssertEqual(off.boards.weekly.quests.map { $0.title }, ["Bake bread"])
+        XCTAssertTrue(off.boards.monthly.quests.isEmpty, "no quests of the player's own for this month")
+        XCTAssertEqual(setSpadeQuests(off, false), off, "switching it off twice changes nothing")
+
+        // Later deals: only the player's quests, all of them, every day.
+        var later = off
+        for day in 15...20 {
+            later = syncPeriods(later, now: at(2026, 11, day), clock: clock)
+            XCTAssertEqual(Set(later.boards.daily.quests.map { $0.title }), ["Feed the cat", "Juggle", "Stretch"], "day \(day)")
+            XCTAssertTrue(later.boards.daily.quests.allSatisfy { $0.custom })
+        }
+        later = syncPeriods(later, now: at(2026, 12, 2), clock: clock)
+        XCTAssertTrue(later.boards.monthly.quests.isEmpty)
+        XCTAssertEqual(later.boards.weekly.quests.map { $0.title }, ["Bake bread"])
+
+        // There is nothing to swap in.
+        let juggle = try XCTUnwrap(later.boards.daily.quests.first { $0.title == "Juggle" })
+        XCTAssertEqual(rerollDaily(later, key: juggle.key), later)
+
+        // A quest written now still goes straight on the board.
+        let written = addCustomQuest(later, CustomQuestInput(title: "Water plants", cadence: .monthly, category: .home, difficulty: 1, pinned: false), now: at(2026, 12, 2)).save
+        XCTAssertEqual(written.boards.monthly.quests.map { $0.title }, ["Water plants"])
+
+        // Switched back on: Spade's quests return for this day, week and month.
+        let on = setSpadeQuests(written, true)
+        XCTAssertTrue(on.settings.spadeQuests)
+        XCTAssertGreaterThan(on.boards.daily.quests.filter { !$0.custom }.count, 0)
+        XCTAssertGreaterThan(on.boards.monthly.quests.filter { !$0.custom }.count, 0)
+        XCTAssertTrue(on.boards.daily.quests.contains { $0.title == "Feed the cat" }, "the player's quests stay")
+        XCTAssertEqual(Set(on.boards.daily.quests.map { $0.key }).count, on.boards.daily.quests.count, "nothing twice")
+        // And the next deal is the usual mix.
+        let next = syncPeriods(on, now: at(2026, 12, 3), clock: clock)
+        XCTAssertEqual(next.boards.daily.quests.count, 3)
+        XCTAssertTrue(next.boards.daily.quests.contains { !$0.custom })
+
+        // The switch survives saving and loading, and saves without it read as "on".
+        XCTAssertEqual(repairSave(exportSave(off), now: now)?.settings.spadeQuests, false)
+        XCTAssertEqual(repairSave(Data(#"{"seed": 5, "xp": 0}"#.utf8), now: now)?.settings.spadeQuests, true)
+    }
+
     func testRepairTidiesNonsense() throws {
         let now = at(2026, 11, 14)
         let junk = #"{"seed": 5, "xp": -20, "inventory": ["rusty_spade", "not_real", "rusty_spade"], "equipped": {"head": "rusty_spade"}, "hero": {"name": "A", "skin": 99, "hair": 1, "hairStyle": 1, "scarf": 0}}"#

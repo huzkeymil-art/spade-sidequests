@@ -185,6 +185,11 @@ final class GameStore: ObservableObject {
         commit(next)
     }
 
+    /// Turns Spade's own quests on or off. The boards change straight away.
+    func setSpadeQuestsOn(_ on: Bool) {
+        commit(setSpadeQuests(save, on))
+    }
+
     func toggleKind(_ kind: QuestKind) {
         var next = save
         next.settings.categories[kind.rawValue] = !next.settings.allows(kind)
@@ -846,6 +851,15 @@ enum DemoMode {
             for quest in chamberQuests { save = claimChamber(save, id: quest.id).save }
             save.equipped["charm"] = "dogger"; save.equipped["hand"] = "icon_spade"
             save.hero.scarf = Catalog.looks.scarf.count - 1
+            return GameStore(preview: save)
+        case "ownonly":
+            // Spade's quests switched off: only the player's own are on the board.
+            var save = midGame()
+            let now = Date()
+            for (title, kind, pinned) in [("Practise guitar for 20 minutes", QuestKind.craft, true), ("Walk the dog before school", .body, false), ("Message Grandma", .heart, false)] {
+                save = addCustomQuest(save, CustomQuestInput(title: title, cadence: .daily, category: kind, difficulty: 2, pinned: pinned), now: now).save
+            }
+            save = setSpadeQuests(save, false)
             return GameStore(preview: save)
         case "invite":
             // A parent with one child still to invite, and one who hasn't opened their invite yet.

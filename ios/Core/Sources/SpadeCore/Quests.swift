@@ -16,6 +16,8 @@ struct DealContext {
     var categories: [String: Bool]
     /// Quest ids dealt last period: skipped if there is enough else to choose from.
     var recent: [String]
+    /// False when the player has turned off Spade's own quests: only theirs are dealt.
+    var spade = true
 }
 
 private struct DeckEntry {
@@ -47,7 +49,7 @@ func activateCustom(_ quest: CustomQuest, period: String) -> ActiveQuest {
 /// Every quest that could be dealt for this cadence: built-in ones in enabled kinds, plus unpinned custom ones.
 private func deck(_ cadence: Cadence, _ ctx: DealContext) -> [DeckEntry] {
     let anyEnabled = ctx.categories.values.contains(true)
-    let builtIn = Catalog.quests.filter { quest in
+    let builtIn = !ctx.spade ? [] : Catalog.quests.filter { quest in
         quest.cadence == cadence && (!anyEnabled || ctx.categories[quest.category.rawValue] == true)
     }
     let own = ctx.custom.filter { $0.cadence == cadence && !$0.pinned }
@@ -87,6 +89,14 @@ private func pickOwn(_ cadence: Cadence, period: String, _ ctx: DealContext) -> 
 /// Deals a fresh board for the given day, week or month.
 func dealBoard(_ cadence: Cadence, period: String, _ ctx: DealContext) -> Board {
     let pinned = ctx.custom.filter { $0.cadence == cadence && $0.pinned }
+    if !ctx.spade {
+        // Spade's own quests are switched off: every one of the player's quests goes on the board.
+        var board = Board()
+        board.period = period
+        let shuffledIn = ctx.custom.filter { $0.cadence == cadence && !$0.pinned }
+        board.quests = (pinned + shuffledIn).map { activateCustom($0, period: period) }
+        return board
+    }
     // Pinned quests take up places, but at least one place is always left over.
     let places = max(1, dealCount(cadence) - pinned.count)
     // One of those places always goes to one of the player's own shuffled-in quests,
