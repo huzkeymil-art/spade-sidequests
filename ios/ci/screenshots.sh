@@ -95,10 +95,18 @@ capture() {
   xcrun simctl bootstatus "$device" -b >/dev/null
   xcrun simctl install "$device" "$APP"
   # A new simulator prepares the app's 3D drawing on its first few launches, which can take a
-  # while (on Xcode 27 the first screens came out blank). Open the app once and let it settle
-  # before the pictures start.
+  # while (on Xcode 27 the first screens came out blank). Open the app once and wait until
+  # the scene has been drawn (two minutes at most) before the pictures start.
   xcrun simctl launch "$device" "$BUNDLE_ID" -demo launch >/dev/null
-  sleep 40
+  local tries=0
+  while [ "$tries" -lt 12 ]; do
+    sleep 10
+    xcrun simctl io "$device" screenshot shots/warm-up.png >/dev/null 2>&1 || true
+    if [ "$(scene_drawn shots/warm-up.png)" -ge 50 ]; then break; fi
+    tries=$((tries + 1))
+  done
+  echo "warmed up after $(( (tries + 1) * 10 )) seconds"
+  rm -f shots/warm-up.png
   xcrun simctl terminate "$device" "$BUNDLE_ID" >/dev/null 2>&1 || true
   for name in "$@"; do
     local file="shots/$prefix$name.png" note=""
