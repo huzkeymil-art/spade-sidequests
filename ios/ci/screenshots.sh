@@ -94,6 +94,12 @@ capture() {
   xcrun simctl boot "$device" 2>/dev/null || true
   xcrun simctl bootstatus "$device" -b >/dev/null
   xcrun simctl install "$device" "$APP"
+  # A new simulator prepares the app's 3D drawing on its first few launches, which can take a
+  # while (on Xcode 27 the first screens came out blank). Open the app once and let it settle
+  # before the pictures start.
+  xcrun simctl launch "$device" "$BUNDLE_ID" -demo launch >/dev/null
+  sleep 40
+  xcrun simctl terminate "$device" "$BUNDLE_ID" >/dev/null 2>&1 || true
   for name in "$@"; do
     local file="shots/$prefix$name.png" note=""
     xcrun simctl terminate "$device" "$BUNDLE_ID" >/dev/null 2>&1 || true
@@ -105,7 +111,7 @@ capture() {
       drawn=$(scene_drawn "$file")
       if [ "$drawn" -lt 50 ]; then
         # A cold simulator can be slow to draw its first frame. Give it one more chance.
-        sleep 12
+        sleep 20
         xcrun simctl io "$device" screenshot "$file" >/dev/null 2>&1
         drawn=$(scene_drawn "$file")
         note=", on the second look"
