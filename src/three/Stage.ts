@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { world } from './RetroMaterial';
 import { PostPass } from './post';
 import { Hero, type Gear, type HeroLook } from './hero';
+import { HeroV2, type HeroStyle } from './heroV2';
 import { HORIZON, makeScenery, type Scenery } from './scenery';
-import { DEFAULT_HERO_YAW, DIG_HERO_YAW, FOV, SHOTS, type Shot, type View } from './shots';
+import { DEFAULT_HERO_YAW, DIG_HERO_YAW, FOV, HERO2_SHOTS, SHOTS, type Shot, type View } from './shots';
 import { Unearth } from './unearth';
 import { IconForge } from './icons';
 
@@ -31,7 +32,10 @@ export class Stage {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(FOV, 1, 0.5, 300);
-  readonly hero = new Hero();
+  /** The original hero or the new one, depending on the settings. */
+  hero: Hero | HeroV2 = new Hero();
+  /** Called when the hero is tapped (rather than dragged round). */
+  onHeroTap: (() => void) | null = null;
   readonly scenery: Scenery;
   readonly post = new PostPass();
   readonly unearth = new Unearth();
@@ -57,6 +61,11 @@ export class Stage {
   private heroYawTarget = DEFAULT_HERO_YAW;
   private dragging = false;
   private dragX = 0;
+  private press: { x: number; y: number; at: number } | null = null;
+  private look: HeroLook | null = null;
+  private gear: Gear = {};
+  private heroStyle: HeroStyle = 'cel';
+  private readonly raycaster = new THREE.Raycaster();
   private freeSpin = false;
   private burstAt = -10;
   private sheetCss = '';
@@ -134,13 +143,17 @@ export class Stage {
   /** Jumps straight to a view with no camera glide (used on first load). */
   snapView(view: View) {
     this.setView(view);
-    this.shot = { ...SHOTS[view] };
+    this.shot = { ...this.shotFor(view) };
     this.lookAt.set(...this.shot.target);
   }
 
   /** When the player has asked for less animation: the camera cuts instead of gliding and stops drifting. */
   setReducedMotion(on: boolean) {
     this.reducedMotion = on;
+  }
+
+  private shotFor(view: View): Shot {
+    return (this.hero instanceof HeroV2 && HERO2_SHOTS[view]) || SHOTS[view];
   }
 
   setRetro(on: boolean) {
@@ -150,7 +163,24 @@ export class Stage {
   }
 
   setHero(look: HeroLook, gear: Gear) {
+    this.look = look;
+    this.gear = gear;
     this.hero.apply(look, gear);
+  }
+
+  /** Swaps between the original hero and the new one, and sets how the new one is drawn. */
+  setHeroDesign(newHero: boolean, style: HeroStyle) {
+    const isNew = this.hero instanceof HeroV2;
+    if (isNew === newHero && style === this.heroStyle) return;
+    this.heroStyle = style;
+    if (isNew !== newHero) {
+      this.scene.remove(this.hero.root);
+      this.hero = newHero ? new HeroV2() : new Hero();
+      this.hero.root.rotation.y = this.heroYaw;
+      this.scene.add(this.hero.root);
+    }
+    if (this.hero instanceof HeroV2) this.hero.apply(this.look ?? this.hero.defaultLook(), this.gear, style);
+    else if (this.look) this.hero.apply(this.look, this.gear);
   }
 
   setProgress(p: Progress) {
@@ -233,7 +263,7 @@ export class Stage {
   };
 
   private update(dt: number) {
-    const goal = SHOTS[this.view];
+    const goal = this.shotFor(this.view);
     const ease = this.reducedMotion ? 1 : 1 - Math.exp(-dt * 5.5);
     const s = this.shot;
     s.dist += (goal.dist - s.dist) * ease;
@@ -301,6 +331,7 @@ export class Stage {
   private onPointerDown = (e: PointerEvent) => {
     this.dragging = true;
     this.dragX = e.clientX;
+    this.press = { x: e.clientX, y: e.clientY, at: performance.now() };
   };
 
   private onPointerMove = (e: PointerEvent) => {
@@ -310,8 +341,17 @@ export class Stage {
     if (this.freeSpin) this.heroYawTarget = this.heroYaw;
   };
 
-  private onPointerUp = () => {
+  private onPointerUp = (e: PointerEvent) => {
     this.dragging = false;
+    const press = this.press;
+    this.press = null;
+    // A quick touch that barely moved is a tap. If it lands on the hero, say so.
+    if (!press || !this.onHeroTap || e.type !== 'pointerup') return;
+    if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > 8 || performance.now() - press.at > 450) return;
+    const rect = this.canvas.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    this.raycaster.setFromCamera(ndc, this.camera);
+    if (this.raycaster.intersectObject(this.hero.root, true).length > 0) this.onHeroTap();
   };
 
   private onVisibility = () => {

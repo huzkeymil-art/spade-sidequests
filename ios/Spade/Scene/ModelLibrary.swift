@@ -70,6 +70,78 @@ struct HeroModel: Decodable {
     }
 }
 
+/// A piece of the new hero. Its colour comes from the player's choices (`role`), or travels
+/// with it (`top`, and `bottom` when the model names one).
+struct Piece: Decodable {
+    let role: String?
+    let flat: Bool
+    let top: [Float]?
+    let bottom: [Float]?
+    let mesh: MeshData
+}
+
+/// Which locks of hair make up a style: all of it, what shows under a hat, and under the hood.
+struct HairLocks: Decodable {
+    let top: [Int]
+    let under: [Int]
+    let hooded: [Int]
+}
+
+/// The patch of the head the new hero's face is painted on.
+struct FacePatch: Decodable {
+    let p: [Float]
+    let n: [Float]
+    let uv: [Float]
+    let i: [UInt32]
+    /// How many pictures are stacked in face2.png.
+    let frames: Int
+}
+
+struct Limbs2: Decodable {
+    let upperArm: Float
+    let forearm: Float
+    let thigh: Float
+}
+
+/// The new hero, in the hooded cloak. See src/three/heroV2.ts.
+struct Hero2Model: Decodable {
+    let joints: [JointSpec]
+    let limbs: Limbs2
+    /// The new hero is drawn a little smaller than life, so every camera shot still frames it.
+    let fit: Float
+    let hatScale: Float
+    let shieldScale: Float
+    let cloakColor: [Float]
+    /// The hero's own soft fill light.
+    let fill: [Float]
+    let torso: [Piece]
+    let cloakHoodUp: [Piece]
+    let cloakHoodDown: [Piece]
+    let hood: [Piece]
+    let armR: [Piece]
+    let elbowR: [Piece]
+    let armL: [Piece]
+    let elbowL: [Piece]
+    let thigh: [Piece]
+    let shinR: [Piece]
+    let shinL: [Piece]
+    let tail1: [Piece]
+    let tail2: [Piece]
+    let headShell: [Piece]
+    let headFeatures: [Piece]
+    let locks: [Piece]
+    let hair: [String: HairLocks]
+    let face: FacePatch
+}
+
+/// An item as the new hero wears it.
+struct Worn2: Decodable {
+    /// Only when it differs from the item's usual mesh (round caps keep just their crowns).
+    let soft: MeshData?
+    /// In flat colours, for cel shading.
+    let cel: MeshData
+}
+
 struct ItemModel: Decodable {
     let slot: String
     /// The item on its own, for icons and the dig-up.
@@ -87,6 +159,10 @@ struct ItemModel: Decodable {
     let torso: MeshData?
     let shoulderR: MeshData?
     let shoulderL: MeshData?
+    /// For cloaks: the colour the new hero's cloak takes on.
+    let cloak: String?
+    /// For hats, tools and shields: as the new hero wears them.
+    let worn2: Worn2?
 }
 
 /// One of the camera's set positions.
@@ -135,12 +211,15 @@ struct Places: Decodable {
 
 struct Models: Decodable {
     let shots: [String: ShotSpec]
+    /// Shots that differ for the new hero.
+    let shots2: [String: ShotSpec]
     let fov: Float
     let heroYaw: Float
     let digHeroYaw: Float
     let places: Places
     let sky: SkyColors
     let hero: HeroModel
+    let hero2: Hero2Model
     let items: [String: ItemModel]
     let props: [String: MeshData]
     let scenery: SceneryModel

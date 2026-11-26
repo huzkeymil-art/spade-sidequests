@@ -27,6 +27,14 @@ export const SHOTS: Record<View, Shot> = {
   dig: { target: [0.5, 0.7, 0.8], dist: 7.2, height: 1.3, yaw: 0.16, screenY: 0.33, sheet: 0.6 },
 };
 
+/**
+ * Shots that differ for the new hero. It is slimmer than the original, with a smaller
+ * head, so the Hero screen stands a little closer to keep the face readable.
+ */
+export const HERO2_SHOTS: Partial<Record<View, Shot>> = {
+  hero: { target: [0, 0.92, 0], dist: 7.0, height: 0.95, yaw: -0.075, screenY: 0.33, sheet: 0.54 },
+};
+
 /** Vertical field of view, in degrees. */
 export const FOV = 32;
 /** Which way the hero faces at rest, in radians. Slightly toward the lantern. */

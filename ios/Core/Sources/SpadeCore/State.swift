@@ -18,7 +18,42 @@ func newSave(seed: Int, now: Date) -> Save {
 }
 
 private func dealContext(_ save: Save, _ cadence: Cadence) -> DealContext {
-    DealContext(seed: save.seed, custom: save.custom, categories: save.settings.categories, recent: save.recent[cadence])
+    DealContext(
+        seed: save.seed,
+        custom: save.custom,
+        categories: save.settings.categories,
+        recent: save.recent[cadence],
+        spade: save.settings.spadeQuests
+    )
+}
+
+/// Turns Spade's own quests off or on, straight away rather than from the next deal.
+///   Off: Spade's unfinished quests leave the boards (finished ones stay, as a record), and
+///   every one of the player's own quests goes on.
+///   On: Spade's quests for the current day, week and month come back.
+/// Quests from a parent are never touched.
+func setSpadeQuests(_ save: Save, _ on: Bool) -> Save {
+    guard save.settings.spadeQuests != on else { return save }
+    var next = save
+    next.settings.spadeQuests = on
+    for cadence in Cadence.allCases {
+        var board = next.boards[cadence]
+        // A board that was never dealt (before the journey begins) is dealt properly later.
+        guard !board.period.isEmpty else { continue }
+        if on {
+            let dealt = dealBoard(cadence, period: board.period, dealContext(next, cadence)).quests.filter { !$0.custom }
+            let present = Set(board.quests.map { $0.defId })
+            board.quests += dealt.filter { !present.contains($0.defId) }
+        } else {
+            board.quests.removeAll { !$0.custom && $0.family == nil && !$0.done }
+            let present = Set(board.quests.map { $0.defId })
+            board.quests += next.custom
+                .filter { $0.cadence == cadence && !present.contains($0.id) }
+                .map { activateCustom($0, period: board.period) }
+        }
+        next.boards[cadence] = board
+    }
+    return next
 }
 
 /// Brings the boards up to date with the clock. Call it whenever the app opens

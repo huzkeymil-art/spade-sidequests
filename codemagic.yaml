@@ -24,7 +24,10 @@ workflows:
       vars:
         XCODE_PROJECT: ios/Spade.xcodeproj
         XCODE_SCHEME: Spade
-      xcode: latest
+      # Apple wants App Store uploads built with the iOS 27 SDK (Xcode 27) from April 2027
+      # (warning ITMS-90725). Codemagic's "latest" still meant Xcode 26, so the version is
+      # named here. Raise it when a newer Xcode comes out.
+      xcode: 27.2
 
     scripts:
       - name: Point the project at the signing files

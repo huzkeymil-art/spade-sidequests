@@ -64,6 +64,26 @@ export function Settings({ onClose, onGuide }: { onClose: () => void; onGuide: (
       </div>
 
       <div className="section">
+        <span className="label">Hero</span>
+        <div className="group plate">
+          <ToggleRow
+            label="New hero"
+            note={save.settings.newHero ? 'Detailed, in a hooded cloak' : 'Off: the original digger'}
+            checked={save.settings.newHero}
+            onChange={(newHero) => setSettings({ newHero })}
+          />
+          {save.settings.newHero && (
+            <ToggleRow
+              label="Cel shading"
+              note={save.settings.celShading ? 'Flat bands of light, inked edges' : 'Off: soft, smooth light'}
+              checked={save.settings.celShading}
+              onChange={(celShading) => setSettings({ celShading })}
+            />
+          )}
+        </div>
+      </div>
+
+      <div className="section">
         <span className="label">Kinds of quest to deal</span>
         <div className="chips">
           {CATEGORIES.map((c) => (

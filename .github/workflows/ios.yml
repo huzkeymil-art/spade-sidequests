@@ -27,13 +27,17 @@ jobs:
         run: swift test --package-path ios/Core
 
   app:
-    runs-on: macos-latest
-    timeout-minutes: 50
+    # GitHub's Mac with Xcode 27, the same Xcode Codemagic uses for App Store builds
+    # (see codemagic.yaml), so this checks the app against the iOS 27 SDK.
+    runs-on: xcode-27
+    timeout-minutes: 70
     env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
       SCREENS: >-
         launch quests hero satchel feats settings guide form dig level item picker smooth
-        roles family familyquest invite childboard allowance photoproof join joined sync chamber chamberhero
-      SMALL_SCREENS: launch roles quests hero dig family childboard
+        roles family familyquest invite childboard allowance photoproof join joined sync ownonly chamber chamberhero
+        hoodup hooddown softhero legacyhero
+      SMALL_SCREENS: launch roles quests hero hoodup dig family childboard
     steps:
       - uses: actions/checkout@v4
       - name: Show tools
@@ -53,7 +57,7 @@ jobs:
           grep -E ": warning: " build.log | sed "s|$PWD/||" | awk '!seen[$0]++' | cut -c1-300 | head -40 || true
           echo "BUILD OK"
       - name: Run in the simulator and take screenshots
-        timeout-minutes: 32
+        timeout-minutes: 48
         run: bash ios/ci/screenshots.sh
       # The same kind of build Codemagic makes for TestFlight, minus the signing.
       - name: Check the App Store build

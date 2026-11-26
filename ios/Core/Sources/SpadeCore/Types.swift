@@ -169,6 +169,22 @@ struct HeroSave: Codable, Equatable {
     var hair: Int = 1
     var hairStyle: Int = 1
     var scarf: Int = 0
+    /// The new hero's hood: lowered onto the shoulders instead of up. Tapping the hero flips it.
+    var hoodDown: Bool = false
+}
+
+// Out here so the memberwise initialiser (HeroSave(name:skin:...)) is kept.
+extension HeroSave {
+    // Read leniently: older saves have no hood.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = (try? c.decode(String.self, forKey: .name)) ?? ""
+        skin = (try? c.decode(Int.self, forKey: .skin)) ?? 1
+        hair = (try? c.decode(Int.self, forKey: .hair)) ?? 1
+        hairStyle = (try? c.decode(Int.self, forKey: .hairStyle)) ?? 1
+        scarf = (try? c.decode(Int.self, forKey: .scarf)) ?? 0
+        hoodDown = (try? c.decode(Bool.self, forKey: .hoodDown)) ?? false
+    }
 }
 
 struct GameSettings: Codable, Equatable {
@@ -181,6 +197,13 @@ struct GameSettings: Codable, Equatable {
     var reminders: Bool = false
     /// Quest kind name -> whether it may be dealt.
     var categories: [String: Bool] = Dictionary(uniqueKeysWithValues: QuestKind.allCases.map { ($0.rawValue, true) })
+    /// Whether Spade deals its own quests. Off, the boards hold only the player's own quests
+    /// (and any from their family). Only the native app has this switch.
+    var spadeQuests: Bool = true
+    /// The detailed hero in the hooded cloak; off shows the original, blockier one.
+    var newHero: Bool = true
+    /// For the new hero: flat bands of light and an ink outline instead of soft shading.
+    var celShading: Bool = true
 
     init() {}
 
@@ -192,6 +215,9 @@ struct GameSettings: Codable, Equatable {
         haptics = (try? c.decode(Bool.self, forKey: .haptics)) ?? true
         guideSeen = (try? c.decode(Bool.self, forKey: .guideSeen)) ?? false
         reminders = (try? c.decode(Bool.self, forKey: .reminders)) ?? false
+        spadeQuests = (try? c.decode(Bool.self, forKey: .spadeQuests)) ?? true
+        newHero = (try? c.decode(Bool.self, forKey: .newHero)) ?? true
+        celShading = (try? c.decode(Bool.self, forKey: .celShading)) ?? true
         let stored = (try? c.decode([String: Bool].self, forKey: .categories)) ?? [:]
         for kind in QuestKind.allCases {
             categories[kind.rawValue] = stored[kind.rawValue] ?? true

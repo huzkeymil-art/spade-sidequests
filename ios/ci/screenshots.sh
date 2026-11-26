@@ -17,7 +17,7 @@ SMALL_SCREENS=${SMALL_SCREENS:-}
 WAIT=${WAIT:-7}
 HERE=$(cd "$(dirname "$0")" && pwd)
 # The screens where the scene is in full view (the others have a sheet over it).
-SCENE_SCREENS=" launch roles quests hero satchel feats dig level smooth family childboard "
+SCENE_SCREENS=" launch roles quests hero satchel feats dig level smooth family childboard hoodup hooddown softhero legacyhero "
 FAILED=0
 
 APP=$(find build/Build/Products -maxdepth 2 -name "Spade.app" | head -1)
@@ -26,26 +26,34 @@ mkdir -p shots
 
 # Prints the id of a simulator: "big" picks the newest full-size iPhone,
 # "small" picks an iPhone SE or mini if one is installed.
+# A plain numbered model ("iPhone 18", then "iPhone 18 Pro") is preferred over special
+# shapes such as Air, e or folding models, on the newest regular iOS version.
 pick_device() {
   xcrun simctl list devices available -j | python3 -c '
-import json, sys
+import json, re, sys
 want = sys.argv[1]
 runtimes = json.load(sys.stdin)["devices"]
 phones = []
-for runtime in runtimes:
-    if "iOS" not in runtime:
+for runtime, devices in runtimes.items():
+    m = re.search(r"iOS-(\d+)-(\d+)(-.*)?$", runtime)
+    if not m:
         continue
-    for device in runtimes[runtime]:
+    # Runtimes with a suffix are made for one particular model; regular ones come first.
+    version = (m.group(3) is None, int(m.group(1)), int(m.group(2)))
+    for device in devices:
         name = device["name"]
         if not name.startswith("iPhone"):
             continue
         small = "SE" in name or "mini" in name
-        if small == (want == "small"):
-            phones.append((runtime, "Pro" not in name, name, device["udid"]))
+        if small != (want == "small"):
+            continue
+        plain = re.fullmatch(r"iPhone (\d+)( Pro)?", name)
+        rank = (1, int(plain.group(1)), plain.group(2) is None) if plain else (0, 0, False)
+        phones.append(((rank[0],) + version + rank[1:], name, runtime, device["udid"]))
 if not phones:
     sys.exit(0)
 phones.sort(reverse=True)
-runtime, _, name, udid = phones[0]
+_, name, runtime, udid = phones[0]
 sys.stderr.write("simulator: %s on %s\n" % (name, runtime.split(".")[-1]))
 print(udid)
 ' "$1"
@@ -86,6 +94,20 @@ capture() {
   xcrun simctl boot "$device" 2>/dev/null || true
   xcrun simctl bootstatus "$device" -b >/dev/null
   xcrun simctl install "$device" "$APP"
+  # A new simulator prepares the app's 3D drawing on its first few launches, which can take a
+  # while (on Xcode 27 the first screens came out blank). Open the app once and wait until
+  # the scene has been drawn (two minutes at most) before the pictures start.
+  xcrun simctl launch "$device" "$BUNDLE_ID" -demo launch >/dev/null
+  local tries=0
+  while [ "$tries" -lt 12 ]; do
+    sleep 10
+    xcrun simctl io "$device" screenshot shots/warm-up.png >/dev/null 2>&1 || true
+    if [ "$(scene_drawn shots/warm-up.png)" -ge 50 ]; then break; fi
+    tries=$((tries + 1))
+  done
+  echo "warmed up after $(( (tries + 1) * 10 )) seconds"
+  rm -f shots/warm-up.png
+  xcrun simctl terminate "$device" "$BUNDLE_ID" >/dev/null 2>&1 || true
   for name in "$@"; do
     local file="shots/$prefix$name.png" note=""
     xcrun simctl terminate "$device" "$BUNDLE_ID" >/dev/null 2>&1 || true
@@ -97,7 +119,7 @@ capture() {
       drawn=$(scene_drawn "$file")
       if [ "$drawn" -lt 50 ]; then
         # A cold simulator can be slow to draw its first frame. Give it one more chance.
-        sleep 12
+        sleep 20
         xcrun simctl io "$device" screenshot "$file" >/dev/null 2>&1
         drawn=$(scene_drawn "$file")
         note=", on the second look"

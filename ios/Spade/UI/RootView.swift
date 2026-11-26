@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import UIKit
 
@@ -40,6 +41,7 @@ struct RootView: View {
     @EnvironmentObject private var store: GameStore
     @EnvironmentObject private var stage: StageController
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var tab: AppTab
     /// Screens are built the first time their tab is opened and then kept, so each
@@ -50,6 +52,8 @@ struct RootView: View {
     @State private var settingsOpen = false
     @State private var guideOpen = false
     @State private var keyboard: CGFloat = 0
+    /// The selected tab's highlight slides from tab to tab inside the glass.
+    @Namespace private var dockGlass
 
     private let ticker = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
     /// While Spade is open it also asks iCloud for family changes this often, in case a nudge was missed.
@@ -61,7 +65,7 @@ struct RootView: View {
         let demo = DemoMode.requested ?? ""
         let start = AppTab(rawValue: demo) ?? (
             demo == "item" ? .satchel
-                : demo == "picker" || demo == "chamberhero" ? .hero
+                : ["picker", "chamberhero", "hoodup", "hooddown", "softhero", "legacyhero"].contains(demo) ? .hero
                 : demo == "familyquest" || demo == "invite" ? .family
                 : .quests
         )
@@ -96,6 +100,13 @@ struct RootView: View {
     // MARK: - Body
 
     var body: some View {
+        // In steps, so the compiler checks a few modifiers at a time. As one long chain it
+        // was too much for the Swift compiler in Xcode 27 ("unable to type-check this
+        // expression in reasonable time").
+        listening(to: following(presenting(screen)))
+    }
+
+    private var screen: some View {
         GeometryReader { proxy in
             let insets = proxy.safeAreaInsets
             let full = CGSize(
@@ -111,66 +122,82 @@ struct RootView: View {
         .ignoresSafeArea(.keyboard)
         .background(Ink.ink.ignoresSafeArea())
         .dynamicTypeSize(.xSmall ... .xxxLarge)
-        .sheet(isPresented: $settingsOpen) { SettingsSheet() }
-        .sheet(isPresented: $guideOpen, onDismiss: markGuideSeen) { GuideSheet() }
-        // A family invite that was opened. It waits until the player has started.
-        .sheet(item: Binding(
-            get: { store.save.onboarded ? store.incoming : nil },
-            set: { if $0 == nil { store.closeIncoming() } }
-        )) { arrival in
-            IncomingSheet(arrival: arrival)
-        }
-        .alert("Join as a guardian?", isPresented: $store.guardianInvitation) {
-            Button("Join family") { store.acceptGuardian() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("You will be able to manage the family's quests, approve completions and review its history. The family owner's phone relays updates to children when Spade is open.")
-        }
-        .onChange(of: store.save.role) { _, role in
-            if !AppTab.shown(for: role).contains(tab) { tab = .quests }
-        }
-        .onAppear(perform: start)
-        .onChange(of: shot) { _, next in stage.setShot(next) }
-        .onChange(of: progress) { _, next in stage.setProgress(next) }
-        .onChange(of: store.save.hero) { _, _ in dressHero() }
-        .onChange(of: store.save.equipped) { _, _ in dressHero() }
-        .onChange(of: store.save.settings) { _, _ in applySettings() }
-        .onChange(of: store.save.boards.daily) { _, _ in Reminders.refresh(for: store.save) }
-        .onChange(of: store.moment) { _, next in
-            // The dig stays on screen only while an item is being shown.
-            if case .item = next { return }
-            stage.endUnearth()
-        }
-        .onChange(of: playing) { _, _ in offerGuide() }
-        .onChange(of: scenePhase) { _, phase in
-            stage.setPaused(phase != .active)
-            if phase == .active {
-                store.sync()
+    }
+
+    /// Sheets and alerts.
+    private func presenting(_ content: some View) -> some View {
+        content
+            .sheet(isPresented: $settingsOpen) { SettingsSheet() }
+            .sheet(isPresented: $guideOpen, onDismiss: markGuideSeen) { GuideSheet() }
+            // A family invite that was opened. It waits until the player has started.
+            .sheet(item: Binding(
+                get: { store.save.onboarded ? store.incoming : nil },
+                set: { if $0 == nil { store.closeIncoming() } }
+            )) { arrival in
+                IncomingSheet(arrival: arrival)
+            }
+            .alert("Join as a guardian?", isPresented: $store.guardianInvitation) {
+                Button("Join family") { store.acceptGuardian() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("You will be able to manage the family's quests, approve completions and review its history. The family owner's phone relays updates to children when Spade is open.")
+            }
+    }
+
+    /// Keeps the 3D stage, the tabs and the reminders in step with the save.
+    private func following(_ content: some View) -> some View {
+        content
+            .onChange(of: store.save.role) { _, role in
+                if !AppTab.shown(for: role).contains(tab) { tab = .quests }
+            }
+            .onAppear(perform: start)
+            .onChange(of: shot) { _, next in stage.setShot(next) }
+            .onChange(of: progress) { _, next in stage.setProgress(next) }
+            .onChange(of: store.save.hero) { _, _ in dressHero() }
+            .onChange(of: store.save.equipped) { _, _ in dressHero() }
+            .onChange(of: store.save.settings) { _, _ in applySettings() }
+            .onChange(of: store.save.boards.daily) { _, _ in Reminders.refresh(for: store.save) }
+            .onChange(of: store.moment) { _, next in
+                // The dig stays on screen only while an item is being shown.
+                if case .item = next { return }
+                stage.endUnearth()
+            }
+            .onChange(of: playing) { _, _ in offerGuide() }
+    }
+
+    /// Things from outside the screen: the app coming and going, tapped notifications, timers and the keyboard.
+    private func listening(to content: some View) -> some View {
+        content
+            .onChange(of: scenePhase) { _, phase in
+                stage.setPaused(phase != .active)
+                if phase == .active {
+                    store.sync()
+                    store.syncFamily()
+                }
+                if phase == .background {
+                    Reminders.refresh(for: store.save)
+                    store.wentToBackground()
+                }
+            }
+            // A tapped notification asks for the tab it is about.
+            .onChange(of: store.requestedTab) { _, wanted in
+                guard let wanted else { return }
+                store.requestedTab = nil
+                pick(wanted)
+            }
+            .onReceive(ticker) { _ in store.sync() }
+            .onReceive(cloudTicker) { _ in
+                guard scenePhase == .active else { return }
                 store.syncFamily()
             }
-            if phase == .background {
-                Reminders.refresh(for: store.save)
-                store.wentToBackground()
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
+                guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+                let height = max(0, UIScreen.main.bounds.height - frame.minY)
+                withAnimation(.easeOut(duration: 0.22)) { keyboard = height }
             }
-        }
-        // A tapped notification asks for the tab it is about.
-        .onChange(of: store.requestedTab) { _, wanted in
-            guard let wanted else { return }
-            store.requestedTab = nil
-            pick(wanted)
-        }
-        .onReceive(ticker) { _ in store.sync() }
-        .onReceive(cloudTicker) { _ in
-            if scenePhase == .active { store.syncFamily() }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
-            guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
-            let height = max(0, UIScreen.main.bounds.height - frame.minY)
-            withAnimation(.easeOut(duration: 0.22)) { keyboard = height }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            withAnimation(.easeOut(duration: 0.22)) { keyboard = 0 }
-        }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                withAnimation(.easeOut(duration: 0.22)) { keyboard = 0 }
+            }
     }
 
     @ViewBuilder
@@ -293,17 +320,24 @@ struct RootView: View {
         .environment(\.dockSpace, dockSpace)
         .frame(width: full.width, height: max(0, full.height - top), alignment: .top)
         .background(Ink.ink)
-        // Where a list slides under the tab bar it dissolves into the background.
+        // A list scrolls on under the glass tab bar, fading softly toward the bottom edge
+        // so the tabs stay easy to read over it.
         .overlay(alignment: .bottom) {
-            VStack(spacing: 0) {
-                DitherFade().frame(height: fade)
-                Ink.ink.frame(height: dockSpace)
-            }
+            LinearGradient(
+                stops: [
+                    .init(color: Ink.ink.opacity(0), location: 0),
+                    .init(color: Ink.ink.opacity(0.55), location: 0.55),
+                    .init(color: Ink.ink.opacity(0.8), location: 1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: dockSpace + 28)
             .allowsHitTesting(false)
         }
         .overlay(alignment: .bottom) {
             dock
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
                 .padding(.bottom, dockBottom)
         }
         // And the scene dissolves into the panel the same way.
@@ -324,14 +358,18 @@ struct RootView: View {
         }
     }
 
+    /// The floating tab bar: a capsule of Liquid Glass (on iOS 26 and newer), with the
+    /// selected tab picked out by a lighter pill that slides across when you switch.
     private var dock: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 0) {
             ForEach(AppTab.shown(for: store.save.role)) { option in
                 let selected = option == tab
                 Button {
-                    pick(option)
+                    withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.78)) {
+                        pick(option)
+                    }
                 } label: {
-                    VStack(spacing: 3) {
+                    VStack(spacing: 2) {
                         Group {
                             if option == .hero {
                                 PortraitIcon(hero: store.save.hero, gear: store.save.equipped, size: 28)
@@ -339,32 +377,46 @@ struct RootView: View {
                                 PropIcon(name: option.icon, size: 28)
                             }
                         }
-                        .saturation(selected ? 1 : 0.3)
-                        .opacity(selected ? 1 : 0.62)
-                        Text(option.title).caps(selected ? Ink.bone : Ink.faint).lineLimit(1).minimumScaleFactor(0.7)
+                        .saturation(selected ? 1 : 0.35)
+                        .opacity(selected ? 1 : 0.7)
+                        .scaleEffect(selected ? 1.06 : 1)
+                        Text(option.title)
+                            .caps(selected ? Ink.lantern : Ink.dim, size: 13)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .plate(fill: selected ? Ink.ink : .clear, edge: selected ? Ink.moss : .clear, notch: 9)
-                    .contentShape(Rectangle())
+                    .background {
+                        if selected {
+                            Capsule()
+                                .fill(Ink.bone.opacity(0.13))
+                                .overlay(Capsule().strokeBorder(Ink.bone.opacity(0.08), lineWidth: 0.5))
+                                .matchedGeometryEffect(id: "selected", in: dockGlass)
+                        }
+                    }
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(option.title)
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
-        .padding(5)
+        .padding(4)
         .frame(height: dockHeight)
-        .plate(fill: Ink.loam2, edge: Ink.moss2, notch: 14)
+        .liquidGlassBar()
         .dynamicTypeSize(.xSmall ... .large)
     }
 
     // MARK: - Actions
 
     private func start() {
-        stage.setShot(shot, animated: false)
         stage.setProgress(progress)
         dressHero()
         applySettings()
+        // After the hero is chosen, since the new one frames some shots a little closer.
+        stage.setShot(shot, animated: false)
+        let store = store
+        stage.onHeroTap = { store.flipHood() }
         offerGuide()
         Task { @MainActor in
             // A moment after launch, once the first screen is up.
@@ -385,6 +437,7 @@ struct RootView: View {
     private func applySettings() {
         let settings = store.save.settings
         stage.setRetro(settings.retro)
+        stage.setHeroDesign(newHero: settings.newHero, cel: settings.celShading)
         Feedback.soundOn = settings.sound
         Feedback.hapticsOn = settings.haptics
         Reminders.refresh(for: store.save)
@@ -412,6 +465,20 @@ struct RootView: View {
 }
 
 private extension View {
+    /// Liquid Glass for the tab bar: the system's own material on iOS 26 and newer, which
+    /// bends and lights the content behind it and answers to a touch. Older versions get
+    /// a frosted capsule in the same shape.
+    @ViewBuilder
+    func liquidGlassBar() -> some View {
+        if #available(iOS 26.0, *) {
+            glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.6))
+                .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+        }
+    }
+
     /// The small dark plates that float over the scene at the top of the screen.
     func hudPlate() -> some View {
         padding(.horizontal, 11)

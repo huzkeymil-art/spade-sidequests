@@ -10,6 +10,8 @@ struct HeroLook: Equatable {
     var hair: String
     var hairStyle: String
     var scarf: String
+    /// Only the new hero has a hood.
+    var hoodDown: Bool
 
     /// Turns the saved palette indexes into real colours.
     init(_ hero: HeroSave) {
@@ -21,13 +23,22 @@ struct HeroLook: Equatable {
         hair = pick(looks.hair, hero.hair)
         hairStyle = pick(looks.hairStyles, hero.hairStyle)
         scarf = pick(looks.scarf, hero.scarf)
+        hoodDown = hero.hoodDown
     }
 }
 
 private let deg: Float = .pi / 180
 private let defaultTunic = "#8c7448"
 
-final class HeroNode {
+/// What the stage needs from either hero.
+protocol StageHero: AnyObject {
+    var root: SCNNode { get }
+    func apply(look: HeroLook, gear: [String: String])
+    func cheer(at time: Double)
+    func update(time: Double)
+}
+
+final class HeroNode: StageHero {
     let root = SCNNode()
     /// The charm circles the hero on its own pivot.
     let charmPivot = SCNNode()

@@ -92,6 +92,28 @@ export function HeroScreen() {
           </div>
         </div>
 
+        {save.settings.newHero && (
+          <div className="section">
+            <span className="label">Hood{save.equipped.head ? ' · a hat keeps it down' : ' · or tap your hero'}</span>
+            <div className="chips">
+              {[false, true].map((down) => (
+                <button
+                  key={down ? 'down' : 'up'}
+                  className="chip plate"
+                  aria-pressed={!save.equipped.head && !!save.hero.hoodDown === down}
+                  disabled={!!save.equipped.head}
+                  onClick={() => {
+                    feedback.select();
+                    setHero({ hoodDown: down });
+                  }}
+                >
+                  {down ? 'Down' : 'Up'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="section">
           <span className="label">Skin</span>
           <div className="swatches">

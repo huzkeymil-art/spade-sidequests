@@ -12,7 +12,8 @@ struct QuestBoardView: View {
     var body: some View {
         let save = store.save
         let board = save.boards[cadence]
-        let swaps = rerollsLeft(save)
+        let spade = save.settings.spadeQuests
+        let swaps = spade ? rerollsLeft(save) : 0
         let dailies = save.boards.daily.quests
         let countdown = formatCountdown(store.clock.nextReset(cadence, store.now).timeIntervalSince(store.now))
 
@@ -28,7 +29,7 @@ struct QuestBoardView: View {
                 HStack {
                     Text("New in \(countdown)").caps(Ink.faint)
                     Spacer()
-                    if cadence == .daily {
+                    if cadence == .daily && spade {
                         Text(swaps > 0 ? "\(swaps) swap left" : "No swaps left").caps(Ink.faint)
                     }
                 }
@@ -69,6 +70,18 @@ struct QuestBoardView: View {
                         .padding(.vertical, 13)
                         .padding(.horizontal, 20)
                         Hairline().padding(.horizontal, 20)
+                    }
+
+                    if board.quests.isEmpty {
+                        Text(spade
+                             ? "Nothing on this board yet."
+                             : "Spade's quests are off, so this board holds only the quests you write. Write one below, or switch Spade's quests back on in Settings.")
+                            .font(Typeface.italic())
+                            .foregroundStyle(Ink.dim)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 14)
                     }
 
                     if !board.quests.isEmpty && board.quests.allSatisfy({ $0.done }) {

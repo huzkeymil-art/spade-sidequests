@@ -32,7 +32,12 @@ final class StageController: NSObject, ObservableObject {
     @Published private(set) var pixelSize: CGFloat = 1.4
 
     let scene = SCNScene()
-    private let hero = HeroNode()
+    /// The original hero or the new one, depending on the settings.
+    private var hero: StageHero = HeroNode()
+    private var heroLook: HeroLook?
+    private var heroGear: [String: String] = [:]
+    /// Called when the hero is tapped (rather than dragged round).
+    var onHeroTap: (@MainActor () -> Void)?
     private let scenery = Scenery()
     private let unearth = Unearth()
     private let cameraNode = SCNNode()
@@ -84,6 +89,7 @@ final class StageController: NSObject, ObservableObject {
         camera.fieldOfView = CGFloat(atan(half) * 360 / .pi)
         cameraNode.camera = camera
         scene.rootNode.addChildNode(cameraNode)
+        addHeroFill()
 
         hero.root.simdOrientation = rotation(y: heroYaw)
         reducedMotion = UIAccessibility.isReduceMotionEnabled
@@ -117,6 +123,8 @@ final class StageController: NSObject, ObservableObject {
 
         let pan = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
         container.addGestureRecognizer(pan)
+        let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
+        container.addGestureRecognizer(tap)
 
         let link = CADisplayLink(target: self, selector: #selector(step(_:)))
         link.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 30, preferred: 30)
@@ -168,7 +176,7 @@ final class StageController: NSObject, ObservableObject {
         // Only the Hero screen lets the avatar stay turned; elsewhere it swings back to face front.
         freeSpin = next == .hero
         if !freeSpin { heroYawTarget = next == .dig ? models.digHeroYaw : models.heroYaw }
-        if !animated, let goal = models.shots[next.rawValue] {
+        if !animated, let goal = goal(for: next) {
             current = goal
             lookAt = SIMD3(goal.target[0], goal.target[1], goal.target[2])
             place()
@@ -182,7 +190,51 @@ final class StageController: NSObject, ObservableObject {
     }
 
     func setHero(look: HeroLook, gear: [String: String]) {
+        heroLook = look
+        heroGear = gear
         hero.apply(look: look, gear: gear)
+    }
+
+    /// Swaps between the original hero and the new one, and sets how the new one is drawn.
+    func setHeroDesign(newHero: Bool, cel: Bool) {
+        let current = hero as? HeroV2Node
+        guard newHero != (current != nil) || (current != nil && current?.cel != cel) else { return }
+        if newHero != (current != nil) {
+            hero.root.removeFromParentNode()
+            hero = newHero ? HeroV2Node() : HeroNode()
+            hero.root.simdOrientation = rotation(y: heroYaw)
+            scene.rootNode.addChildNode(hero.root)
+        }
+        (hero as? HeroV2Node)?.cel = cel
+        if let heroLook { hero.apply(look: heroLook, gear: heroGear) }
+    }
+
+    /// The shot to frame, which can differ for the new hero.
+    private func goal(for shot: StageShot) -> ShotSpec? {
+        (hero is HeroV2Node ? models.shots2[shot.rawValue] : nil) ?? models.shots[shot.rawValue]
+    }
+
+    /// The new hero's own soft light from the viewer's side, the way game characters are
+    /// often lit a little apart from their world, so a face never sinks into the night.
+    /// It follows the camera and reaches only the hero.
+    private func addHeroFill() {
+        let fill = rgb(models.hero2.fill)
+        let front = SCNLight()
+        front.type = .directional
+        front.color = UIColor(fill * 0.6)
+        front.intensity = 1000
+        front.categoryBitMask = heroCategory
+        let frontNode = SCNNode()
+        frontNode.light = front
+        cameraNode.addChildNode(frontNode)
+        let soft = SCNLight()
+        soft.type = .ambient
+        soft.color = UIColor(fill * 0.4)
+        soft.intensity = 1000
+        soft.categoryBitMask = heroCategory
+        let softNode = SCNNode()
+        softNode.light = soft
+        cameraNode.addChildNode(softNode)
     }
 
     func setProgress(_ p: StageProgress) {
@@ -213,6 +265,16 @@ final class StageController: NSObject, ObservableObject {
         unearth.dismiss()
     }
 
+    /// A tap that lands on the hero (the new one flips its hood).
+    @objc private func tapped(_ tap: UITapGestureRecognizer) {
+        guard tap.state == .ended, let view = sceneView, let onHeroTap else { return }
+        let hits = view.hitTest(tap.location(in: view), options: [
+            .categoryBitMask: heroCategory,
+            .searchMode: SCNHitTestSearchMode.any.rawValue,
+        ])
+        if !hits.isEmpty { onHeroTap() }
+    }
+
     @objc private func panned(_ pan: UIPanGestureRecognizer) {
         switch pan.state {
         case .began, .changed:
@@ -237,7 +299,7 @@ final class StageController: NSObject, ObservableObject {
     }
 
     private func update(_ dt: Double) {
-        guard let goal = models.shots[shot.rawValue] else { return }
+        guard let goal = goal(for: shot) else { return }
         let ease = reducedMotion ? Float(1) : Float(1 - exp(-dt * 5.5))
         func mix(_ a: Float, _ b: Float) -> Float { a + (b - a) * ease }
         var sheet = mix(current.sheet, goal.sheet)

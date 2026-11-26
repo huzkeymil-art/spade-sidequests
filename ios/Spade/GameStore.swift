@@ -179,10 +179,28 @@ final class GameStore: ObservableObject {
         commit(next)
     }
 
+    /// Puts the new hero's hood up or down. A hat keeps it down, so then nothing changes.
+    func setHood(down: Bool) {
+        guard save.equipped["head"] == nil, save.hero.hoodDown != down else { return }
+        setHero { $0.hoodDown = down }
+    }
+
+    /// Tapping the new hero flips its hood, while nothing else is on screen.
+    func flipHood() {
+        guard save.onboarded, moment == nil, save.settings.newHero, save.equipped["head"] == nil else { return }
+        Feedback.tap()
+        setHood(down: !save.hero.hoodDown)
+    }
+
     func setSettings(_ change: (inout GameSettings) -> Void) {
         var next = save
         change(&next.settings)
         commit(next)
+    }
+
+    /// Turns Spade's own quests on or off. The boards change straight away.
+    func setSpadeQuestsOn(_ on: Bool) {
+        commit(setSpadeQuests(save, on))
     }
 
     func toggleKind(_ kind: QuestKind) {
@@ -650,6 +668,9 @@ final class GameStore: ObservableObject {
         guard save.guardianHub?.cloud == nil else { cloudNotice = "The family owner sends child invites. Ask them to open Spade."; return }
         guard preparingInvite == nil, let note = noteFor(save, kidId: kidId), let cloudKit = cloudFamily() else { return }
         preparingInvite = kidId
+        // Made out here, so they hold the store weakly instead of through the task below.
+        let stopped: @MainActor () -> Void = { [weak self] in self?.sharingStopped(kidId) }
+        let failed: @MainActor (Error) -> Void = { [weak self] error in self?.cloudNotice = CloudFamily.describe(error) }
         Task {
             defer { preparingInvite = nil }
             if let reason = await cloudKit.unavailableReason() {
@@ -664,8 +685,8 @@ final class GameStore: ObservableObject {
                     share: share,
                     container: cloudKit.container,
                     title: title,
-                    stopped: { [weak self] in self?.sharingStopped(kidId) },
-                    failed: { [weak self] error in self?.cloudNotice = CloudFamily.describe(error) }
+                    stopped: stopped,
+                    failed: failed
                 )
             } catch {
                 cloudNotice = CloudFamily.describe(error)
@@ -733,6 +754,13 @@ final class GameStore: ObservableObject {
     func inviteGuardian() {
         guard preparingInvite == nil, save.guardianHub?.cloud == nil, let house = save.household, let cloud = cloudFamily() else { return }
         preparingInvite = "guardians"
+        // Made out here, so they hold the store weakly instead of through the task below.
+        let stopped: @MainActor () -> Void = { [weak self] in
+            guard let self else { return }
+            var next = self.save; next.guardianHub = nil; next.guardianPending = nil; self.commit(next, fromGuardianHub: true)
+            Task { try? await cloud.leaveGuardians(GuardianHub(record: "g-" + house.familyId)) }
+        }
+        let failed: @MainActor (Error) -> Void = { [weak self] in self?.cloudNotice = CloudFamily.describe($0) }
         Task {
             defer { preparingInvite = nil }
             do {
@@ -741,10 +769,7 @@ final class GameStore: ObservableObject {
                 guard save.role == .parent, save.household?.familyId == house.familyId else { return }
                 var next = save; next.guardianHub = GuardianHub(record: "g-" + house.familyId)
                 commit(next)
-                InviteSheet.present(share: share, container: cloud.container, title: "Spade guardians", stopped: { [weak self] in
-                    guard let self else { return }; var next = self.save; next.guardianHub = nil; next.guardianPending = nil; self.commit(next, fromGuardianHub: true)
-                    Task { try? await cloud.leaveGuardians(GuardianHub(record: "g-" + house.familyId)) }
-                }, failed: { [weak self] in self?.cloudNotice = CloudFamily.describe($0) })
+                InviteSheet.present(share: share, container: cloud.container, title: "Spade guardians", stopped: stopped, failed: failed)
             } catch { cloudNotice = CloudFamily.describe(error) }
         }
     }
@@ -847,6 +872,15 @@ enum DemoMode {
             save.equipped["charm"] = "dogger"; save.equipped["hand"] = "icon_spade"
             save.hero.scarf = Catalog.looks.scarf.count - 1
             return GameStore(preview: save)
+        case "ownonly":
+            // Spade's quests switched off: only the player's own are on the board.
+            var save = midGame()
+            let now = Date()
+            for (title, kind, pinned) in [("Practise guitar for 20 minutes", QuestKind.craft, true), ("Walk the dog before school", .body, false), ("Message Grandma", .heart, false)] {
+                save = addCustomQuest(save, CustomQuestInput(title: title, cadence: .daily, category: kind, difficulty: 2, pinned: pinned), now: now).save
+            }
+            save = setSpadeQuests(save, false)
+            return GameStore(preview: save)
         case "invite":
             // A parent with one child still to invite, and one who hasn't opened their invite yet.
             var save = parentGame()
@@ -884,6 +918,11 @@ enum DemoMode {
         default:
             var save = midGame()
             if name == "smooth" { save.settings.retro = false }
+            // The hero screens: the new hero with the hood up (no hat) or down, soft-shaded, and the original.
+            if name == "hoodup" || name == "hooddown" || name == "softhero" { save.equipped["head"] = nil }
+            if name == "hooddown" { save.hero.hoodDown = true }
+            if name == "softhero" { save.settings.celShading = false }
+            if name == "legacyhero" { save.settings.newHero = false }
             let store = GameStore(preview: save)
             if name == "dig" { store.show(.item(serial: -1, itemId: "moonsteel_cap", fresh: true, echoXp: 0)) }
             if name == "level" { store.show(.level(serial: -2, level: 8, rank: nil)) }

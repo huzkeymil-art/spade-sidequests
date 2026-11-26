@@ -21,7 +21,13 @@ import {
   grassParts, lanternParts, makeGround, makeRidge, moteField, scatterParts, starField, treeParts, weekStoneParts,
 } from '../src/three/scenery';
 import { CLOD_COUNT, boxParts, clodParts, lidParts, moundParts } from '../src/three/unearth';
-import { DEFAULT_HERO_YAW, DIG_HERO_YAW, FOV, SHOTS } from '../src/three/shots';
+import { DEFAULT_HERO_YAW, DIG_HERO_YAW, FOV, HERO2_SHOTS, SHOTS } from '../src/three/shots';
+import {
+  FACE2, HAT2_SCALE, HERO2_COLORS, HERO2_JOINTS, LIMBS2,
+  cloakParts2, forearmParts2, hairParts2, headParts2, hoodUpParts2, shinParts2, tailParts2, thighParts2, torsoParts2, upperArmParts2,
+} from '../src/three/models/heroV2';
+import { HERO2_FILL, HERO2_FIT, SHIELD2_SCALE, faceGeometry, hatParts2 } from '../src/three/heroV2';
+import { FACE2_FRAMES, FACE2_H, FACE2_W, paintFace2 } from '../src/three/models/face2';
 
 import { hashString, makeRng, rngFor, shuffled } from '../src/game/rng';
 import { dayKey, monthKey, monthProgress, nextReset, weekDays, weekKey, weekdayIndex } from '../src/game/periods';
@@ -68,7 +74,7 @@ const bake = (parts: Part[]): Mesh => toMesh(buildGeometry(parts));
 
 // The hero's colours are chosen by the player, so their parts can't have colour baked in.
 // Each look-dependent colour is stood in for by a marker; the Swift app paints the real one.
-const MARKERS = { skin: '#000001', hair: '#000002', scarf: '#000003', tunic: '#000004', sleeve: '#000005' } as const;
+const MARKERS = { skin: '#000001', hair: '#000002', scarf: '#000003', tunic: '#000004', sleeve: '#000005', cloak: '#000006' } as const;
 type Role = keyof typeof MARKERS;
 const roleOf = (hex: string): Role | null => (Object.keys(MARKERS) as Role[]).find((k) => MARKERS[k] === hex) ?? null;
 
@@ -91,6 +97,101 @@ function chunk(part: Part): Chunk {
 }
 
 const chunks = (parts: Part[]) => parts.map(chunk);
+
+const toRgb = (hex: string) => {
+  const c = new THREE.Color(hex);
+  return [c.r, c.g, c.b].map(round(4));
+};
+
+/**
+ * A piece of the new hero. Every piece carries its shading factor (`t`) rather than baked
+ * colours, because the new hero is drawn two ways: soft (darker toward the foot of each
+ * shape) or cel (one flat colour). Fixed colours travel with the piece as `top` and, when
+ * the model names one, `bottom`.
+ */
+function piece(part: Part) {
+  const role = roleOf(part.c);
+  const mesh = bake([{ ...part, c: '#ffffff', c2: '#000000' }]);
+  const t = mesh.c!.filter((_, i) => i % 3 === 0);
+  delete mesh.c;
+  const out: Record<string, unknown> = { role, flat: part.c2 === part.c, mesh: { ...mesh, t } };
+  if (!role) {
+    out.top = toRgb(part.c);
+    if (part.c2 && part.c2 !== part.c) out.bottom = toRgb(part.c2);
+  }
+  return out;
+}
+
+const pieces = (parts: Part[]) => parts.map(piece);
+
+/** The new hero, for the iPhone app's HeroV2Node. */
+function hero2Model() {
+  const palette = MARKERS;
+  const [tail1, tail2] = tailParts2(palette);
+  const [shell, skull, ...features] = headParts2(palette);
+  // The hair styles share many locks, so each lock is stored once and the styles list which they use.
+  const locks: ReturnType<typeof piece>[] = [];
+  const seen = new Map<string, number>();
+  const ids = (parts: Part[]) =>
+    parts.map((part) => {
+      const key = JSON.stringify(part);
+      let id = seen.get(key);
+      if (id === undefined) {
+        id = locks.length;
+        locks.push(piece(part));
+        seen.set(key, id);
+      }
+      return id;
+    });
+  const hair = Object.fromEntries(
+    (['crop', 'tuft', 'long', 'knot', 'none'] as HairStyle[]).map((style) => {
+      const set = hairParts2(style, MARKERS.hair);
+      return [style, { top: ids(set.top), under: ids(set.under), hooded: ids(set.hooded) }];
+    }),
+  );
+  // The face patch, with normals that point out from the middle of the head, as the web shader works them out.
+  const face = faceGeometry();
+  const p = Array.from(face.getAttribute('position').array as ArrayLike<number>);
+  const n: number[] = [];
+  for (let i = 0; i < p.length; i += 3) {
+    const v = new THREE.Vector3(p[i], p[i + 1] - 0.17, p[i + 2] + 0.02).normalize();
+    n.push(v.x, v.y, v.z);
+  }
+  return {
+    joints: HERO2_JOINTS,
+    limbs: LIMBS2,
+    fit: HERO2_FIT,
+    hatScale: HAT2_SCALE,
+    shieldScale: SHIELD2_SCALE,
+    cloakColor: toRgb(HERO2_COLORS.cloak),
+    fill: [HERO2_FILL.r, HERO2_FILL.g, HERO2_FILL.b].map(round(4)),
+    torso: pieces(torsoParts2(palette)),
+    cloakHoodUp: pieces(cloakParts2(MARKERS.cloak, false)),
+    cloakHoodDown: pieces(cloakParts2(MARKERS.cloak, true)),
+    hood: pieces(hoodUpParts2(MARKERS.cloak)),
+    armR: pieces(upperArmParts2(palette, false)),
+    elbowR: pieces(forearmParts2(palette, false)),
+    armL: pieces(mirrored(upperArmParts2(palette, true))),
+    elbowL: pieces(mirrored(forearmParts2(palette, true))),
+    thigh: pieces(thighParts2()),
+    shinR: pieces(shinParts2(true)),
+    shinL: pieces(shinParts2(false)),
+    tail1: pieces(tail1),
+    tail2: pieces(tail2),
+    headShell: pieces([shell, skull]),
+    headFeatures: pieces(features),
+    locks,
+    hair,
+    face: {
+      p: p.map(round(4)),
+      n: n.map(round(3)),
+      uv: Array.from(face.getAttribute('uv').array as ArrayLike<number>).map(round(4)),
+      i: Array.from(face.getIndex()!.array as ArrayLike<number>),
+      frames: FACE2_FRAMES,
+    },
+    faceSize: [FACE2.width, FACE2.height],
+  };
+}
 
 // ---- PNG writer ----------------------------------------------------------------
 
@@ -334,10 +435,19 @@ export function run(root: string) {
           out.shoulderR = bake(model.shoulder);
           out.shoulderL = bake(mirrored(model.shoulder));
         }
+        if (model.cloak) out.cloak = model.cloak;
       } else {
         out.mesh = bake(model.parts);
         if (model.slot === 'head') out.hair = model.hair;
         if (model.slot === 'charm') out.glow = model.glow ?? null;
+        // As the new hero wears it: in flat (cel) colours, and for round caps, trimmed to their crowns.
+        if (model.slot !== 'charm') {
+          const worn = model.slot === 'head' ? hatParts2(model) : model.parts;
+          out.worn2 = {
+            ...(worn.some((p, i) => p !== model.parts[i]) ? { soft: bake(worn) } : {}),
+            cel: bake(worn.map((p) => ({ ...p, c2: p.c2 ?? p.c }))),
+          };
+        }
       }
       return [id, out];
     }),
@@ -349,6 +459,7 @@ export function run(root: string) {
 
   const models = {
     shots: SHOTS,
+    shots2: HERO2_SHOTS,
     fov: FOV,
     heroYaw: DEFAULT_HERO_YAW,
     digHeroYaw: DIG_HERO_YAW,
@@ -370,6 +481,7 @@ export function run(root: string) {
       tail2: chunks(tail2),
       hair,
     },
+    hero2: hero2Model(),
     items,
     props: Object.fromEntries(Object.entries(PROPS).map(([name, parts]) => [name, bake(parts)])),
     scenery: {
@@ -404,10 +516,12 @@ export function run(root: string) {
     pixelArt(FACE_ROWS, { K: [22, 18, 16, 255], B: [40, 30, 24, 255], W: [240, 236, 220, 255], M: [92, 44, 36, 255] }),
   );
   writeFileSync(join(resources, 'runes.png'), pixelArt(RUNE_ROWS, { X: [255, 255, 255, 255] }));
+  // The new hero's painted face: four frames stacked top to bottom (open, glancing right, glancing left, closed).
+  writeFileSync(join(resources, 'face2.png'), png(FACE2_W, FACE2_H * FACE2_FRAMES, paintFace2()));
 
   // 4. Answers for the Swift tests to match.
   writeFileSync(join(fixtures, 'parity.json'), JSON.stringify(parityFixtures(), null, 1));
 
   const size = (JSON.stringify(models).length / 1024).toFixed(0);
-  console.log(`ios data written: models.json (${size} KB), 4 textures, content, parity fixtures`);
+  console.log(`ios data written: models.json (${size} KB), 5 textures, content, parity fixtures`);
 }

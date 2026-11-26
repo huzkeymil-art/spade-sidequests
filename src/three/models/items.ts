@@ -11,7 +11,7 @@ export type ItemModel =
   | { slot: 'hand'; parts: Part[] }
   | { slot: 'shield'; parts: Part[] }
   | { slot: 'head'; parts: Part[]; hair: 'keep' | 'under' | 'hide' }
-  | { slot: 'body'; tunic?: string; sleeve?: string; torso?: Part[]; shoulder?: Part[] }
+  | { slot: 'body'; tunic?: string; sleeve?: string; torso?: Part[]; shoulder?: Part[]; cloak?: string }
   | { slot: 'charm'; parts: Part[]; glow?: string };
 
 const WOOD = '#7a5a36';
@@ -217,6 +217,7 @@ export const ITEM_MODELS: Record<string, ItemModel> = {
   },
   travel_cloak: {
     slot: 'body',
+    cloak: '#34423f',
     torso: [
       { s: 'cyl', r: [0.21, 0.37], h: 0.56, sides: 8, at: [0, 0.2, -0.06], c: '#34423f', c2: '#1c2524', tile: 'cloth' },
       { s: 'ball', r: 0.035, seg: [5, 4], at: [0, 0.44, 0.2], c: BRASS, tile: 'metal' },
@@ -252,6 +253,7 @@ export const ITEM_MODELS: Record<string, ItemModel> = {
   },
   foxfire_mantle: {
     slot: 'body',
+    cloak: '#1f2b29',
     tunic: '#23302e',
     sleeve: '#23302e',
     torso: [
