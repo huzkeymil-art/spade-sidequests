@@ -30,7 +30,7 @@ extension Materials {
         """
         #pragma body
         float celNdl = dot(_surface.normal, _light.direction);
-        float celBand = smoothstep(0.06, 0.12, celNdl) * 0.6 + smoothstep(0.5, 0.56, celNdl) * 0.4;
+        float celBand = smoothstep(0.06, 0.12, celNdl) * 0.5 + smoothstep(0.5, 0.56, celNdl) * 0.32;
         float celK = mix(celBand, max(celNdl, 0.0), \(soft));
         float celBack = smoothstep(-0.1, 0.4, -dot(_light.direction, _surface.view));
         float celRim = smoothstep(0.66, 0.72, 1.0 - max(dot(_surface.normal, _surface.view), 0.0)) * smoothstep(-0.1, 0.3, celNdl) * celBack;
@@ -53,7 +53,7 @@ extension Materials {
     /// Cel shading for clothes, gear and hair.
     static let heroCel = celSurface(soft: 0)
     /// Cel shading for skin: softer bands, because a hard line across a face reads as a bruise.
-    static let heroCelSkin = celSurface(soft: 0.55)
+    static let heroCelSkin = celSurface(soft: 0.7)
 
     /// The ink line: the same shape again, pushed out a hair along its normals, drawn inside out and dark.
     static let heroInk: SCNMaterial = {
@@ -90,7 +90,7 @@ extension Materials {
         _surface.emission.rgb = _surface.diffuse.rgb * smoothstep(0.55, 0.9, faceLum) * 0.17;
         """
         var extra: [SCNShaderModifierEntryPoint: String] = [.surface: lift]
-        if cel { extra[.lightingModel] = celLighting(soft: 0.55) }
+        if cel { extra[.lightingModel] = celLighting(soft: 0.7) }
         return finish(m, extra: extra)
     }
 }
