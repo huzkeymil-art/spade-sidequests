@@ -44,21 +44,15 @@ struct RootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var tab: AppTab
-    /// Screens are built the first time their tab is opened and then kept, so each
-    /// one remembers where it was scrolled to, the way tabs do in iPhone apps.
-    @State private var opened: Set<AppTab>
     /// Bumped when the tab you are already on is tapped again: that screen jumps back to its top.
     @State private var tops: [AppTab: Int] = [:]
     @State private var settingsOpen = false
     @State private var guideOpen = false
     @State private var keyboard: CGFloat = 0
-    /// The selected tab's highlight slides from tab to tab inside the glass.
-    @Namespace private var dockGlass
 
     private let ticker = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
     /// While Spade is open it also asks iCloud for family changes this often, in case a nudge was missed.
     private let cloudTicker = Timer.publish(every: 15, on: .main, in: .common).autoconnect()
-    private let dockHeight: CGFloat = 62
 
     init() {
         // The demo screens (used for automated screenshots) can open on a particular tab.
@@ -70,7 +64,6 @@ struct RootView: View {
                 : .quests
         )
         _tab = State(initialValue: start)
-        _opened = State(initialValue: [start])
     }
 
     // MARK: - What the scene should show
@@ -106,22 +99,41 @@ struct RootView: View {
         listening(to: following(presenting(screen)))
     }
 
+    /// Three layers: the 3D scene at the back; the system's own tab bar and its screens
+    /// in the middle (the scene shows through the top of each screen); and the HUD and
+    /// the big moments (a dig, a level-up) on top.
     private var screen: some View {
+        ZStack {
+            measured { full, insets in
+                backdrop(full: full, insets: insets)
+                    .onAppear { stage.layout(full) }
+                    .onChange(of: full) { _, size in stage.layout(size) }
+            }
+            if store.save.onboarded {
+                tabs
+                    .opacity(playing ? 1 : 0)
+                    .allowsHitTesting(playing)
+                    .accessibilityHidden(!playing)
+            }
+            measured { full, insets in overlays(full: full, insets: insets) }
+        }
+        .ignoresSafeArea(.keyboard)
+        .background(Ink.ink.ignoresSafeArea())
+        .dynamicTypeSize(.xSmall ... .xxxLarge)
+    }
+
+    /// Lays out a full-screen layer in screen points, edge to edge, with the safe area insets to hand.
+    private func measured<V: View>(@ViewBuilder _ content: @escaping (CGSize, EdgeInsets) -> V) -> some View {
         GeometryReader { proxy in
             let insets = proxy.safeAreaInsets
             let full = CGSize(
                 width: proxy.size.width + insets.leading + insets.trailing,
                 height: proxy.size.height + insets.top + insets.bottom
             )
-            layers(full: full, insets: insets)
+            content(full, insets)
                 .frame(width: full.width, height: full.height, alignment: .topLeading)
                 .ignoresSafeArea()
-                .onAppear { stage.layout(full) }
-                .onChange(of: full) { _, size in stage.layout(size) }
         }
-        .ignoresSafeArea(.keyboard)
-        .background(Ink.ink.ignoresSafeArea())
-        .dynamicTypeSize(.xSmall ... .xxxLarge)
     }
 
     /// Sheets and alerts.
@@ -200,30 +212,33 @@ struct RootView: View {
             }
     }
 
+    /// The scene, and on first launch the title over it.
     @ViewBuilder
-    private func layers(full: CGSize, insets: EdgeInsets) -> some View {
-        let save = store.save
-        let moment = store.moment
+    private func backdrop(full: CGSize, insets: EdgeInsets) -> some View {
         let top = stage.panelTop
-
         ZStack(alignment: .topLeading) {
             StageView(stage: stage)
                 .frame(width: full.width, height: full.height)
                 .accessibilityHidden(true)
 
-            if !save.onboarded {
+            if !store.save.onboarded {
                 TitleLogo(width: full.width)
                     .offset(y: insets.top + full.height * 0.07)
                 BelowPanel(top: top, full: full, bottomInset: insets.bottom) {
                     TitlePanel()
                 }
                 .offset(y: -keyboard)
-            } else {
-                panel(full: full, insets: insets, top: top)
-                    .opacity(playing ? 1 : 0)
-                    .allowsHitTesting(playing)
-                    .accessibilityHidden(!playing)
+            }
+        }
+    }
 
+    /// Over the tabs: the level and streak plates, a dig or a level-up, and toasts.
+    @ViewBuilder
+    private func overlays(full: CGSize, insets: EdgeInsets) -> some View {
+        let moment = store.moment
+        let top = stage.panelTop
+        if store.save.onboarded {
+            ZStack(alignment: .topLeading) {
                 if moment == nil {
                     hud
                         .padding(.horizontal, 16)
@@ -287,13 +302,50 @@ struct RootView: View {
         .dynamicTypeSize(.xSmall ... .xLarge)
     }
 
-    /// The panel under the scene: the XP gauge, the four screens and the floating tab bar.
-    private func panel(full: CGSize, insets: EdgeInsets, top: CGFloat) -> some View {
-        let level = store.level
-        let dockBottom = max(insets.bottom - 10, 12)
-        let dockSpace = dockHeight + dockBottom
-        let fade = DitherFade.height(pixel: stage.pixelSize)
+    /// The system's own tab bar: Liquid Glass on iOS 26 and newer, with its native
+    /// press-and-drag between tabs, and the usual tab bar before that. Picking a tab moves
+    /// the camera, and tapping the tab you are on scrolls its screen back to the top.
+    private var tabs: some View {
+        TabView(selection: Binding(get: { tab }, set: { pick($0) })) {
+            ForEach(AppTab.shown(for: store.save.role)) { option in
+                tabPage(option)
+                    .tag(option)
+                    .tabItem {
+                        Label {
+                            Text(option.title)
+                        } icon: {
+                            Image(uiImage: tabIcon(option)).renderingMode(.original)
+                        }
+                    }
+            }
+        }
+        .tint(Ink.lantern)
+    }
 
+    /// One tab: see-through at the top, where the scene shows and a drag turns the hero (or
+    /// a tap on the new hero flips its hood), then the XP gauge and the screen itself.
+    private func tabPage(_ which: AppTab) -> some View {
+        VStack(spacing: 0) {
+            Color.clear
+                .frame(height: stage.panelTop)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 3)
+                        .onChanged { value in stage.dragHero(translation: value.translation.width) }
+                        .onEnded { _ in stage.endHeroDrag() }
+                )
+                .onTapGesture(coordinateSpace: .global) { point in stage.tapHero(atScreen: point) }
+                .accessibilityHidden(true)
+            panelBody(which)
+        }
+        .ignoresSafeArea(edges: .top)
+        .toolbar(playing ? .automatic : .hidden, for: .tabBar)
+    }
+
+    /// The XP gauge and one screen, on the dark panel under the scene.
+    private func panelBody(_ which: AppTab) -> some View {
+        let level = store.level
+        let fade = DitherFade.height(pixel: stage.pixelSize)
         return VStack(spacing: 0) {
             VStack(spacing: 7) {
                 NotchGauge(value: Double(level.into), total: Double(level.need))
@@ -308,103 +360,37 @@ struct RootView: View {
             .accessibilityLabel("Experience toward level \(level.level + 1)")
             .accessibilityValue("\(level.into) of \(level.need)")
 
-            ZStack {
-                screen(.quests) { QuestBoardView() }
-                screen(.hero) { HeroScreenView() }
-                screen(.satchel) { SatchelView() }
-                screen(.feats) { FeatsView() }
-                screen(.family) { FamilyView() }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            tabContent(which)
+                .environment(\.scrollTopToken, tops[which] ?? 0)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .environment(\.dockSpace, dockSpace)
-        .frame(width: full.width, height: max(0, full.height - top), alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // The dark panel runs on under the tab bar, so lists scroll beneath the glass.
         .background(Ink.ink)
-        // A list scrolls on under the glass tab bar, fading softly toward the bottom edge
-        // so the tabs stay easy to read over it.
-        .overlay(alignment: .bottom) {
-            LinearGradient(
-                stops: [
-                    .init(color: Ink.ink.opacity(0), location: 0),
-                    .init(color: Ink.ink.opacity(0.55), location: 0.55),
-                    .init(color: Ink.ink.opacity(0.8), location: 1),
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: dockSpace + 28)
-            .allowsHitTesting(false)
-        }
-        .overlay(alignment: .bottom) {
-            dock
-                .padding(.horizontal, 20)
-                .padding(.bottom, dockBottom)
-        }
-        // And the scene dissolves into the panel the same way.
+        // And the scene dissolves into the panel.
         .overlay(alignment: .top) {
-            DitherFade().frame(height: fade).offset(y: -fade)
+            DitherFade().frame(height: fade).offset(y: -fade).allowsHitTesting(false)
         }
-        .offset(y: top)
     }
 
     @ViewBuilder
-    private func screen<V: View>(_ which: AppTab, @ViewBuilder _ content: () -> V) -> some View {
-        if opened.contains(which) {
-            content()
-                .environment(\.scrollTopToken, tops[which] ?? 0)
-                .opacity(tab == which ? 1 : 0)
-                .allowsHitTesting(tab == which)
-                .accessibilityHidden(tab != which)
+    private func tabContent(_ which: AppTab) -> some View {
+        switch which {
+        case .quests: QuestBoardView()
+        case .hero: HeroScreenView()
+        case .satchel: SatchelView()
+        case .feats: FeatsView()
+        case .family: FamilyView()
         }
     }
 
-    /// The floating tab bar: a capsule of Liquid Glass (on iOS 26 and newer), with the
-    /// selected tab picked out by a lighter pill that slides across when you switch.
-    private var dock: some View {
-        HStack(spacing: 0) {
-            ForEach(AppTab.shown(for: store.save.role)) { option in
-                let selected = option == tab
-                Button {
-                    withAnimation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.78)) {
-                        pick(option)
-                    }
-                } label: {
-                    VStack(spacing: 2) {
-                        Group {
-                            if option == .hero {
-                                PortraitIcon(hero: store.save.hero, gear: store.save.equipped, size: 28)
-                            } else {
-                                PropIcon(name: option.icon, size: 28)
-                            }
-                        }
-                        .saturation(selected ? 1 : 0.35)
-                        .opacity(selected ? 1 : 0.7)
-                        .scaleEffect(selected ? 1.06 : 1)
-                        Text(option.title)
-                            .caps(selected ? Ink.lantern : Ink.dim, size: 13)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background {
-                        if selected {
-                            Capsule()
-                                .fill(Ink.bone.opacity(0.13))
-                                .overlay(Capsule().strokeBorder(Ink.bone.opacity(0.08), lineWidth: 0.5))
-                                .matchedGeometryEffect(id: "selected", in: dockGlass)
-                        }
-                    }
-                    .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(option.title)
-                .accessibilityAddTraits(selected ? .isSelected : [])
-            }
+    /// The tab's picture: the prop photographed for it, or for the Hero tab the hero's own face,
+    /// in its own colours (the system would otherwise paint it one flat tint).
+    private func tabIcon(_ option: AppTab) -> UIImage {
+        if option == .hero {
+            return TabIcons.icon(IconForge.shared.portrait(look: HeroLook(store.save.hero), gear: store.save.equipped))
         }
-        .padding(4)
-        .frame(height: dockHeight)
-        .liquidGlassBar()
-        .dynamicTypeSize(.xSmall ... .large)
+        return TabIcons.icon(IconForge.shared.prop(option.icon, res: 22))
     }
 
     // MARK: - Actions
@@ -453,37 +439,41 @@ struct RootView: View {
     }
 
     private func pick(_ next: AppTab) {
-        Feedback.select()
         guard AppTab.shown(for: store.save.role).contains(next) else { return }
         if next == tab {
             tops[next, default: 0] += 1
             return
         }
-        opened.insert(next)
+        Feedback.select()
         tab = next
     }
 }
 
 private extension View {
-    /// Liquid Glass for the tab bar: the system's own material on iOS 26 and newer, which
-    /// bends and lights the content behind it and answers to a touch. Older versions get
-    /// a frosted capsule in the same shape.
-    @ViewBuilder
-    func liquidGlassBar() -> some View {
-        if #available(iOS 26.0, *) {
-            glassEffect(.regular.interactive(), in: Capsule())
-        } else {
-            background(.ultraThinMaterial, in: Capsule())
-                .overlay(Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.6))
-                .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
-        }
-    }
-
     /// The small dark plates that float over the scene at the top of the screen.
     func hudPlate() -> some View {
         padding(.horizontal, 11)
             .frame(minWidth: 44, minHeight: 44, maxHeight: 44)
             .plate(fill: Ink.ink.opacity(0.86), edge: Ink.moss, notch: 8)
+    }
+}
+
+/// Pixel-art icons scaled up crisply for the tab bar, kept so they aren't redrawn on every update.
+@MainActor
+private enum TabIcons {
+    private static var cache: [ObjectIdentifier: UIImage] = [:]
+
+    static func icon(_ image: UIImage, size: CGFloat = 28) -> UIImage {
+        if let done = cache[ObjectIdentifier(image)] { return done }
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
+        let drawn = renderer.image { context in
+            context.cgContext.interpolationQuality = .none
+            image.draw(in: CGRect(x: 0, y: 0, width: size, height: size))
+        }
+        let out = drawn.withRenderingMode(.alwaysOriginal)
+        if cache.count > 40 { cache.removeAll() }
+        cache[ObjectIdentifier(image)] = out
+        return out
     }
 }
 
