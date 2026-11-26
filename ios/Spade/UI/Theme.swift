@@ -513,9 +513,10 @@ struct FlowLayout: Layout {
     }
 }
 
-/// The room the floating tab bar takes at the bottom, so lists can leave space for it.
+/// Extra room to leave at the bottom of a list. The system tab bar already insets the lists
+/// on its screens, so this is 0 unless a screen floats something of its own there.
 private struct DockSpaceKey: EnvironmentKey {
-    static let defaultValue: CGFloat = 86
+    static let defaultValue: CGFloat = 0
 }
 
 extension EnvironmentValues {

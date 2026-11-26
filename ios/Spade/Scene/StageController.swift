@@ -267,12 +267,40 @@ final class StageController: NSObject, ObservableObject {
 
     /// A tap that lands on the hero (the new one flips its hood).
     @objc private func tapped(_ tap: UITapGestureRecognizer) {
-        guard tap.state == .ended, let view = sceneView, let onHeroTap else { return }
-        let hits = view.hitTest(tap.location(in: view), options: [
+        guard tap.state == .ended, let view = sceneView else { return }
+        tapHero(at: tap.location(in: view))
+    }
+
+    private func tapHero(at point: CGPoint) {
+        guard let view = sceneView, let onHeroTap else { return }
+        let hits = view.hitTest(point, options: [
             .categoryBitMask: heroCategory,
             .searchMode: SCNHitTestSearchMode.any.rawValue,
         ])
         if !hits.isEmpty { onHeroTap() }
+    }
+
+    // The tab screens sit over the scene, so their see-through top passes drags and taps on here.
+    private var dragBase: Float = 0
+
+    /// A drag across the scene from a tab screen: `translation` is how far the finger has moved sideways.
+    func dragHero(translation: CGFloat) {
+        if !dragging {
+            dragging = true
+            dragBase = heroYaw
+        }
+        heroYaw = dragBase + Float(translation) * 0.012
+        if freeSpin { heroYawTarget = heroYaw }
+    }
+
+    func endHeroDrag() {
+        dragging = false
+    }
+
+    /// A tap from a tab screen, in screen points.
+    func tapHero(atScreen point: CGPoint) {
+        guard let view = sceneView else { return }
+        tapHero(at: view.convert(point, from: nil))
     }
 
     @objc private func panned(_ pan: UIPanGestureRecognizer) {

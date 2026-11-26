@@ -2,7 +2,8 @@
 """Prints how much of the upper part of a screenshot is drawn on, as a percentage.
 
 The 3D scene fills the upper part of most screens. If that area is still the
-plain background colour, the scene never drew. Needs only Python itself.
+plain background colour, or plain black, the scene never drew (or something
+in front of it is hiding it). Needs only Python itself.
 
     python3 lit.py screenshot.png
 """
@@ -84,7 +85,8 @@ def main():
     for y in range(int(height * 0.10), int(height * 0.34)):
         for r, g, b in rows[y]:
             total += 1
-            if max(abs(r - INK[0]), abs(g - INK[1]), abs(b - INK[2])) > 6:
+            # Neither the app's background nor plain black (what a screen in front paints).
+            if max(abs(r - INK[0]), abs(g - INK[1]), abs(b - INK[2])) > 6 and max(r, g, b) > 6:
                 drawn += 1
     print(round(100 * drawn / max(total, 1)))
 

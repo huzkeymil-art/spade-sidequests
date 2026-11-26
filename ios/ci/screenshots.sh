@@ -87,12 +87,27 @@ scene_drawn() {
   python3 "$HERE/lit.py" "$1" 2>/dev/null || echo 0
 }
 
+# Starts a simulator and waits until it is ready. A freshly made one sometimes shuts down
+# again while starting, so it gets three tries.
+boot() {
+  local device=$1 try
+  for try in 1 2 3; do
+    xcrun simctl boot "$device" 2>/dev/null || true
+    if xcrun simctl bootstatus "$device" -b >/dev/null 2>&1 && xcrun simctl list devices booted | grep -q "$device"; then
+      return 0
+    fi
+    echo "simulator: not running yet, starting it again (try $try)"
+    xcrun simctl shutdown "$device" >/dev/null 2>&1 || true
+    sleep 10
+  done
+  return 1
+}
+
 # capture <device id> <file prefix> <screen names...>
 capture() {
   local device=$1 prefix=$2
   shift 2
-  xcrun simctl boot "$device" 2>/dev/null || true
-  xcrun simctl bootstatus "$device" -b >/dev/null
+  boot "$device" || { echo "The simulator would not start."; return 1; }
   xcrun simctl install "$device" "$APP"
   # A new simulator prepares the app's 3D drawing on its first few launches, which can take a
   # while (on Xcode 27 the first screens came out blank). Open the app once and wait until
@@ -157,8 +172,10 @@ if [ -n "$SMALL_SCREENS" ]; then
   SMALL=$(pick_device small)
   [ -n "$SMALL" ] || SMALL=$(make_small_device || true)
   if [ -n "$SMALL" ]; then
+    # The small iPhone is made fresh on each run and is the less steady of the two: if it
+    # stops working part-way, say so, keep what it captured, and judge the screens it drew.
     # shellcheck disable=SC2086
-    capture "$SMALL" "small-" $SMALL_SCREENS
+    capture "$SMALL" "small-" $SMALL_SCREENS || echo "WARNING: the small iPhone simulator stopped working, so its check is incomplete."
   else
     echo "No small iPhone simulator could be set up, so the small-screen check was skipped."
   fi
