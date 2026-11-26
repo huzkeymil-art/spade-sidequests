@@ -340,6 +340,8 @@ struct RootView: View {
         }
         .ignoresSafeArea(edges: .top)
         .toolbar(playing ? .automatic : .hidden, for: .tabBar)
+        // The system paints each tab screen solid black; this makes it see-through, so the scene shows.
+        .background(SeeThroughTab())
     }
 
     /// The XP gauge and one screen, on the dark panel under the scene.
@@ -455,6 +457,46 @@ private extension View {
         padding(.horizontal, 11)
             .frame(minWidth: 44, minHeight: 44, maxHeight: 44)
             .plate(fill: Ink.ink.opacity(0.86), edge: Ink.moss, notch: 8)
+    }
+}
+
+/// Clears the background the system gives a tab screen (and the views holding it, up to the
+/// tab bar controller), so the 3D scene behind the tab bar shows through. The tab bar itself
+/// keeps its own glass.
+private struct SeeThroughTab: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView { Probe() }
+    func updateUIView(_ uiView: UIView, context: Context) { (uiView as? Probe)?.clearUp() }
+
+    final class Probe: UIView {
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            isUserInteractionEnabled = false
+            backgroundColor = .clear
+        }
+
+        required init?(coder: NSCoder) { nil }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            clearUp()
+            // The system can set its colour again once the screen is on show.
+            DispatchQueue.main.async { [weak self] in self?.clearUp() }
+        }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            clearUp()
+        }
+
+        func clearUp() {
+            var view = superview
+            while let current = view {
+                if current is UITabBar { break }
+                current.backgroundColor = .clear
+                if current.next is UITabBarController { break }
+                view = current.superview
+            }
+        }
     }
 }
 
