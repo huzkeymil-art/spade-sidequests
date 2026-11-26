@@ -3,7 +3,8 @@
 #   rules: runs the Swift rule tests on Linux (quick).
 #   app:   builds the app on a Mac, runs it in the iPhone Simulator and saves screenshots.
 #
-# Signing and TestFlight uploads are not done here. Codemagic does those (see codemagic.yaml).
+# Signing and TestFlight uploads are not done here. Codemagic (codemagic.yaml) or the
+# Send to TestFlight button (testflight.yml) does those.
 name: iOS
 
 on:

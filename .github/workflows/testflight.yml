@@ -1,0 +1,46 @@
+# The "Send to TestFlight" button.
+#
+# Press it under Actions → Send to TestFlight → Run workflow. GitHub's Mac builds the app,
+# Apple's cloud signing signs it, and it is uploaded to App Store Connect. It shows up in
+# TestFlight once Apple has processed it, usually 10 to 30 minutes later.
+#
+# It needs an App Store Connect API key with Admin access, saved as three repository
+# secrets: ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8.
+# Setup: ios/README.md, "Sending builds to TestFlight from GitHub".
+#
+# A pull request that changes this button runs a rehearsal: the same build and signing,
+# without the upload. Codemagic (codemagic.yaml) still works too; either one is fine.
+name: Send to TestFlight
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/testflight.yml'
+      - 'ios/ci/testflight.sh'
+      - 'ios/ci/asc_team.py'
+
+# One upload at a time, so two builds never get the same build number.
+concurrency:
+  group: testflight-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  testflight:
+    name: Build, sign and upload
+    runs-on: xcode-27
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build, sign and send to TestFlight
+        env:
+          UPLOAD: ${{ github.event_name == 'workflow_dispatch' && 'yes' || 'no' }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: bash ios/ci/testflight.sh

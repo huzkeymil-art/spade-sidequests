@@ -325,7 +325,8 @@ the **iCloud sync** line and the text under it.
 
 ### Later builds
 
-Start a new build in Codemagic. Nothing else is needed: each build stamps itself
+Start a new build in Codemagic, or press the GitHub button ("Sending builds to
+TestFlight from GitHub" below). Nothing else is needed: each build stamps itself
 with the date and time as its build number, so it always counts as newer.
 To change the version people see (1.0, 1.1, ...), edit `MARKETING_VERSION` in
 `ios/Spade.xcodeproj/project.pbxproj`.
@@ -348,6 +349,69 @@ And if the app builds but families don't sync, Spade's Settings → **iCloud syn
 | `Cannot create new type FamilyPage in production schema` (or similar) | The record type wasn't deployed to Production ("Turning on iCloud", steps 5 to 9). |
 | This iPhone isn't signed in to iCloud | Sign in from the Settings app, and switch iCloud Drive on. |
 | This build of Spade isn't set up for iCloud | The build was signed without the iCloud capability. Redo steps 2 to 4 and build again. |
+
+## Sending builds to TestFlight from GitHub
+
+This is a second way to make TestFlight builds, for when Codemagic is stuck or
+slow. GitHub's Mac builds the app, and Apple's **cloud signing** signs it: Apple
+keeps the certificate on its own servers, so there is no certificate file to
+make or upload. You press one button, and a build arrives in TestFlight.
+
+The one-time setup is a new API key and three secrets. Steps 1 and 3 from the
+Codemagic setup (the App ID and the app record) must already be done, along with
+"Turning on iCloud".
+
+### G1. App Store Connect: make an Admin API key
+
+The Codemagic key from step 2 has **App Manager** access, and cloud signing
+needs **Admin**, so this is a new key. If a parent owns the Apple account, they
+may need to do this step.
+
+1. Go to <https://appstoreconnect.apple.com/access/integrations/api>
+   (**Users and Access → Integrations → App Store Connect API → Team Keys**).
+2. Press **+**. Name: `GitHub`. Access: **Admin**. Press **Generate**.
+3. Press **Download API Key**. It can only be downloaded once, so keep the `.p8` file safe.
+4. Note the **Issuer ID** (above the table) and the **Key ID** (in the key's row).
+
+### G2. GitHub: save the key as three secrets
+
+Secrets are hidden: GitHub never shows them again, not even to you, and they
+never appear in build logs. Don't paste the key anywhere else.
+
+1. Open this repository on GitHub, then **Settings → Secrets and variables → Actions**.
+2. Press **New repository secret** three times:
+
+   | Name | Secret |
+   | --- | --- |
+   | `ASC_KEY_ID` | the Key ID |
+   | `ASC_ISSUER_ID` | the Issuer ID |
+   | `ASC_KEY_P8` | everything in the `.p8` file. Open it in a text editor and copy all of it, including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines |
+
+### G3. Press the button
+
+1. Open the **Actions** tab and pick **Send to TestFlight** on the left.
+2. Press **Run workflow**, leave the branch on `main`, and press the green **Run workflow**.
+3. It takes about 15 to 25 minutes. A green tick means Apple has the build.
+4. Apple then processes it, usually for 10 to 30 minutes, and it appears in TestFlight.
+
+The first run also makes the cloud certificate and an App Store profile in your
+Apple account. They show up at developer.apple.com and are managed by Apple;
+leave them be. Codemagic keeps working as before, so you can use either.
+
+### If the button fails
+
+Open the failed run and the **Build, sign and send to TestFlight** step. The red
+line at the bottom says what went wrong. Build logs on this repository are
+public, so names and email addresses are hidden in them.
+
+| It says | What it means |
+| --- | --- |
+| `Missing repository secrets` | One of the three secrets from G2 is missing or misspelled. |
+| `Apple didn't accept the API key` | The three secrets don't all come from the same key, or the key was revoked. |
+| `ASC_KEY_P8 should be the whole .p8 file` | Part of the file was missed when copying. Copy all of it again. |
+| `Apple wouldn't let this key sign` | The key isn't **Admin**. Make one as in G1 and replace the secrets. |
+| `No App ID called com.huzkeymil.spade` | Step 1 of the Codemagic setup isn't done in this team. |
+| `A build with a later build number is already uploaded` | Press the button again. |
 
 ## Sending it to the App Store
 
