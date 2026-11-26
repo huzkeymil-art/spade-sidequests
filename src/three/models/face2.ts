@@ -7,10 +7,11 @@
 // Like the old face, the frame is chosen by moving the picture, so the eyes can
 // lead the head when it turns, the way the eyes of a toon hero look at things first.
 //
-// Lots of small choices aim at a candid, lived-in face rather than a mask:
-// almond eyes with a lid crease, the iris tucked a little under the upper lid,
-// two catchlights, one brow sitting a touch higher than the other, a lopsided
-// half smile, soft cheeks, and a sticking plaster from yesterday's dig.
+// Lots of small choices aim at a candid, lived-in face rather than a mask, and one
+// that reads as neither a boy nor a girl: level eyes with an even lid line (no
+// lashes or wing), the iris tucked a little under the upper lid, two catchlights,
+// straight, thick brows with one a touch higher than the other, a lopsided half
+// smile, and a sticking plaster from yesterday's dig.
 
 export const FACE2_W = 128;
 export const FACE2_H = 120;
@@ -87,26 +88,24 @@ interface Layer {
 /** One eye. `side` is -1 for the eye on the left of the picture, +1 for the right. `glance` moves the iris sideways. */
 function eye(cx: number, cy: number, side: number, glance: number, closed: boolean): Layer[] {
   const half = 15.4;
-  // The outer corner sits a little higher than the inner one.
-  const lift = (x: number) => ((x - cx) / half) * side * -1.6;
+  // Nearly level: an upswept outer corner reads as a cat-eye, so it only rises a touch.
+  const lift = (x: number) => ((x - cx) / half) * side * -0.4;
   const upper = (x: number) => {
     const t = (x - cx) / half;
-    return cy - 10.1 * (1 - t * t) * (1 - 0.12 * t * side) + lift(x);
+    return cy - 9.4 * (1 - t * t) * (1 - 0.12 * t * side) + lift(x);
   };
   const lower = (x: number) => {
     const t = (x - cx) / half;
-    return cy + 7.4 * Math.pow(Math.max(0, 1 - t * t), 0.85) + lift(x) * 0.5;
+    return cy + 7.0 * Math.pow(Math.max(0, 1 - t * t), 0.85) + lift(x) * 0.5;
   };
   const x0 = cx - half;
   const x1 = cx + half;
-  const skinShade: RGBA = [96, 62, 46, 70];
+  const skinShade: RGBA = [96, 62, 46, 52];
   if (closed) {
     const lid = (x: number) => (upper(x) * 0.25 + lower(x) * 0.75) - 1;
     return [
       { shape: stroke(curve(x0, x1, (x) => upper(x) - 3.2), 1.2), color: skinShade },
-      { shape: stroke(curve(x0 - 0.5, x1 + 0.5, lid), 1.6, 2.6), color: [40, 27, 21, 255] },
-      // Lashes at the outer corner.
-      { shape: stroke([[side < 0 ? x0 + 1 : x1 - 1, lid(side < 0 ? x0 + 1 : x1 - 1)], [side < 0 ? x0 - 2.5 : x1 + 2.5, lid(side < 0 ? x0 : x1) + 1.5]], 1.3), color: [40, 27, 21, 255] },
+      { shape: stroke(curve(x0 - 0.3, x1 + 0.3, lid), 2.2), color: [40, 27, 21, 255] },
     ];
   }
   const opening: Shape = (x, y) => x > x0 && x < x1 && y > upper(x) && y < lower(x);
@@ -114,7 +113,7 @@ function eye(cx: number, cy: number, side: number, glance: number, closed: boole
   const iy = cy - 0.6;
   return [
     // Lid crease, and the whites (slightly shaded under the upper lid).
-    { shape: stroke(curve(x0 + 2, x1 - 2, (x) => upper(x) - 3.9), 1.2), color: skinShade },
+    { shape: stroke(curve(x0 + 4, x1 - 4, (x) => upper(x) - 3.6), 1.1), color: skinShade },
     { shape: opening, color: [236, 230, 218, 255] },
     { shape: and(opening, (x, y) => y < upper(x) + 2.6), color: [198, 186, 174, 255] },
     // Iris: a dark rim, a warm hazel middle, lighter toward the bottom.
@@ -126,10 +125,9 @@ function eye(cx: number, cy: number, side: number, glance: number, closed: boole
     { shape: and(opening, (x, y) => y < upper(x) + 2.2 && (x - ix) ** 2 + (y - iy) ** 2 < 92), color: [40, 28, 20, 150] },
     // Catchlights.
     { shape: and(opening, ellipse(ix - 3.0 * side - 0.6, iy - 3.7, 2.3, 2.1)), color: [255, 253, 246, 255] },
-    { shape: and(opening, ellipse(ix + 2.8 * side, iy + 2.6, 1.0, 1.0)), color: [255, 253, 246, 210] },
-    // Upper lid line, heavier toward the outer corner, with a small flick of lashes.
-    { shape: stroke(curve(x0 - 0.6, x1 + 0.6, upper), side < 0 ? 4.2 : 2.1, side < 0 ? 2.1 : 4.2), color: [34, 23, 18, 255] },
-    { shape: stroke([[side < 0 ? x0 + 1 : x1 - 1, upper(side < 0 ? x0 + 1 : x1 - 1)], [side < 0 ? x0 - 2.4 : x1 + 2.4, upper(side < 0 ? x0 : x1) - 2.2]], 1.4, 0.6), color: [38, 26, 20, 255] },
+    { shape: and(opening, ellipse(ix + 2.8 * side, iy + 2.6, 0.8, 0.8)), color: [255, 253, 246, 170] },
+    // Upper lid line: an even line, with no wing or lashes at the corner.
+    { shape: stroke(curve(x0 - 0.3, x1 + 0.3, upper), 2.6), color: [40, 28, 22, 255] },
     // Lower lid, faint.
     { shape: stroke(curve(x0 + 3, x1 - 1, (x) => lower(x) + 0.6), 0.9), color: [110, 70, 52, 120] },
   ];
@@ -140,10 +138,10 @@ function brow(cx: number, cy: number, side: number, raise: number): Layer {
   const outer = cx + side * 13.5;
   const pts = curve(inner, outer, (x) => {
     const t = (x - inner) / (outer - inner);
-    // Rises from the inner end, peaks two thirds of the way out, then falls away.
-    return cy - 1.5 - raise - Math.sin(t * Math.PI * 0.82) * 3.2 + t * 1.4;
+    // Fairly straight and thick: a gentle rise, without a high, thin arch.
+    return cy - 1.5 - raise - Math.sin(t * Math.PI * 0.82) * 1.4 + t * 0.9;
   });
-  return { shape: stroke(pts, 3.8, 1.4), color: [58, 40, 28, 235] };
+  return { shape: stroke(pts, 4.6, 3.2), color: [58, 40, 28, 242] };
 }
 
 /** Paints all four frames. Returns RGBA pixels, top row first. */
@@ -158,20 +156,19 @@ export function paintFace2(): Uint8Array {
     const closed = frame === FACE2_FRAME.closed;
     const g = glances[frame];
     const layers: Layer[] = [
-      // Soft warmth on the cheeks.
-      { shape: ellipse(30, 80, 11, 6.5), color: [214, 116, 104, 34] },
-      { shape: ellipse(98, 80, 11, 6.5), color: [214, 116, 104, 34] },
+      // A faint warmth on the cheeks, just enough that the face isn't flat.
+      { shape: ellipse(30, 80, 11, 6.5), color: [204, 120, 100, 14] },
+      { shape: ellipse(98, 80, 11, 6.5), color: [204, 120, 100, 14] },
       // A sticking plaster high on one cheek.
       { shape: rect(100, 77, 13, 5.6, -0.42), color: [222, 196, 156, 255] },
       { shape: rect(100, 77, 4.6, 5.0, -0.42), color: [200, 170, 128, 255] },
       ...eye(L.x, L.y, -1, g, closed),
       ...eye(R.x, R.y, 1, g, closed),
-      brow(L.x, L.y - 16, -1, 0),
-      brow(R.x, R.y - 16, 1, 1.4),
+      brow(L.x, L.y - 15, -1, 0),
+      brow(R.x, R.y - 15, 1, 1.2),
       // Half smile: one corner lifts a little more than the other.
       { shape: stroke(curve(54, 77, (x) => { const t = (x - 54) / 23; return 101.5 + Math.sin(t * Math.PI) * 2.1 - t * 1.6; }), 1.7, 1.3), color: [118, 60, 50, 230] },
       { shape: stroke([[76.2, 99.6], [78.4, 98.4]], 1.2, 0.6), color: [118, 60, 50, 170] },
-      { shape: ellipse(65, 106.5, 7.5, 2.1), color: [196, 112, 100, 46] },
     ];
     const SS = 4;
     for (let py = 0; py < H; py++) {
